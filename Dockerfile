@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS build
+FROM python:3.14.1-slim-bookworm AS build
 
 # C4ai version
 ARG C4AI_VER=0.7.7
