@@ -17,9 +17,11 @@ import time
 
 # Add the project root to Python path if running directly
 if __name__ == "__main__":
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    sys.path.insert(
+        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    )
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
+from crawl4ai import AsyncWebCrawler, BrowserConfig
 
 
 async def test_single_crawl_still_works():
@@ -27,9 +29,9 @@ async def test_single_crawl_still_works():
     Test 1: Basic single crawl functionality still works with create_isolated_context=False.
     This ensures we haven't broken existing functionality.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 1: Single crawl with create_isolated_context=False")
-    print("="*70)
+    print("=" * 70)
 
     browser_config = BrowserConfig(
         headless=True,
@@ -60,9 +62,9 @@ async def test_sequential_crawls_work():
     Test 2: Sequential crawls reuse the same page (when released).
     This tests that page tracking and release works correctly.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 2: Sequential crawls with page reuse")
-    print("="*70)
+    print("=" * 70)
 
     browser_config = BrowserConfig(
         headless=True,
@@ -82,7 +84,9 @@ async def test_sequential_crawls_work():
             for url in urls:
                 result = await crawler.arun(url)
                 results.append(result)
-                print(f"  Crawled {url}: success={result.success}, status={result.status_code}")
+                print(
+                    f"  Crawled {url}: success={result.success}, status={result.status_code}"
+                )
 
             # All should succeed
             for i, result in enumerate(results):
@@ -94,6 +98,7 @@ async def test_sequential_crawls_work():
     except Exception as e:
         print(f"  FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -103,9 +108,9 @@ async def test_concurrent_crawls_no_race_condition():
     Test 3: Multiple concurrent crawls don't cause race conditions.
     This is the main bug we're fixing - concurrent crawls should each get their own page.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 3: Concurrent crawls with create_isolated_context=False")
-    print("="*70)
+    print("=" * 70)
 
     browser_config = BrowserConfig(
         headless=True,
@@ -146,14 +151,19 @@ async def test_concurrent_crawls_no_race_condition():
                     print(f"  [{i+1}] {url}: FAILED - {result.error_message}")
 
             # All should succeed
-            assert success_count == len(urls), f"Only {success_count}/{len(urls)} succeeded"
+            assert success_count == len(
+                urls
+            ), f"Only {success_count}/{len(urls)} succeeded"
 
-            print(f"  PASSED: All {len(urls)} concurrent crawls succeeded without race conditions")
+            print(
+                f"  PASSED: All {len(urls)} concurrent crawls succeeded without race conditions"
+            )
             return True
 
     except Exception as e:
         print(f"  FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -163,9 +173,9 @@ async def test_high_concurrency_stress():
     Test 4: High concurrency stress test - many concurrent crawls.
     This stresses the page tracking system to ensure it handles many concurrent operations.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 4: High concurrency stress test (10 concurrent crawls)")
-    print("="*70)
+    print("=" * 70)
 
     browser_config = BrowserConfig(
         headless=True,
@@ -213,18 +223,25 @@ async def test_high_concurrency_stress():
                 else:
                     error_count += 1
 
-            print(f"  Results: {success_count} success, {error_count} errors, {exception_count} exceptions")
+            print(
+                f"  Results: {success_count} success, {error_count} errors, {exception_count} exceptions"
+            )
 
             # At least 80% should succeed (allowing for some network issues)
             min_success = int(len(urls) * 0.8)
-            assert success_count >= min_success, f"Only {success_count}/{len(urls)} succeeded (min: {min_success})"
+            assert (
+                success_count >= min_success
+            ), f"Only {success_count}/{len(urls)} succeeded (min: {min_success})"
 
-            print(f"  PASSED: High concurrency test ({success_count}/{len(urls)} succeeded)")
+            print(
+                f"  PASSED: High concurrency test ({success_count}/{len(urls)} succeeded)"
+            )
             return True
 
     except Exception as e:
         print(f"  FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -234,9 +251,9 @@ async def test_page_tracking_internal_state():
     Test 5: Verify internal page tracking state is correct.
     This directly tests the global page tracking mechanism.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 5: Internal page tracking state verification")
-    print("="*70)
+    print("=" * 70)
 
     browser_config = BrowserConfig(
         headless=True,
@@ -281,6 +298,7 @@ async def test_page_tracking_internal_state():
     except Exception as e:
         print(f"  FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -290,9 +308,9 @@ async def test_mixed_sequential_and_concurrent():
     Test 6: Mixed sequential and concurrent crawls.
     Tests realistic usage pattern where some crawls are sequential and some concurrent.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 6: Mixed sequential and concurrent crawls")
-    print("="*70)
+    print("=" * 70)
 
     browser_config = BrowserConfig(
         headless=True,
@@ -305,8 +323,8 @@ async def test_mixed_sequential_and_concurrent():
             # Sequential crawl 1
             print("  Phase 1: Sequential crawl")
             result1 = await crawler.arun("https://example.com")
-            assert result1.success, f"Sequential crawl 1 failed"
-            print(f"    Crawl 1: OK")
+            assert result1.success, "Sequential crawl 1 failed"
+            print("    Crawl 1: OK")
 
             # Concurrent crawls
             print("  Phase 2: Concurrent crawls (3 URLs)")
@@ -328,8 +346,8 @@ async def test_mixed_sequential_and_concurrent():
             # Sequential crawl 2
             print("  Phase 3: Sequential crawl")
             result2 = await crawler.arun("https://www.iana.org/domains/reserved")
-            assert result2.success, f"Sequential crawl 2 failed"
-            print(f"    Crawl 2: OK")
+            assert result2.success, "Sequential crawl 2 failed"
+            print("    Crawl 2: OK")
 
             # Another batch of concurrent
             print("  Phase 4: More concurrent crawls (2 URLs)")
@@ -351,6 +369,7 @@ async def test_mixed_sequential_and_concurrent():
     except Exception as e:
         print(f"  FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -360,9 +379,9 @@ async def test_compare_isolated_vs_shared_context():
     Test 7: Compare behavior between isolated and shared context modes.
     Both should work for concurrent crawls now.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 7: Compare isolated vs shared context modes")
-    print("="*70)
+    print("=" * 70)
 
     urls = [
         "https://example.com",
@@ -383,7 +402,11 @@ async def test_compare_isolated_vs_shared_context():
             tasks = [crawler.arun(url) for url in urls]
             results_isolated = await asyncio.gather(*tasks, return_exceptions=True)
 
-            isolated_success = sum(1 for r in results_isolated if not isinstance(r, Exception) and r.success)
+            isolated_success = sum(
+                1
+                for r in results_isolated
+                if not isinstance(r, Exception) and r.success
+            )
             print(f"    Isolated context: {isolated_success}/{len(urls)} succeeded")
     except Exception as e:
         print(f"    Isolated context: FAILED - {e}")
@@ -402,15 +425,21 @@ async def test_compare_isolated_vs_shared_context():
             tasks = [crawler.arun(url) for url in urls]
             results_shared = await asyncio.gather(*tasks, return_exceptions=True)
 
-            shared_success = sum(1 for r in results_shared if not isinstance(r, Exception) and r.success)
+            shared_success = sum(
+                1 for r in results_shared if not isinstance(r, Exception) and r.success
+            )
             print(f"    Shared context: {shared_success}/{len(urls)} succeeded")
     except Exception as e:
         print(f"    Shared context: FAILED - {e}")
         shared_success = 0
 
     # Both modes should work
-    assert isolated_success == len(urls), f"Isolated context: only {isolated_success}/{len(urls)} succeeded"
-    assert shared_success == len(urls), f"Shared context: only {shared_success}/{len(urls)} succeeded"
+    assert isolated_success == len(
+        urls
+    ), f"Isolated context: only {isolated_success}/{len(urls)} succeeded"
+    assert shared_success == len(
+        urls
+    ), f"Shared context: only {shared_success}/{len(urls)} succeeded"
 
     print("  PASSED: Both context modes work correctly for concurrent crawls")
     return True
@@ -426,9 +455,9 @@ async def test_multiple_crawlers_same_cdp():
     3. All use create_isolated_context=False to share cookies/session
     4. Each should get its own page to avoid race conditions
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 8: Multiple crawlers connecting to same CDP endpoint")
-    print("="*70)
+    print("=" * 70)
 
     import subprocess
     import tempfile
@@ -441,7 +470,10 @@ async def test_multiple_crawlers_same_cdp():
     try:
         # Start chromium with remote debugging - use Playwright's bundled chromium
         import os
-        playwright_path = os.path.expanduser("~/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome")
+
+        playwright_path = os.path.expanduser(
+            "~/.cache/ms-playwright/chromium-1200/chrome-linux64/chrome"
+        )
         if not os.path.exists(playwright_path):
             # Fallback - try to find it
             for path in [
@@ -464,7 +496,9 @@ async def test_multiple_crawlers_same_cdp():
             "--disable-dev-shm-usage",
         ]
 
-        browser_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        browser_process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         await asyncio.sleep(2)  # Wait for browser to start
 
         cdp_url = f"http://localhost:{port}"
@@ -498,17 +532,20 @@ async def test_multiple_crawlers_same_cdp():
 
                 print(f"  Crawler 1 endpoint key: {bm1._browser_endpoint_key}")
                 print(f"  Crawler 2 endpoint key: {bm2._browser_endpoint_key}")
-                print(f"  Keys match: {bm1._browser_endpoint_key == bm2._browser_endpoint_key}")
+                print(
+                    f"  Keys match: {bm1._browser_endpoint_key == bm2._browser_endpoint_key}"
+                )
 
                 # Launch concurrent crawls from BOTH crawlers simultaneously
-                print(f"  Launching {len(urls_crawler1) + len(urls_crawler2)} concurrent crawls...")
+                print(
+                    f"  Launching {len(urls_crawler1) + len(urls_crawler2)} concurrent crawls..."
+                )
 
                 tasks1 = [crawler1.arun(url) for url in urls_crawler1]
                 tasks2 = [crawler2.arun(url) for url in urls_crawler2]
 
                 all_results = await asyncio.gather(
-                    *tasks1, *tasks2,
-                    return_exceptions=True
+                    *tasks1, *tasks2, return_exceptions=True
                 )
 
                 # Check results
@@ -518,22 +555,29 @@ async def test_multiple_crawlers_same_cdp():
                     url_idx = i if i < len(urls_crawler1) else i - len(urls_crawler1)
 
                     if isinstance(result, Exception):
-                        print(f"    Crawler {crawler_id}, URL {url_idx+1}: EXCEPTION - {result}")
+                        print(
+                            f"    Crawler {crawler_id}, URL {url_idx+1}: EXCEPTION - {result}"
+                        )
                     elif result.success:
                         success_count += 1
                         print(f"    Crawler {crawler_id}, URL {url_idx+1}: OK")
                     else:
-                        print(f"    Crawler {crawler_id}, URL {url_idx+1}: FAILED - {result.error_message}")
+                        print(
+                            f"    Crawler {crawler_id}, URL {url_idx+1}: FAILED - {result.error_message}"
+                        )
 
                 total = len(urls_crawler1) + len(urls_crawler2)
                 assert success_count == total, f"Only {success_count}/{total} succeeded"
 
-                print(f"  PASSED: All {total} concurrent crawls from 2 crawlers succeeded")
+                print(
+                    f"  PASSED: All {total} concurrent crawls from 2 crawlers succeeded"
+                )
                 return True
 
     except Exception as e:
         print(f"  FAILED: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -547,6 +591,7 @@ async def test_multiple_crawlers_same_cdp():
                 browser_process.kill()
         # Clean up temp dir
         import shutil
+
         try:
             shutil.rmtree(temp_dir)
         except:
@@ -555,9 +600,9 @@ async def test_multiple_crawlers_same_cdp():
 
 async def run_all_tests():
     """Run all tests and report results."""
-    print("\n" + "#"*70)
+    print("\n" + "#" * 70)
     print("# PAGE REUSE RACE CONDITION FIX - INTEGRATION TESTS")
-    print("#"*70)
+    print("#" * 70)
 
     tests = [
         ("Single crawl works", test_single_crawl_still_works),
@@ -579,9 +624,9 @@ async def run_all_tests():
             results.append((name, False))
 
     # Summary
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     passed = sum(1 for _, p in results if p)
     total = len(results)
@@ -590,7 +635,7 @@ async def run_all_tests():
         status = "PASS" if p else "FAIL"
         print(f"  [{status}] {name}")
 
-    print("-"*70)
+    print("-" * 70)
     print(f"  Total: {passed}/{total} tests passed")
 
     if passed == total:

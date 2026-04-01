@@ -20,7 +20,6 @@ Performance benefit: ~5-10x faster than full processing
 
 import asyncio
 import time
-from typing import List, Dict
 
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
@@ -42,14 +41,14 @@ async def example_basic_prefetch():
         print("\nFetching with prefetch=True...")
         result = await crawler.arun("https://books.toscrape.com", config=config)
 
-        print(f"\nResult summary:")
+        print("\nResult summary:")
         print(f"  Success: {result.success}")
         print(f"  HTML length: {len(result.html) if result.html else 0} chars")
         print(f"  Internal links: {len(result.links.get('internal', []))}")
         print(f"  External links: {len(result.links.get('external', []))}")
 
         # These should be None/empty in prefetch mode
-        print(f"\n  Skipped processing:")
+        print("\n  Skipped processing:")
         print(f"    Markdown: {result.markdown}")
         print(f"    Cleaned HTML: {result.cleaned_html}")
         print(f"    Extracted content: {result.extracted_content}")
@@ -57,7 +56,7 @@ async def example_basic_prefetch():
         # Show some discovered links
         internal_links = result.links.get("internal", [])
         if internal_links:
-            print(f"\n  Sample internal links:")
+            print("\n  Sample internal links:")
             for link in internal_links[:5]:
                 print(f"    - {link['href'][:60]}...")
 
@@ -78,7 +77,9 @@ async def example_performance_comparison():
 
         # Prefetch mode timing
         start = time.time()
-        prefetch_result = await crawler.arun(url, config=CrawlerRunConfig(prefetch=True))
+        prefetch_result = await crawler.arun(
+            url, config=CrawlerRunConfig(prefetch=True)
+        )
         prefetch_time = time.time() - start
 
         # Full processing timing
@@ -86,15 +87,19 @@ async def example_performance_comparison():
         full_result = await crawler.arun(url, config=CrawlerRunConfig())
         full_time = time.time() - start
 
-        print(f"\nTiming comparison:")
+        print("\nTiming comparison:")
         print(f"  Prefetch mode: {prefetch_time:.3f}s")
         print(f"  Full processing: {full_time:.3f}s")
         print(f"  Speedup: {full_time / prefetch_time:.1f}x faster")
 
-        print(f"\nOutput comparison:")
-        print(f"  Prefetch - Links found: {len(prefetch_result.links.get('internal', []))}")
+        print("\nOutput comparison:")
+        print(
+            f"  Prefetch - Links found: {len(prefetch_result.links.get('internal', []))}"
+        )
         print(f"  Full - Links found: {len(full_result.links.get('internal', []))}")
-        print(f"  Full - Markdown length: {len(full_result.markdown.raw_markdown) if full_result.markdown else 0}")
+        print(
+            f"  Full - Markdown length: {len(full_result.markdown.raw_markdown) if full_result.markdown else 0}"
+        )
 
 
 async def example_two_phase_crawl():
@@ -116,7 +121,9 @@ async def example_two_phase_crawl():
 
         prefetch_config = CrawlerRunConfig(prefetch=True)
         start = time.time()
-        discovery = await crawler.arun("https://books.toscrape.com", config=prefetch_config)
+        discovery = await crawler.arun(
+            "https://books.toscrape.com", config=prefetch_config
+        )
         discovery_time = time.time() - start
 
         all_urls = [link["href"] for link in discovery.links.get("internal", [])]
@@ -125,9 +132,10 @@ async def example_two_phase_crawl():
         # Filter to URLs we care about (e.g., book detail pages)
         # On books.toscrape.com, book pages contain "catalogue/" but not "category/"
         book_urls = [
-            url for url in all_urls
-            if "catalogue/" in url and "category/" not in url
-        ][:5]  # Limit to 5 for demo
+            url for url in all_urls if "catalogue/" in url and "category/" not in url
+        ][
+            :5
+        ]  # Limit to 5 for demo
 
         print(f"  Filtered to {len(book_urls)} book pages")
 
@@ -158,7 +166,7 @@ async def example_two_phase_crawl():
         # ═══════════════════════════════════════════════════════════
         # Summary
         # ═══════════════════════════════════════════════════════════
-        print(f"\n--- Summary ---")
+        print("\n--- Summary ---")
         print(f"  Discovery phase: {discovery_time:.2f}s ({len(all_urls)} URLs)")
         print(f"  Processing phase: {processing_time:.2f}s ({len(results)} pages)")
         print(f"  Total time: {discovery_time + processing_time:.2f}s")
@@ -184,16 +192,18 @@ async def example_prefetch_with_deep_crawl():
             deep_crawl_strategy=BFSDeepCrawlStrategy(
                 max_depth=1,
                 max_pages=10,
-            )
+            ),
         )
 
         print("\nDeep crawling with prefetch mode...")
         start = time.time()
 
-        result_container = await crawler.arun("https://books.toscrape.com", config=config)
+        result_container = await crawler.arun(
+            "https://books.toscrape.com", config=config
+        )
 
         # Handle iterator result from deep crawl
-        if hasattr(result_container, '__iter__'):
+        if hasattr(result_container, "__iter__"):
             results = list(result_container)
         else:
             results = [result_container]
@@ -210,7 +220,7 @@ async def example_prefetch_with_deep_crawl():
             for link in result.links.get("external", []):
                 all_external_links.add(link["href"])
 
-        print(f"\nResults:")
+        print("\nResults:")
         print(f"  Pages crawled: {len(results)}")
         print(f"  Total internal links discovered: {len(all_internal_links)}")
         print(f"  Total external links discovered: {len(all_external_links)}")
@@ -252,7 +262,7 @@ async def example_prefetch_with_raw_html():
 
         result = await crawler.arun(f"raw:{sample_html}", config=config)
 
-        print(f"\nExtracted from raw HTML:")
+        print("\nExtracted from raw HTML:")
         print(f"  Internal links: {len(result.links.get('internal', []))}")
         for link in result.links.get("internal", []):
             print(f"    - {link['href']} ({link['text']})")

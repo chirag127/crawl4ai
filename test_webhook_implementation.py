@@ -8,14 +8,15 @@ This script tests:
 4. Configuration parsing
 """
 
-import sys
-import os
 import json
+import os
+import sys
 from datetime import datetime, timezone
 
 # Add deploy/docker to path to import modules
 # sys.path.insert(0, '/home/user/crawl4ai/deploy/docker')
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'deploy', 'docker'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "deploy", "docker"))
+
 
 def test_imports():
     """Test that all webhook-related modules can be imported"""
@@ -24,14 +25,14 @@ def test_imports():
     print("=" * 60)
 
     try:
-        from webhook import WebhookDeliveryService
+
         print("✅ webhook.WebhookDeliveryService imported successfully")
     except Exception as e:
         print(f"❌ Failed to import webhook module: {e}")
         return False
 
     try:
-        from schemas import WebhookConfig, WebhookPayload
+
         print("✅ schemas.WebhookConfig imported successfully")
         print("✅ schemas.WebhookPayload imported successfully")
     except Exception as e:
@@ -39,6 +40,7 @@ def test_imports():
         return False
 
     return True
+
 
 def test_webhook_service_init():
     """Test WebhookDeliveryService initialization"""
@@ -59,17 +61,15 @@ def test_webhook_service_init():
                     "max_attempts": 5,
                     "initial_delay_ms": 1000,
                     "max_delay_ms": 32000,
-                    "timeout_ms": 30000
+                    "timeout_ms": 30000,
                 },
-                "headers": {
-                    "User-Agent": "Crawl4AI-Webhook/1.0"
-                }
+                "headers": {"User-Agent": "Crawl4AI-Webhook/1.0"},
             }
         }
 
         service = WebhookDeliveryService(config)
 
-        print(f"✅ Service initialized successfully")
+        print("✅ Service initialized successfully")
         print(f"   - Max attempts: {service.max_attempts}")
         print(f"   - Initial delay: {service.initial_delay}s")
         print(f"   - Max delay: {service.max_delay}s")
@@ -87,8 +87,10 @@ def test_webhook_service_init():
     except Exception as e:
         print(f"❌ Service initialization failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 def test_webhook_config_model():
     """Test WebhookConfig Pydantic model"""
@@ -97,50 +99,48 @@ def test_webhook_config_model():
     print("=" * 60)
 
     try:
-        from schemas import WebhookConfig
         from pydantic import ValidationError
+        from schemas import WebhookConfig
 
         # Test valid config
         valid_config = {
             "webhook_url": "https://example.com/webhook",
             "webhook_data_in_payload": True,
-            "webhook_headers": {"X-Secret": "token123"}
+            "webhook_headers": {"X-Secret": "token123"},
         }
 
         config = WebhookConfig(**valid_config)
-        print(f"✅ Valid config accepted:")
+        print("✅ Valid config accepted:")
         print(f"   - URL: {config.webhook_url}")
         print(f"   - Data in payload: {config.webhook_data_in_payload}")
         print(f"   - Headers: {config.webhook_headers}")
 
         # Test minimal config
-        minimal_config = {
-            "webhook_url": "https://example.com/webhook"
-        }
+        minimal_config = {"webhook_url": "https://example.com/webhook"}
 
         config2 = WebhookConfig(**minimal_config)
-        print(f"✅ Minimal config accepted (defaults applied):")
+        print("✅ Minimal config accepted (defaults applied):")
         print(f"   - URL: {config2.webhook_url}")
         print(f"   - Data in payload: {config2.webhook_data_in_payload}")
         print(f"   - Headers: {config2.webhook_headers}")
 
         # Test invalid URL
         try:
-            invalid_config = {
-                "webhook_url": "not-a-url"
-            }
+            invalid_config = {"webhook_url": "not-a-url"}
             config3 = WebhookConfig(**invalid_config)
-            print(f"❌ Invalid URL should have been rejected")
+            print("❌ Invalid URL should have been rejected")
             return False
-        except ValidationError as e:
-            print(f"✅ Invalid URL correctly rejected")
+        except ValidationError:
+            print("✅ Invalid URL correctly rejected")
 
         return True
     except Exception as e:
         print(f"❌ Model validation test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 def test_payload_construction():
     """Test webhook payload construction logic"""
@@ -160,10 +160,10 @@ def test_payload_construction():
             "task_type": task_type,
             "status": status,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "urls": urls
+            "urls": urls,
         }
 
-        print(f"✅ Basic payload constructed:")
+        print("✅ Basic payload constructed:")
         print(json.dumps(payload, indent=2))
 
         # Test with error
@@ -173,10 +173,10 @@ def test_payload_construction():
             "status": "failed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "urls": ["https://example.com"],
-            "error": "Connection timeout"
+            "error": "Connection timeout",
         }
 
-        print(f"\n✅ Error payload constructed:")
+        print("\n✅ Error payload constructed:")
         print(json.dumps(error_payload, indent=2))
 
         # Test with data
@@ -187,21 +187,21 @@ def test_payload_construction():
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "urls": ["https://example.com"],
             "data": {
-                "results": [
-                    {"url": "https://example.com", "markdown": "# Example"}
-                ]
-            }
+                "results": [{"url": "https://example.com", "markdown": "# Example"}]
+            },
         }
 
-        print(f"\n✅ Data payload constructed:")
+        print("\n✅ Data payload constructed:")
         print(json.dumps(data_payload, indent=2))
 
         return True
     except Exception as e:
         print(f"❌ Payload construction failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 def test_exponential_backoff():
     """Test exponential backoff calculation"""
@@ -211,16 +211,16 @@ def test_exponential_backoff():
 
     try:
         initial_delay = 1.0  # 1 second
-        max_delay = 32.0     # 32 seconds
+        max_delay = 32.0  # 32 seconds
 
         print("Backoff delays for 5 attempts:")
         for attempt in range(5):
-            delay = min(initial_delay * (2 ** attempt), max_delay)
+            delay = min(initial_delay * (2**attempt), max_delay)
             print(f"  Attempt {attempt + 1}: {delay}s")
 
         # Verify the sequence: 1s, 2s, 4s, 8s, 16s
         expected = [1.0, 2.0, 4.0, 8.0, 16.0]
-        actual = [min(initial_delay * (2 ** i), max_delay) for i in range(5)]
+        actual = [min(initial_delay * (2**i), max_delay) for i in range(5)]
 
         assert actual == expected, f"Expected {expected}, got {actual}"
         print("✅ Exponential backoff sequence correct")
@@ -230,6 +230,7 @@ def test_exponential_backoff():
         print(f"❌ Backoff calculation failed: {e}")
         return False
 
+
 def test_api_integration():
     """Test that api.py imports webhook module correctly"""
     print("\n" + "=" * 60)
@@ -238,23 +239,23 @@ def test_api_integration():
 
     try:
         # Check if api.py can import webhook module
-        api_path = os.path.join(os.path.dirname(__file__), 'deploy', 'docker', 'api.py')
-        with open(api_path, 'r') as f:
+        api_path = os.path.join(os.path.dirname(__file__), "deploy", "docker", "api.py")
+        with open(api_path, "r") as f:
             api_content = f.read()
 
-        if 'from webhook import WebhookDeliveryService' in api_content:
+        if "from webhook import WebhookDeliveryService" in api_content:
             print("✅ api.py imports WebhookDeliveryService")
         else:
             print("❌ api.py missing webhook import")
             return False
 
-        if 'WebhookDeliveryService(config)' in api_content:
+        if "WebhookDeliveryService(config)" in api_content:
             print("✅ api.py initializes WebhookDeliveryService")
         else:
             print("❌ api.py doesn't initialize WebhookDeliveryService")
             return False
 
-        if 'notify_job_completion' in api_content:
+        if "notify_job_completion" in api_content:
             print("✅ api.py calls notify_job_completion")
         else:
             print("❌ api.py doesn't call notify_job_completion")
@@ -264,6 +265,7 @@ def test_api_integration():
     except Exception as e:
         print(f"❌ API integration check failed: {e}")
         return False
+
 
 def main():
     """Run all tests"""
@@ -302,6 +304,7 @@ def main():
     else:
         print(f"\n⚠️  {total - passed} test(s) failed. Please review the output above.")
         return 1
+
 
 if __name__ == "__main__":
     exit(main())

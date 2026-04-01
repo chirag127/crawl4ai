@@ -5,6 +5,7 @@ No browser or network required.
 """
 
 import pytest
+
 from crawl4ai.async_configs import BrowserConfig
 
 

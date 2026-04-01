@@ -7,11 +7,12 @@ that fail head extraction and only have an intrinsic_score.
 Regression tests for https://github.com/unclecode/crawl4ai/issues/1749
 """
 
-import pytest
 from unittest.mock import MagicMock
 
-from crawl4ai.models import Link, Links
+import pytest
+
 from crawl4ai.link_preview import LinkPreview
+from crawl4ai.models import Link, Links
 from crawl4ai.utils import calculate_total_score
 
 
@@ -72,7 +73,9 @@ class TestMergeHeadDataScoring:
 
     def test_internal_link_with_head_data_gets_total_score(self):
         """Internal link with successful head extraction should have total_score."""
-        link = Link(href="https://example.com/page1", text="Page 1", intrinsic_score=6.0)
+        link = Link(
+            href="https://example.com/page1", text="Page 1", intrinsic_score=6.0
+        )
         links = Links(internal=[link], external=[])
 
         head_results = [
@@ -93,7 +96,9 @@ class TestMergeHeadDataScoring:
 
     def test_internal_link_without_head_data_gets_total_score(self):
         """Internal link that failed head extraction should still get total_score from intrinsic_score."""
-        link = Link(href="https://example.com/doc.pdf", text="PDF Doc", intrinsic_score=5.0)
+        link = Link(
+            href="https://example.com/doc.pdf", text="PDF Doc", intrinsic_score=5.0
+        )
         links = Links(internal=[link], external=[])
 
         # No head results for this URL (simulates failed extraction)
@@ -108,7 +113,9 @@ class TestMergeHeadDataScoring:
 
     def test_external_link_without_head_data_gets_total_score(self):
         """External link that failed head extraction should still get total_score from intrinsic_score."""
-        link = Link(href="https://external.com/page", text="External", intrinsic_score=4.0)
+        link = Link(
+            href="https://external.com/page", text="External", intrinsic_score=4.0
+        )
         links = Links(internal=[], external=[link])
 
         head_results = []
@@ -122,10 +129,18 @@ class TestMergeHeadDataScoring:
 
     def test_mixed_links_all_get_total_score(self):
         """Mix of successful and failed head extractions should all have total_score."""
-        internal_success = Link(href="https://example.com/page1", text="Page 1", intrinsic_score=7.0)
-        internal_fail = Link(href="https://example.com/doc.pdf", text="PDF", intrinsic_score=5.0)
-        external_success = Link(href="https://other.com/page", text="Other", intrinsic_score=6.0)
-        external_fail = Link(href="https://other.com/timeout", text="Timeout", intrinsic_score=3.0)
+        internal_success = Link(
+            href="https://example.com/page1", text="Page 1", intrinsic_score=7.0
+        )
+        internal_fail = Link(
+            href="https://example.com/doc.pdf", text="PDF", intrinsic_score=5.0
+        )
+        external_success = Link(
+            href="https://other.com/page", text="Other", intrinsic_score=6.0
+        )
+        external_fail = Link(
+            href="https://other.com/timeout", text="Timeout", intrinsic_score=3.0
+        )
 
         links = Links(
             internal=[internal_success, internal_fail],

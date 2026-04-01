@@ -7,20 +7,22 @@ not the entire scrollable page.
 
 import asyncio
 import base64
-import pytest
 from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+import pytest
 
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def get_image_dimensions(screenshot_b64: str) -> tuple:
     """Decode a base64 screenshot and return (width, height)."""
     from PIL import Image
+
     img_data = base64.b64decode(screenshot_b64)
     img = Image.open(BytesIO(img_data))
     return img.width, img.height
@@ -30,13 +32,16 @@ def get_image_dimensions(screenshot_b64: str) -> tuple:
 # Unit tests (mock-based, no browser needed)
 # ---------------------------------------------------------------------------
 
+
 class TestTakeScreenshotRouting:
     """Unit tests for take_screenshot routing logic."""
 
     @pytest.fixture
     def strategy(self):
         """Create a minimal AsyncPlaywrightCrawlerStrategy with mocked methods."""
-        from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
+        from crawl4ai.async_crawler_strategy import \
+            AsyncPlaywrightCrawlerStrategy
+
         s = object.__new__(AsyncPlaywrightCrawlerStrategy)
         s.logger = MagicMock()
         s.take_screenshot_naive = AsyncMock(return_value="naive_b64")
@@ -166,9 +171,9 @@ class TestScreenshotIntegration:
         assert result.screenshot is not None
         w, h = get_image_dimensions(result.screenshot)
         assert w == self.VIEWPORT_W
-        assert h == self.VIEWPORT_H, (
-            f"Expected viewport height {self.VIEWPORT_H}, got {h}"
-        )
+        assert (
+            h == self.VIEWPORT_H
+        ), f"Expected viewport height {self.VIEWPORT_H}, got {h}"
 
     @pytest.mark.asyncio
     async def test_tall_page_scan_full_page_true(self, browser_config):
@@ -178,9 +183,9 @@ class TestScreenshotIntegration:
             result = await crawler.arun(url=f"raw://{TALL_PAGE_HTML}", config=config)
         assert result.screenshot is not None
         w, h = get_image_dimensions(result.screenshot)
-        assert h > self.VIEWPORT_H, (
-            f"Expected full-page screenshot taller than {self.VIEWPORT_H}, got {h}"
-        )
+        assert (
+            h > self.VIEWPORT_H
+        ), f"Expected full-page screenshot taller than {self.VIEWPORT_H}, got {h}"
 
     @pytest.mark.asyncio
     async def test_tall_page_default_scan_full_page(self, browser_config):
@@ -234,11 +239,13 @@ class TestScreenshotIntegration:
         for scan_full in [True, False]:
             config = CrawlerRunConfig(screenshot=True, scan_full_page=scan_full)
             async with AsyncWebCrawler(config=browser_config) as crawler:
-                result = await crawler.arun(url=f"raw://{TALL_PAGE_HTML}", config=config)
+                result = await crawler.arun(
+                    url=f"raw://{TALL_PAGE_HTML}", config=config
+                )
             w, h = get_image_dimensions(result.screenshot)
-            assert w == self.VIEWPORT_W, (
-                f"scan_full_page={scan_full}: width {w} != viewport {self.VIEWPORT_W}"
-            )
+            assert (
+                w == self.VIEWPORT_W
+            ), f"scan_full_page={scan_full}: width {w} != viewport {self.VIEWPORT_W}"
 
     @pytest.mark.asyncio
     async def test_no_screenshot_when_disabled(self, browser_config):

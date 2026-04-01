@@ -1,16 +1,17 @@
 # monitor.py - Real-time monitoring stats with Redis persistence
-import time
-import json
 import asyncio
-from typing import Dict, List, Optional
-from datetime import datetime, timezone
+import json
+import logging
+import time
 from collections import deque
+from typing import Dict, List, Optional
+
+import psutil
 from redis import asyncio as aioredis
 from utils import get_container_memory_percent
-import psutil
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 class MonitorStats:
     """Tracks real-time server stats with Redis persistence."""
@@ -26,7 +27,9 @@ class MonitorStats:
         self.errors: deque = deque(maxlen=100)
 
         # Endpoint stats (persisted in Redis)
-        self.endpoint_stats: Dict[str, Dict] = {}  # endpoint -> {count, total_time, errors, ...}
+        self.endpoint_stats: Dict[str, Dict] = (
+            {}
+        )  # endpoint -> {count, total_time, errors, ...}
 
         # Background persistence queue (max 10 pending persist requests)
         self._persist_queue: asyncio.Queue = asyncio.Queue(maxsize=10)
@@ -37,7 +40,9 @@ class MonitorStats:
         self.requests_timeline: deque = deque(maxlen=60)
         self.browser_timeline: deque = deque(maxlen=60)
 
-    async def track_request_start(self, request_id: str, endpoint: str, url: str, config: Dict = None):
+    async def track_request_start(
+        self, request_id: str, endpoint: str, url: str, config: Dict = None
+    ):
         """Track new request start."""
         req_info = {
             "id": request_id,
@@ -45,15 +50,18 @@ class MonitorStats:
             "url": url[:100],  # Truncate long URLs
             "start_time": time.time(),
             "config_sig": config.get("sig", "default") if config else "default",
-            "mem_start": psutil.Process().memory_info().rss / (1024 * 1024)
+            "mem_start": psutil.Process().memory_info().rss / (1024 * 1024),
         }
         self.active_requests[request_id] = req_info
 
         # Increment endpoint counter
         if endpoint not in self.endpoint_stats:
             self.endpoint_stats[endpoint] = {
-                "count": 0, "total_time": 0, "errors": 0,
-                "pool_hits": 0, "success": 0
+                "count": 0,
+                "total_time": 0,
+                "errors": 0,
+                "pool_hits": 0,
+                "success": 0,
             }
         self.endpoint_stats[endpoint]["count"] += 1
 
@@ -63,8 +71,14 @@ class MonitorStats:
         except asyncio.QueueFull:
             logger.warning("Persistence queue full, skipping")
 
-    async def track_request_end(self, request_id: str, success: bool, error: str = None,
-                               pool_hit: bool = True, status_code: int = 200):
+    async def track_request_end(
+        self,
+        request_id: str,
+        success: bool,
+        error: str = None,
+        pool_hit: bool = True,
+        status_code: int = 200,
+    ):
         """Track request completion."""
         if request_id not in self.active_requests:
             return
@@ -95,30 +109,34 @@ class MonitorStats:
             "success": success,
             "error": error,
             "status_code": status_code,
-            "pool_hit": pool_hit
+            "pool_hit": pool_hit,
         }
         self.completed_requests.append(completed)
 
         # Track errors
         if not success and error:
-            self.errors.append({
-                "timestamp": end_time,
-                "endpoint": endpoint,
-                "url": req_info["url"],
-                "error": error,
-                "request_id": request_id
-            })
+            self.errors.append(
+                {
+                    "timestamp": end_time,
+                    "endpoint": endpoint,
+                    "url": req_info["url"],
+                    "error": error,
+                    "request_id": request_id,
+                }
+            )
 
         await self._persist_endpoint_stats()
 
     async def track_janitor_event(self, event_type: str, sig: str, details: Dict):
         """Track janitor cleanup events."""
-        self.janitor_events.append({
-            "timestamp": time.time(),
-            "type": event_type,  # "close_cold", "close_hot", "promote"
-            "sig": sig[:8],
-            "details": details
-        })
+        self.janitor_events.append(
+            {
+                "timestamp": time.time(),
+                "type": event_type,  # "close_cold", "close_hot", "promote"
+                "sig": sig[:8],
+                "details": details,
+            }
+        )
 
     def _cleanup_old_entries(self, max_age_seconds: int = 300):
         """Remove entries older than max_age_seconds (default 5min)."""
@@ -126,11 +144,16 @@ class MonitorStats:
         cutoff = now - max_age_seconds
 
         # Clean completed requests
-        while self.completed_requests and self.completed_requests[0].get("end_time", 0) < cutoff:
+        while (
+            self.completed_requests
+            and self.completed_requests[0].get("end_time", 0) < cutoff
+        ):
             self.completed_requests.popleft()
 
         # Clean janitor events
-        while self.janitor_events and self.janitor_events[0].get("timestamp", 0) < cutoff:
+        while (
+            self.janitor_events and self.janitor_events[0].get("timestamp", 0) < cutoff
+        ):
             self.janitor_events.popleft()
 
         # Clean errors
@@ -146,12 +169,14 @@ class MonitorStats:
         self._cleanup_old_entries(max_age_seconds=300)
 
         # Count requests in last 5s
-        recent_reqs = sum(1 for req in self.completed_requests
-                         if now - req.get("end_time", 0) < 5)
+        recent_reqs = sum(
+            1 for req in self.completed_requests if now - req.get("end_time", 0) < 5
+        )
 
         # Browser counts — lock-free snapshot to avoid contending on
         # the pool LOCK held during slow browser start/close (issue #1754)
         from crawler_pool import get_pool_snapshot
+
         snap = get_pool_snapshot()
         browser_count = {
             "permanent": 1 if snap["permanent"] else 0,
@@ -169,7 +194,7 @@ class MonitorStats:
             await self.redis.set(
                 "monitor:endpoint_stats",
                 json.dumps(self.endpoint_stats),
-                ex=86400  # 24h TTL
+                ex=86400,  # 24h TTL
             )
         except Exception as e:
             logger.warning(f"Failed to persist endpoint stats: {e}")
@@ -235,12 +260,17 @@ class MonitorStats:
 
         # Pool status — lock-free snapshot (issue #1754)
         from crawler_pool import get_pool_snapshot
+
         snap = get_pool_snapshot()
         # TODO: Track actual browser process memory instead of estimates
         # These are conservative estimates based on typical Chromium usage
-        permanent_mem = 270 if snap["permanent"] else 0  # Estimate: ~270MB for permanent browser
+        permanent_mem = (
+            270 if snap["permanent"] else 0
+        )  # Estimate: ~270MB for permanent browser
         hot_mem = len(snap["hot_pool"]) * 180  # Estimate: ~180MB per hot pool browser
-        cold_mem = len(snap["cold_pool"]) * 180  # Estimate: ~180MB per cold pool browser
+        cold_mem = (
+            len(snap["cold_pool"]) * 180
+        )  # Estimate: ~180MB per cold pool browser
         permanent_active = snap["permanent"] is not None
         hot_count = len(snap["hot_pool"])
         cold_count = len(snap["cold_pool"])
@@ -251,33 +281,33 @@ class MonitorStats:
                 "cpu_percent": round(cpu_pct, 1),
                 "network_sent_mb": round(net.bytes_sent / (1024**2), 2),
                 "network_recv_mb": round(net.bytes_recv / (1024**2), 2),
-                "uptime_seconds": int(time.time() - self.start_time)
+                "uptime_seconds": int(time.time() - self.start_time),
             },
             "pool": {
                 "permanent": {"active": permanent_active, "memory_mb": permanent_mem},
                 "hot": {"count": hot_count, "memory_mb": hot_mem},
                 "cold": {"count": cold_count, "memory_mb": cold_mem},
-                "total_memory_mb": permanent_mem + hot_mem + cold_mem
+                "total_memory_mb": permanent_mem + hot_mem + cold_mem,
             },
             "janitor": {
                 "next_cleanup_estimate": "adaptive",  # Would need janitor state
-                "memory_pressure": "LOW" if mem_pct < 60 else "MEDIUM" if mem_pct < 80 else "HIGH"
-            }
+                "memory_pressure": (
+                    "LOW" if mem_pct < 60 else "MEDIUM" if mem_pct < 80 else "HIGH"
+                ),
+            },
         }
 
     def get_active_requests(self) -> List[Dict]:
         """Get list of currently active requests."""
         now = time.time()
         return [
-            {
-                **req,
-                "elapsed": round(now - req["start_time"], 1),
-                "status": "running"
-            }
+            {**req, "elapsed": round(now - req["start_time"], 1), "status": "running"}
             for req in self.active_requests.values()
         ]
 
-    def get_completed_requests(self, limit: int = 50, filter_status: str = "all") -> List[Dict]:
+    def get_completed_requests(
+        self, limit: int = 50, filter_status: str = "all"
+    ) -> List[Dict]:
         """Get recent completed requests."""
         requests = list(self.completed_requests)[-limit:]
         if filter_status == "success":
@@ -303,37 +333,43 @@ class MonitorStats:
         usage_count = snap["usage_count"]
 
         if permanent:
-            browsers.append({
-                "type": "permanent",
-                "sig": permanent_sig[:8] if permanent_sig else "unknown",
-                "age_seconds": int(now - self.start_time),
-                "last_used_seconds": int(now - last_used.get(permanent_sig, now)),
-                "memory_mb": 270,
-                "hits": usage_count.get(permanent_sig, 0),
-                "killable": False
-            })
+            browsers.append(
+                {
+                    "type": "permanent",
+                    "sig": permanent_sig[:8] if permanent_sig else "unknown",
+                    "age_seconds": int(now - self.start_time),
+                    "last_used_seconds": int(now - last_used.get(permanent_sig, now)),
+                    "memory_mb": 270,
+                    "hits": usage_count.get(permanent_sig, 0),
+                    "killable": False,
+                }
+            )
 
         for sig, crawler in hot_pool.items():
-            browsers.append({
-                "type": "hot",
-                "sig": sig[:8],
-                "age_seconds": int(now - self.start_time),  # Approximation
-                "last_used_seconds": int(now - last_used.get(sig, now)),
-                "memory_mb": 180,  # Estimate
-                "hits": usage_count.get(sig, 0),
-                "killable": True
-            })
+            browsers.append(
+                {
+                    "type": "hot",
+                    "sig": sig[:8],
+                    "age_seconds": int(now - self.start_time),  # Approximation
+                    "last_used_seconds": int(now - last_used.get(sig, now)),
+                    "memory_mb": 180,  # Estimate
+                    "hits": usage_count.get(sig, 0),
+                    "killable": True,
+                }
+            )
 
         for sig, crawler in cold_pool.items():
-            browsers.append({
-                "type": "cold",
-                "sig": sig[:8],
-                "age_seconds": int(now - self.start_time),
-                "last_used_seconds": int(now - last_used.get(sig, now)),
-                "memory_mb": 180,
-                "hits": usage_count.get(sig, 0),
-                "killable": True
-            })
+            browsers.append(
+                {
+                    "type": "cold",
+                    "sig": sig[:8],
+                    "age_seconds": int(now - self.start_time),
+                    "last_used_seconds": int(now - last_used.get(sig, now)),
+                    "memory_mb": 180,
+                    "hits": usage_count.get(sig, 0),
+                    "killable": True,
+                }
+            )
 
         return browsers
 
@@ -351,7 +387,7 @@ class MonitorStats:
                 "avg_latency_ms": round(avg_time * 1000, 1),
                 "success_rate_percent": round(success_rate, 1),
                 "pool_hit_rate_percent": round(pool_hit_rate, 1),
-                "errors": stats["errors"]
+                "errors": stats["errors"],
             }
         return summary
 
@@ -369,7 +405,7 @@ class MonitorStats:
 
         return {
             "timestamps": [int(d["time"]) for d in data],
-            "values": [d.get("value", d.get("browsers")) for d in data]
+            "values": [d.get("value", d.get("browsers")) for d in data],
         }
 
     def get_janitor_log(self, limit: int = 100) -> List[Dict]:
@@ -380,8 +416,10 @@ class MonitorStats:
         """Get recent errors."""
         return list(self.errors)[-limit:]
 
+
 # Global instance (initialized in server.py)
 monitor_stats: Optional[MonitorStats] = None
+
 
 def get_monitor() -> MonitorStats:
     """Get global monitor instance."""

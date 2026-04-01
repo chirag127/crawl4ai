@@ -5,24 +5,18 @@ This test demonstrates that LLM extraction now runs in parallel
 when using arun_many with multiple URLs.
 """
 
+import asyncio
 import os
 import sys
 import time
-import asyncio
 
 grandparent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(grandparent_dir)
 
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    CacheMode,
-    LLMExtractionStrategy,
-    LLMConfig,
-)
-
 from pydantic import BaseModel
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, LLMConfig, LLMExtractionStrategy)
 
 
 class SimpleData(BaseModel):
@@ -93,7 +87,7 @@ async def test_with_llm_after_fix():
             schema=SimpleData.model_json_schema(),
             extraction_type="schema",
             instruction="Extract title and summary",
-        )
+        ),
     )
 
     browser_config = BrowserConfig(headless=True, verbose=False)
@@ -120,25 +114,27 @@ async def test_with_llm_after_fix():
     duration = time.time() - start_time
 
     print(f"\n✅ Total time: {duration:.2f}s")
-    print(f"   Successful: {sum(1 for url in urls if url in completion_times)}/{len(urls)}")
+    print(
+        f"   Successful: {sum(1 for url in urls if url in completion_times)}/{len(urls)}"
+    )
 
     # Analyze parallelism
     times = list(completion_times.values())
     if len(times) >= 2:
         # If parallel, completion times should be staggered, not evenly spaced
-        time_diffs = [times[i+1] - times[i] for i in range(len(times)-1)]
+        time_diffs = [times[i + 1] - times[i] for i in range(len(times) - 1)]
         avg_diff = sum(time_diffs) / len(time_diffs)
 
-        print(f"\nParallelism Analysis:")
+        print("\nParallelism Analysis:")
         print(f"   Completion time differences: {[f'{d:.2f}s' for d in time_diffs]}")
         print(f"   Average difference: {avg_diff:.2f}s")
 
         # In parallel mode, some tasks complete close together
         # In sequential mode, they're evenly spaced (avg ~2-3s apart)
         if avg_diff < duration / len(urls):
-            print(f"   ✅ PARALLEL: Tasks completed with overlapping execution")
+            print("   ✅ PARALLEL: Tasks completed with overlapping execution")
         else:
-            print(f"   ⚠️  SEQUENTIAL: Tasks completed one after another")
+            print("   ⚠️  SEQUENTIAL: Tasks completed one after another")
 
     return duration
 
@@ -154,7 +150,7 @@ async def test_multiple_arun_calls():
             schema=SimpleData.model_json_schema(),
             extraction_type="schema",
             instruction="Extract title and summary",
-        )
+        ),
     )
 
     browser_config = BrowserConfig(headless=True, verbose=False)
@@ -178,7 +174,7 @@ async def test_multiple_arun_calls():
 
     print(f"\n✅ Completed in {duration:.2f}s")
     print(f"   Successful: {sum(1 for r in results if r.success)}/{len(urls)}")
-    print(f"   This proves the async LLM extraction works correctly")
+    print("   This proves the async LLM extraction works correctly")
 
     return duration
 

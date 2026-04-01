@@ -18,10 +18,9 @@ Usage:
 
 import asyncio
 import os
-import sys
 import re
-import tempfile
-import shutil
+import sys
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from crawl4ai.async_configs import ProxyConfig
 
@@ -82,7 +81,9 @@ async def test_isolated_context(cdp_url: str = None, attempts: int = 3):
                 passed += 1
                 m = re.search(r"<title>(.*?)</title>", result.html)
                 title = f"  title={m.group(1)}" if m else ""
-            print(f"  Attempt {i+1}: status={result.status_code}  html={len(result.html):>10,} bytes  {'PASS' if ok else 'FAIL'}{title}")
+            print(
+                f"  Attempt {i+1}: status={result.status_code}  html={len(result.html):>10,} bytes  {'PASS' if ok else 'FAIL'}{title}"
+            )
 
     print(f"\nResult: {passed}/{attempts} passed")
     return passed > 0

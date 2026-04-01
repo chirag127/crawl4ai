@@ -5,13 +5,11 @@ Tests the Content-Type/Content-Disposition detection logic in AsyncHTTPCrawlerSt
 that saves non-HTML responses to disk and populates downloaded_files.
 """
 
-import os
-import sys
 import asyncio
-import tempfile
-import shutil
 import json
+import os
 import socket
+import sys
 
 import pytest
 from aiohttp import web
@@ -20,16 +18,19 @@ from aiohttp import web
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parent_dir)
 
+from crawl4ai.async_configs import HTTPCrawlerConfig
 from crawl4ai.async_crawler_strategy import AsyncHTTPCrawlerStrategy
-from crawl4ai.async_configs import HTTPCrawlerConfig, CrawlerRunConfig
-
 
 # ---------------------------------------------------------------------------
 # Test HTTP server
 # ---------------------------------------------------------------------------
 
+
 async def handle_html(request):
-    return web.Response(text="<html><body>Hello</body></html>", content_type="text/html")
+    return web.Response(
+        text="<html><body>Hello</body></html>", content_type="text/html"
+    )
+
 
 async def handle_csv(request):
     csv_data = "id,name,value\n1,alpha,100\n2,beta,200\n3,gamma,300\n"
@@ -39,14 +40,17 @@ async def handle_csv(request):
         headers={"Content-Disposition": 'attachment; filename="data.csv"'},
     )
 
+
 async def handle_csv_no_disposition(request):
     return web.Response(text="col1,col2\na,b\nc,d\n", content_type="text/csv")
+
 
 async def handle_json(request):
     return web.Response(
         text=json.dumps({"key": "value", "items": [1, 2, 3]}),
         content_type="application/json",
     )
+
 
 async def handle_pdf(request):
     pdf_bytes = b"%PDF-1.4 fake pdf content " + (b"\x00\xff" * 500)
@@ -56,11 +60,14 @@ async def handle_pdf(request):
         headers={"Content-Disposition": 'attachment; filename="report.pdf"'},
     )
 
+
 async def handle_binary_no_name(request):
     return web.Response(body=b"\x89PNG\r\n" + b"\x00" * 100, content_type="image/png")
 
+
 async def handle_plain_text(request):
     return web.Response(text="Just plain text content.", content_type="text/plain")
+
 
 async def handle_xml(request):
     return web.Response(
@@ -68,12 +75,14 @@ async def handle_xml(request):
         content_type="application/xml",
     )
 
+
 async def handle_attachment_html(request):
     return web.Response(
         text="<html><body>download me</body></html>",
         content_type="text/html",
         headers={"Content-Disposition": 'attachment; filename="page.html"'},
     )
+
 
 async def handle_csv_url_filename(request):
     return web.Response(text="x,y\n1,2\n", content_type="text/csv")
@@ -126,6 +135,7 @@ class _TestServer:
 # Helper to run an async crawl test
 # ---------------------------------------------------------------------------
 
+
 async def _crawl(server, path, downloads_dir=None):
     config = HTTPCrawlerConfig(downloads_path=downloads_dir)
     strategy = AsyncHTTPCrawlerStrategy(browser_config=config)
@@ -135,6 +145,7 @@ async def _crawl(server, path, downloads_dir=None):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestHTMLPassthrough:
     """Normal HTML responses should behave exactly as before."""
@@ -405,12 +416,25 @@ class TestDetectionHelpers:
 
     def test_extract_filename_from_disposition(self):
         s = AsyncHTTPCrawlerStrategy()
-        assert s._extract_filename('attachment; filename="data.csv"', "http://x/y", "text/csv") == "data.csv"
-        assert s._extract_filename("attachment; filename=report.pdf", "http://x/y", "application/pdf") == "report.pdf"
+        assert (
+            s._extract_filename(
+                'attachment; filename="data.csv"', "http://x/y", "text/csv"
+            )
+            == "data.csv"
+        )
+        assert (
+            s._extract_filename(
+                "attachment; filename=report.pdf", "http://x/y", "application/pdf"
+            )
+            == "report.pdf"
+        )
 
     def test_extract_filename_from_url(self):
         s = AsyncHTTPCrawlerStrategy()
-        assert s._extract_filename("", "http://example.com/files/export.csv", "text/csv") == "export.csv"
+        assert (
+            s._extract_filename("", "http://example.com/files/export.csv", "text/csv")
+            == "export.csv"
+        )
 
     def test_extract_filename_fallback(self):
         s = AsyncHTTPCrawlerStrategy()

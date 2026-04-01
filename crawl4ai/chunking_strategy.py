@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
 import re
-from collections import Counter
 import string
-from .model_loader import load_nltk_punkt
+from abc import ABC, abstractmethod
+from collections import Counter
+
+
 
 # Define the abstract base class for chunking strategies
 class ChunkingStrategy(ABC):
@@ -72,6 +73,7 @@ class NlpSentenceChunking(ChunkingStrategy):
         Initialize the NlpSentenceChunking object.
         """
         from crawl4ai.le.legacy.model_loader import load_nltk_punkt
+
         load_nltk_punkt()
 
     def chunk(self, text: str) -> list:

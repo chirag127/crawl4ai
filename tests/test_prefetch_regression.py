@@ -1,6 +1,7 @@
 """Regression tests to ensure prefetch mode doesn't break existing functionality."""
 
 import pytest
+
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
 TEST_URL = "https://docs.crawl4ai.com"
@@ -61,9 +62,14 @@ class TestNoRegressions:
             "name": "Links",
             "baseSelector": "a",
             "fields": [
-                {"name": "href", "selector": "", "type": "attribute", "attribute": "href"},
-                {"name": "text", "selector": "", "type": "text"}
-            ]
+                {
+                    "name": "href",
+                    "selector": "",
+                    "type": "attribute",
+                    "attribute": "href",
+                },
+                {"name": "text", "selector": "", "type": "text"},
+            ],
         }
 
         async with AsyncWebCrawler() as crawler:
@@ -81,20 +87,21 @@ class TestNoRegressions:
 
         async with AsyncWebCrawler() as crawler:
             config = CrawlerRunConfig(
-                deep_crawl_strategy=BFSDeepCrawlStrategy(
-                    max_depth=1,
-                    max_pages=2
-                )
+                deep_crawl_strategy=BFSDeepCrawlStrategy(max_depth=1, max_pages=2)
                 # No prefetch - should do full processing
             )
 
             result_container = await crawler.arun(TEST_URL, config=config)
 
             # Handle both list and iterator results
-            if hasattr(result_container, '__aiter__'):
+            if hasattr(result_container, "__aiter__"):
                 results = [r async for r in result_container]
             else:
-                results = list(result_container) if hasattr(result_container, '__iter__') else [result_container]
+                results = (
+                    list(result_container)
+                    if hasattr(result_container, "__iter__")
+                    else [result_container]
+                )
 
             # Each result should have full processing
             for result in results:
@@ -162,7 +169,7 @@ class TestPrefetchDoesNotAffectOtherModes:
                 screenshot=True,
                 pdf=True,
                 only_text=True,
-                word_count_threshold=100
+                word_count_threshold=100,
             )
             result = await crawler.arun(TEST_URL, config=config)
 
@@ -208,10 +215,7 @@ class TestBackwardsCompatibility:
     async def test_config_without_prefetch_works(self):
         """Test that configs created without prefetch parameter work."""
         # Simulating old code that doesn't know about prefetch
-        config = CrawlerRunConfig(
-            word_count_threshold=50,
-            css_selector="body"
-        )
+        config = CrawlerRunConfig(word_count_threshold=50, css_selector="body")
 
         # Should default to prefetch=False
         assert config.prefetch == False
@@ -224,9 +228,8 @@ class TestBackwardsCompatibility:
     @pytest.mark.asyncio
     async def test_from_kwargs_without_prefetch(self):
         """Test CrawlerRunConfig.from_kwargs works without prefetch."""
-        config = CrawlerRunConfig.from_kwargs({
-            "word_count_threshold": 50,
-            "verbose": False
-        })
+        config = CrawlerRunConfig.from_kwargs(
+            {"word_count_threshold": 50, "verbose": False}
+        )
 
         assert config.prefetch == False

@@ -13,16 +13,14 @@ They verify:
 """
 
 import asyncio
-import os
-import time
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 import psutil
 import pytest
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig)
 
 # ---------------------------------------------------------------------------
 # Local test server — avoids network flakiness
@@ -152,6 +150,7 @@ def _get_chromium_rss_mb():
 # Helpers to reach into BrowserManager internals
 # ---------------------------------------------------------------------------
 
+
 def _bm(crawler: AsyncWebCrawler):
     """Shortcut to get the BrowserManager from a crawler."""
     return crawler.crawler_strategy.browser_manager
@@ -160,6 +159,7 @@ def _bm(crawler: AsyncWebCrawler):
 # ===========================================================================
 # Test 1: memory_saving_mode flag propagation
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_memory_saving_flags_applied(test_server):
@@ -180,26 +180,34 @@ async def test_memory_saving_flags_applied(test_server):
         bm = _bm(crawler)
         browser_args = bm._build_browser_args()
         # _build_browser_args returns a dict with an "args" key
-        args_list = browser_args.get("args", browser_args) if isinstance(browser_args, dict) else browser_args
-        assert "--aggressive-cache-discard" in args_list, (
-            "memory_saving_mode=True should add --aggressive-cache-discard"
+        args_list = (
+            browser_args.get("args", browser_args)
+            if isinstance(browser_args, dict)
+            else browser_args
         )
-        assert any("max-old-space-size" in a for a in args_list), (
-            "memory_saving_mode=True should add V8 heap cap"
-        )
+        assert (
+            "--aggressive-cache-discard" in args_list
+        ), "memory_saving_mode=True should add --aggressive-cache-discard"
+        assert any(
+            "max-old-space-size" in a for a in args_list
+        ), "memory_saving_mode=True should add V8 heap cap"
         # Always-on flags should be present regardless
         assert any("OptimizationHints" in a for a in args_list)
 
     async with AsyncWebCrawler(config=config_off) as crawler:
         bm = _bm(crawler)
         browser_args = bm._build_browser_args()
-        args_list = browser_args.get("args", browser_args) if isinstance(browser_args, dict) else browser_args
-        assert "--aggressive-cache-discard" not in args_list, (
-            "memory_saving_mode=False should NOT add --aggressive-cache-discard"
+        args_list = (
+            browser_args.get("args", browser_args)
+            if isinstance(browser_args, dict)
+            else browser_args
         )
-        assert not any("max-old-space-size" in a for a in args_list), (
-            "memory_saving_mode=False should NOT add V8 heap cap"
-        )
+        assert (
+            "--aggressive-cache-discard" not in args_list
+        ), "memory_saving_mode=False should NOT add --aggressive-cache-discard"
+        assert not any(
+            "max-old-space-size" in a for a in args_list
+        ), "memory_saving_mode=False should NOT add V8 heap cap"
         # Always-on flags should still be there
         assert any("OptimizationHints" in a for a in args_list)
 
@@ -208,6 +216,7 @@ async def test_memory_saving_flags_applied(test_server):
 # Test 2: Always-on flags present in both code paths
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_always_on_flags_present(test_server):
     """The 3 always-on memory flags should appear in _build_browser_args
@@ -215,7 +224,11 @@ async def test_always_on_flags_present(test_server):
     config = BrowserConfig(headless=True, verbose=False)
     async with AsyncWebCrawler(config=config) as crawler:
         browser_args = _bm(crawler)._build_browser_args()
-        args_list = browser_args.get("args", browser_args) if isinstance(browser_args, dict) else browser_args
+        args_list = (
+            browser_args.get("args", browser_args)
+            if isinstance(browser_args, dict)
+            else browser_args
+        )
         assert any("disable-component-update" in a for a in args_list)
         assert any("disable-domain-reliability" in a for a in args_list)
         assert any("OptimizationHints" in a for a in args_list)
@@ -224,6 +237,7 @@ async def test_always_on_flags_present(test_server):
 # ===========================================================================
 # Test 3: Basic recycling — counter increments, recycle fires, crawls resume
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_recycle_fires_at_threshold(test_server):
@@ -248,20 +262,21 @@ async def test_recycle_fires_at_threshold(test_server):
 
         # All 8 crawls should succeed — recycle happened transparently
         assert len(results) == 8
-        assert all(r.success for r in results), (
-            f"Failed crawls: {[i for i, r in enumerate(results) if not r.success]}"
-        )
+        assert all(
+            r.success for r in results
+        ), f"Failed crawls: {[i for i, r in enumerate(results) if not r.success]}"
 
         # After 8 pages with threshold=5, recycle happened once (at page 5).
         # Pages 6,7,8 served after recycle → counter should be 3.
-        assert bm._pages_served == 3, (
-            f"Expected 3 pages after recycle, got {bm._pages_served}"
-        )
+        assert (
+            bm._pages_served == 3
+        ), f"Expected 3 pages after recycle, got {bm._pages_served}"
 
 
 # ===========================================================================
 # Test 4: Recycling resets all tracking state
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_recycle_clears_tracking_state(test_server):
@@ -286,9 +301,9 @@ async def test_recycle_clears_tracking_state(test_server):
 
         # Recycle should have reset these
         assert bm._pages_served == 0, f"Counter not reset: {bm._pages_served}"
-        assert sum(bm._context_refcounts.values()) == 0, (
-            f"Refcounts not zero after recycle: {bm._context_refcounts}"
-        )
+        assert (
+            sum(bm._context_refcounts.values()) == 0
+        ), f"Refcounts not zero after recycle: {bm._context_refcounts}"
 
         # Crawl one more page to prove browser is alive
         r = await crawler.arun(url=_url(test_server, 99), config=run_config)
@@ -299,6 +314,7 @@ async def test_recycle_clears_tracking_state(test_server):
 # ===========================================================================
 # Test 5: Concurrent crawls across a recycle boundary
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_concurrent_crawls_across_recycle(test_server):
@@ -323,14 +339,13 @@ async def test_concurrent_crawls_across_recycle(test_server):
             f"{exceptions[:3]}"
         )
         successes = [r for r in results if not isinstance(r, Exception) and r.success]
-        assert len(successes) == 10, (
-            f"Only {len(successes)}/10 crawls succeeded"
-        )
+        assert len(successes) == 10, f"Only {len(successes)}/10 crawls succeeded"
 
 
 # ===========================================================================
 # Test 6: Recycle with sessions — sessions cleared, new session works after
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_recycle_blocked_by_active_session(test_server):
@@ -365,9 +380,9 @@ async def test_recycle_blocked_by_active_session(test_server):
         # We've hit 3 pages (the threshold), but the session holds a refcount
         # so recycle must NOT fire
         assert bm._pages_served == 3
-        assert not bm._recycling, (
-            "Recycle should not fire while a session holds a refcount"
-        )
+        assert (
+            not bm._recycling
+        ), "Recycle should not fire while a session holds a refcount"
 
         # Browser should still be alive — use the session again
         r = await crawler.arun(url=_url(test_server, 50), config=run_with_session)
@@ -400,9 +415,9 @@ async def test_sessions_cleared_by_recycle(test_server):
         await asyncio.sleep(0.5)
 
         # Sessions dict cleared by recycle
-        assert len(bm.sessions) == 0, (
-            f"Sessions should be empty after recycle, got {list(bm.sessions.keys())}"
-        )
+        assert (
+            len(bm.sessions) == 0
+        ), f"Sessions should be empty after recycle, got {list(bm.sessions.keys())}"
 
         # New session should work on the fresh browser
         run_with_session = CrawlerRunConfig(
@@ -418,6 +433,7 @@ async def test_sessions_cleared_by_recycle(test_server):
 # ===========================================================================
 # Test 7: Multiple recycle cycles — browser survives repeated recycling
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_multiple_recycle_cycles(test_server):
@@ -451,6 +467,7 @@ async def test_multiple_recycle_cycles(test_server):
 # Test 8: Recycling disabled by default (max_pages_before_recycle=0)
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_recycle_disabled_by_default(test_server):
     """With default config (max_pages_before_recycle=0), no recycling happens
@@ -473,6 +490,7 @@ async def test_recycle_disabled_by_default(test_server):
 # ===========================================================================
 # Test 9: _recycle_done event blocks get_page during recycle
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_recycle_event_blocks_new_pages(test_server):
@@ -510,6 +528,7 @@ async def test_recycle_event_blocks_new_pages(test_server):
 # Test 10: BrowserConfig serialization round-trip
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_config_serialization_roundtrip():
     """memory_saving_mode and max_pages_before_recycle survive
@@ -544,6 +563,7 @@ async def test_config_serialization_roundtrip():
 # ===========================================================================
 # Test 11: Memory stays bounded over many pages with recycling
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_memory_bounded_with_recycling(test_server):
@@ -593,6 +613,7 @@ async def test_memory_bounded_with_recycling(test_server):
 # Test 12: Memory grows WITHOUT recycling (control test)
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_memory_grows_without_recycling(test_server):
     """Control test: crawl 30 pages WITHOUT recycling and observe that
@@ -636,6 +657,7 @@ async def test_memory_grows_without_recycling(test_server):
 # Test 13: Viewport adjustment doesn't leak CDP sessions
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_viewport_adjustment_no_cdp_leak(test_server):
     """Crawl several pages that trigger viewport adjustment (scan_full_page).
@@ -659,6 +681,7 @@ async def test_viewport_adjustment_no_cdp_leak(test_server):
 # Test 14: Recycle under concurrent load with arun_many
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_recycle_with_arun_many(test_server):
     """Use arun_many to crawl a batch that exceeds the recycle threshold.
@@ -675,14 +698,15 @@ async def test_recycle_with_arun_many(test_server):
         results = await crawler.arun_many(urls, config=run_config)
 
         successes = [r for r in results if r.success]
-        assert len(successes) == 12, (
-            f"Only {len(successes)}/12 succeeded with arun_many + recycling"
-        )
+        assert (
+            len(successes) == 12
+        ), f"Only {len(successes)}/12 succeeded with arun_many + recycling"
 
 
 # ===========================================================================
 # Test 15: _global_pages_in_use cleaned after recycle
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_global_pages_in_use_cleared(test_server):
@@ -706,6 +730,7 @@ async def test_global_pages_in_use_cleared(test_server):
 
         # After recycle, pages_in_use for old endpoint should be empty
         from crawl4ai.browser_manager import BrowserManager
+
         if bm._browser_endpoint_key:
             piu = BrowserManager._global_pages_in_use.get(
                 bm._browser_endpoint_key, set()
@@ -719,6 +744,7 @@ async def test_global_pages_in_use_cleared(test_server):
 # ===========================================================================
 # Test 16: Content integrity across recycle — page content is correct
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_content_integrity_across_recycle(test_server):
@@ -742,9 +768,9 @@ async def test_content_integrity_across_recycle(test_server):
         # Crawl page 150 after recycle — content should match page 150
         r = await crawler.arun(url=_url(test_server, 150), config=run_config)
         assert r.success
-        assert "Test page 150" in r.html, (
-            "Content after recycle should be from the correct page"
-        )
+        assert (
+            "Test page 150" in r.html
+        ), "Content after recycle should be from the correct page"
         assert "Paragraph 150" in r.html
 
 
@@ -756,6 +782,7 @@ async def test_content_integrity_across_recycle(test_server):
 # ===========================================================================
 # Test 17: Multi-step session crawl — login → dashboard with cookie
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_multistep_session_login_flow(test_server):
@@ -779,14 +806,15 @@ async def test_multistep_session_login_flow(test_server):
         # Step 2: dashboard — cookie should carry over via session
         r = await crawler.arun(url=f"{test_server}/dashboard", config=session_cfg)
         assert r.success
-        assert "Welcome, authenticated user" in r.html, (
-            "Session should carry cookies from login to dashboard"
-        )
+        assert (
+            "Welcome, authenticated user" in r.html
+        ), "Session should carry cookies from login to dashboard"
 
 
 # ===========================================================================
 # Test 18: Multi-step session survives non-session crawls past threshold
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_session_survives_threshold_with_interleaved_crawls(test_server):
@@ -821,25 +849,24 @@ async def test_session_survives_threshold_with_interleaved_crawls(test_server):
             assert r.success, f"Non-session crawl {i} failed"
 
         # Recycle should NOT have fired — session holds refcount
-        assert bm._pages_served == 9, (
-            f"Expected 9 pages served, got {bm._pages_served}"
-        )
+        assert bm._pages_served == 9, f"Expected 9 pages served, got {bm._pages_served}"
         assert not bm._recycling
-        assert "persistent_session" in bm.sessions, (
-            "Session should still exist — recycle blocked by refcount"
-        )
+        assert (
+            "persistent_session" in bm.sessions
+        ), "Session should still exist — recycle blocked by refcount"
 
         # Session should still work — navigate to dashboard with cookies
         r = await crawler.arun(url=f"{test_server}/dashboard", config=session_cfg)
         assert r.success
-        assert "Welcome, authenticated user" in r.html, (
-            "Session cookies should still work after interleaved non-session crawls"
-        )
+        assert (
+            "Welcome, authenticated user" in r.html
+        ), "Session cookies should still work after interleaved non-session crawls"
 
 
 # ===========================================================================
 # Test 19: 3-step session flow with recycle threshold — recycle blocked
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_three_step_session_blocks_recycle(test_server):
@@ -887,6 +914,7 @@ async def test_three_step_session_blocks_recycle(test_server):
 # Test 20: Two concurrent sessions — both survive past threshold
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_two_concurrent_sessions_block_recycle(test_server):
     """Two sessions open at the same time, with non-session crawls interleaved.
@@ -901,10 +929,14 @@ async def test_two_concurrent_sessions_block_recycle(test_server):
         bm = _bm(crawler)
 
         session_a = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="sess_a", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="sess_a",
+            verbose=False,
         )
         session_b = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="sess_b", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="sess_b",
+            verbose=False,
         )
         no_session = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
 
@@ -940,6 +972,7 @@ async def test_two_concurrent_sessions_block_recycle(test_server):
 # Test 21: Session killed, then recycle fires on next non-session crawl
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_recycle_fires_after_session_killed(test_server):
     """Session blocks recycle. After session is killed (refcount drops to 0),
@@ -956,7 +989,9 @@ async def test_recycle_fires_after_session_killed(test_server):
 
         # Open a session (1 page)
         session_cfg = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="temp_sess", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="temp_sess",
+            verbose=False,
         )
         r = await crawler.arun(url=f"{test_server}/step1", config=session_cfg)
         assert r.success
@@ -981,14 +1016,15 @@ async def test_recycle_fires_after_session_killed(test_server):
         await asyncio.sleep(0.5)
 
         # Recycle should have fired — counter reset
-        assert bm._pages_served < pages_before_kill, (
-            f"Expected counter reset after recycle, got {bm._pages_served}"
-        )
+        assert (
+            bm._pages_served < pages_before_kill
+        ), f"Expected counter reset after recycle, got {bm._pages_served}"
 
 
 # ===========================================================================
 # Test 22: Concurrent session crawls — same session from multiple tasks
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_concurrent_same_session_crawls(test_server):
@@ -1009,23 +1045,22 @@ async def test_concurrent_same_session_crawls(test_server):
 
         # Fire 5 concurrent crawls on the same session
         urls = [f"{test_server}/page{i}" for i in range(5)]
-        tasks = [
-            crawler.arun(url=u, config=session_cfg) for u in urls
-        ]
+        tasks = [crawler.arun(url=u, config=session_cfg) for u in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         exceptions = [r for r in results if isinstance(r, Exception)]
         # Some may fail due to navigation conflicts (same page, concurrent goto),
         # but there should be no crashes or browser death
-        assert len(exceptions) == 0, (
-            f"Exceptions in concurrent same-session crawls: {exceptions[:3]}"
-        )
+        assert (
+            len(exceptions) == 0
+        ), f"Exceptions in concurrent same-session crawls: {exceptions[:3]}"
 
 
 # ===========================================================================
 # Test 23: Session + recycling — session killed mid-batch, recycle fires,
 #           new session works after
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_session_lifecycle_across_recycle(test_server):
@@ -1043,7 +1078,9 @@ async def test_session_lifecycle_across_recycle(test_server):
 
         # Phase 1: create and use a session
         sess_v1 = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="lifecycle_sess", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="lifecycle_sess",
+            verbose=False,
         )
         r = await crawler.arun(url=f"{test_server}/login", config=sess_v1)
         assert r.success
@@ -1063,13 +1100,15 @@ async def test_session_lifecycle_across_recycle(test_server):
         await asyncio.sleep(0.5)
 
         # Recycle should have happened (session killed, refcount=0)
-        assert bm._pages_served < 6, (
-            f"Expected reset after recycle, got {bm._pages_served}"
-        )
+        assert (
+            bm._pages_served < 6
+        ), f"Expected reset after recycle, got {bm._pages_served}"
 
         # Phase 4: new session on the fresh browser
         sess_v2 = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="lifecycle_sess_v2", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="lifecycle_sess_v2",
+            verbose=False,
         )
         r = await crawler.arun(url=f"{test_server}/login", config=sess_v2)
         assert r.success
@@ -1077,14 +1116,15 @@ async def test_session_lifecycle_across_recycle(test_server):
 
         r = await crawler.arun(url=f"{test_server}/dashboard", config=sess_v2)
         assert r.success
-        assert "Welcome, authenticated user" in r.html, (
-            "New session after recycle should work with cookies"
-        )
+        assert (
+            "Welcome, authenticated user" in r.html
+        ), "New session after recycle should work with cookies"
 
 
 # ===========================================================================
 # Test 24: Parallel sessions + non-session crawls with arun_many
 # ===========================================================================
+
 
 @pytest.mark.asyncio
 async def test_session_with_arun_many_interleaved(test_server):
@@ -1101,7 +1141,9 @@ async def test_session_with_arun_many_interleaved(test_server):
 
         # Open session
         session_cfg = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="batch_sess", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="batch_sess",
+            verbose=False,
         )
         r = await crawler.arun(url=f"{test_server}/login", config=session_cfg)
         assert r.success
@@ -1123,6 +1165,7 @@ async def test_session_with_arun_many_interleaved(test_server):
 # Test 25: Session refcount tracking correctness
 # ===========================================================================
 
+
 @pytest.mark.asyncio
 async def test_session_refcount_stays_at_one(test_server):
     """Verify that a session holds exactly 1 refcount throughout its
@@ -1133,7 +1176,9 @@ async def test_session_refcount_stays_at_one(test_server):
         bm = _bm(crawler)
 
         session_cfg = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="refcount_test", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="refcount_test",
+            verbose=False,
         )
 
         # Create session
@@ -1145,9 +1190,9 @@ async def test_session_refcount_stays_at_one(test_server):
         sig = bm._page_to_sig.get(page)
         if sig:
             refcount = bm._context_refcounts.get(sig, 0)
-            assert refcount == 1, (
-                f"Session should hold exactly 1 refcount, got {refcount}"
-            )
+            assert (
+                refcount == 1
+            ), f"Session should hold exactly 1 refcount, got {refcount}"
 
         # Reuse session multiple times — refcount should stay at 1
         for url in ["/step2", "/step3", "/dashboard"]:
@@ -1156,14 +1201,12 @@ async def test_session_refcount_stays_at_one(test_server):
 
             if sig:
                 refcount = bm._context_refcounts.get(sig, 0)
-                assert refcount == 1, (
-                    f"After reuse, refcount should still be 1, got {refcount}"
-                )
+                assert (
+                    refcount == 1
+                ), f"After reuse, refcount should still be 1, got {refcount}"
 
         # Kill session — refcount should drop to 0
         await crawler.crawler_strategy.kill_session("refcount_test")
         if sig:
             refcount = bm._context_refcounts.get(sig, 0)
-            assert refcount == 0, (
-                f"After kill, refcount should be 0, got {refcount}"
-            )
+            assert refcount == 0, f"After kill, refcount should be 0, got {refcount}"

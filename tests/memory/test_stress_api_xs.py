@@ -13,10 +13,16 @@ Usage examples:
 
 from __future__ import annotations
 
-import asyncio, json, time, uuid, pathlib, statistics
-from typing import List, Dict, Optional
+import asyncio
+import json
+import pathlib
+import statistics
+import time
+import uuid
+from typing import Dict, List
 
-import httpx, typer
+import httpx
+import typer
 from rich.console import Console
 from rich.table import Table
 
@@ -33,11 +39,15 @@ REQUEST_TIMEOUT = 180.0
 console = Console()
 app = typer.Typer(add_completion=False, rich_markup_mode="rich")
 
+
 # ───────────────────────── helpers ─────────────────────────────────────
 async def _check_health(client: httpx.AsyncClient) -> None:
     resp = await client.get(API_HEALTH_ENDPOINT, timeout=10)
     resp.raise_for_status()
-    console.print(f"[green]Server healthy — version {resp.json().get('version','?')}[/]")
+    console.print(
+        f"[green]Server healthy — version {resp.json().get('version','?')}[/]"
+    )
+
 
 async def _iter_results(resp: httpx.Response, stream: bool):
     """Yield result dicts from batch JSON or ND‑JSON stream."""
@@ -53,6 +63,7 @@ async def _iter_results(resp: httpx.Response, stream: bool):
         data = resp.json()
         for rec in data.get("results", []):
             yield rec, data  # rec + whole payload for memory delta/peak
+
 
 async def _consume_stream(resp: httpx.Response) -> Dict:
     stats = {"success_urls": 0, "failed_urls": 0, "mem_metric": 0.0}
@@ -71,6 +82,7 @@ async def _consume_stream(resp: httpx.Response) -> Dict:
             stats["mem_metric"] = max(stats["mem_metric"], float(mem))
     return stats
 
+
 def _consume_batch(body: Dict) -> Dict:
     stats = {"success_urls": 0, "failed_urls": 0}
     for rec in body.get("results", []):
@@ -82,6 +94,7 @@ def _consume_batch(body: Dict) -> Dict:
     stats["peak"] = body.get("server_peak_memory_mb")
     return stats
 
+
 async def _fetch_chunk(
     client: httpx.AsyncClient,
     urls: List[str],
@@ -92,8 +105,10 @@ async def _fetch_chunk(
     payload = {
         "urls": urls,
         "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
-        "crawler_config": {"type": "CrawlerRunConfig",
-                           "params": {"cache_mode": "BYPASS", "stream": stream}},
+        "crawler_config": {
+            "type": "CrawlerRunConfig",
+            "params": {"cache_mode": "BYPASS", "stream": stream},
+        },
     }
 
     async with semaphore:
@@ -115,12 +130,18 @@ async def _fetch_chunk(
 
 
 # ───────────────────────── core runner ─────────────────────────────────
-async def _run(api: str, urls: int, concurrent: int, chunk: int, stream: bool, report: pathlib.Path):
-    client = httpx.AsyncClient(base_url=api, timeout=REQUEST_TIMEOUT, limits=httpx.Limits(max_connections=concurrent+5))
+async def _run(
+    api: str, urls: int, concurrent: int, chunk: int, stream: bool, report: pathlib.Path
+):
+    client = httpx.AsyncClient(
+        base_url=api,
+        timeout=REQUEST_TIMEOUT,
+        limits=httpx.Limits(max_connections=concurrent + 5),
+    )
     await _check_health(client)
 
     url_list = [f"https://httpbin.org/anything/{uuid.uuid4()}" for _ in range(urls)]
-    chunks = [url_list[i:i+chunk] for i in range(0, len(url_list), chunk)]
+    chunks = [url_list[i : i + chunk] for i in range(0, len(url_list), chunk)]
     sem = asyncio.Semaphore(concurrent)
 
     table = Table(show_header=True, header_style="bold magenta")
@@ -147,7 +168,12 @@ async def _run(api: str, urls: int, concurrent: int, chunk: int, stream: bool, r
         if res["peak"] is not None:
             mem_txt = f"{res['peak']:.1f}/{mem_txt}"
 
-        table.add_row(str(idx), f"{res['success_urls']}/{res['failed_urls']}", mem_txt, f"{res['elapsed']:.2f}")
+        table.add_row(
+            str(idx),
+            f"{res['success_urls']}/{res['failed_urls']}",
+            mem_txt,
+            f"{res['elapsed']:.2f}",
+        )
 
     console.print(table)
     total_time = time.perf_counter() - start
@@ -165,7 +191,7 @@ async def _run(api: str, urls: int, concurrent: int, chunk: int, stream: bool, r
         "avg_peak": round(statistics.mean(peaks), 2) if peaks else None,
         "max_peak": max(peaks) if peaks else None,
     }
-    console.print("\n[bold green]Done:[/]" , summary)
+    console.print("\n[bold green]Done:[/]", summary)
 
     report.mkdir(parents=True, exist_ok=True)
     path = report / f"api_test_{int(time.time())}.json"
@@ -173,6 +199,7 @@ async def _run(api: str, urls: int, concurrent: int, chunk: int, stream: bool, r
     console.print(f"[green]Summary → {path}")
 
     await client.aclose()
+
 
 # ───────────────────────── Typer CLI ──────────────────────────────────
 @app.command()
@@ -183,10 +210,14 @@ def main(
     concurrent: int = typer.Option(None, help="Concurrent API requests"),
     chunk: int = typer.Option(None, help="URLs per request"),
     stream: bool = typer.Option(None, help="Use /crawl/stream"),
-    report: pathlib.Path = typer.Option("reports_api", help="Where to save JSON summary"),
+    report: pathlib.Path = typer.Option(
+        "reports_api", help="Where to save JSON summary"
+    ),
 ):
     """Run a stress test against a running Crawl4AI API server."""
-    if preset not in PRESETS and any(v is None for v in (urls, concurrent, chunk, stream)):
+    if preset not in PRESETS and any(
+        v is None for v in (urls, concurrent, chunk, stream)
+    ):
         console.print(f"[red]Unknown preset '{preset}' and custom params missing[/]")
         raise typer.Exit(1)
 
@@ -196,8 +227,11 @@ def main(
     chunk = chunk or cfg.get("chunk")
     stream = stream if stream is not None else cfg.get("stream", False)
 
-    console.print(f"[cyan]API:[/] {api_url} | URLs: {urls} | Concurrency: {concurrent} | Chunk: {chunk} | Stream: {stream}")
+    console.print(
+        f"[cyan]API:[/] {api_url} | URLs: {urls} | Concurrency: {concurrent} | Chunk: {chunk} | Stream: {stream}"
+    )
     asyncio.run(_run(api_url, urls, concurrent, chunk, stream, report))
+
 
 if __name__ == "__main__":
     app()

@@ -1,9 +1,10 @@
+import base64
+import io
 import os
 import sys
+
 import pytest
-import base64
 from PIL import Image
-import io
 
 # Add the parent directory to the Python path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

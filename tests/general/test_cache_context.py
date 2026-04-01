@@ -1,6 +1,10 @@
 import asyncio
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-from playwright.async_api import Page, BrowserContext
+
+from playwright.async_api import BrowserContext, Page
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig)
+
 
 async def test_reuse_context_by_config():
     # We will store each context ID in these maps to confirm reuse
@@ -8,7 +12,9 @@ async def test_reuse_context_by_config():
     context_ids_for_B = []
 
     # Create a small hook to track context creation
-    async def on_page_context_created(page: Page, context: BrowserContext, config: CrawlerRunConfig, **kwargs):
+    async def on_page_context_created(
+        page: Page, context: BrowserContext, config: CrawlerRunConfig, **kwargs
+    ):
         c_id = id(context)
         print(f"[HOOK] on_page_context_created - Context ID: {c_id}")
         # Distinguish which config we used by checking a custom hook param
@@ -27,17 +33,13 @@ async def test_reuse_context_by_config():
         only_text=True,
         cache_mode=CacheMode.BYPASS,
         wait_until="domcontentloaded",
-        shared_data = {
-            "config_label" : "A"
-        }
+        shared_data={"config_label": "A"},
     )
     configB = CrawlerRunConfig(
         only_text=False,
         cache_mode=CacheMode.BYPASS,
         wait_until="domcontentloaded",
-        shared_data = {
-            "config_label" : "B"
-        }
+        shared_data={"config_label": "B"},
     )
 
     # Create the crawler
@@ -45,7 +47,9 @@ async def test_reuse_context_by_config():
 
     # Attach our custom hook
     # Note: "on_page_context_created" will be called each time a new context+page is generated
-    crawler.crawler_strategy.set_hook("on_page_context_created", on_page_context_created)
+    crawler.crawler_strategy.set_hook(
+        "on_page_context_created", on_page_context_created
+    )
 
     # Start the crawler (launches the browser)
     await crawler.start()
@@ -80,6 +84,7 @@ async def test_reuse_context_by_config():
         print("✅ Config A context is different from Config B context.")
     else:
         print("❌ A and B ended up sharing the same context somehow!")
+
 
 if __name__ == "__main__":
     asyncio.run(test_reuse_context_by_config())

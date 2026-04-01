@@ -10,15 +10,13 @@ Three changes were made to async_crawler_strategy.py:
 These tests verify that all three paths correctly forward and use scroll_delay.
 """
 
-import pytest
-import asyncio
-import base64
 from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+import pytest
+
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.async_crawler_strategy import AsyncPlaywrightCrawlerStrategy
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -83,13 +81,13 @@ async def test_scroll_delay_custom_value_used():
 
     # asyncio.sleep must have been called with our custom value
     sleep_args = [c.args[0] for c in mock_sleep.call_args_list]
-    assert 1.5 in sleep_args, (
-        f"Expected asyncio.sleep(1.5) but got calls with: {sleep_args}"
-    )
+    assert (
+        1.5 in sleep_args
+    ), f"Expected asyncio.sleep(1.5) but got calls with: {sleep_args}"
     # The old hardcoded 0.01 must NOT appear
-    assert 0.01 not in sleep_args, (
-        f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
-    )
+    assert (
+        0.01 not in sleep_args
+    ), f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
     # Should return a base64-encoded string
     assert isinstance(result, str)
     assert len(result) > 0
@@ -124,12 +122,12 @@ async def test_scroll_delay_default_value():
         )
 
     sleep_args = [c.args[0] for c in mock_sleep.call_args_list]
-    assert 0.2 in sleep_args, (
-        f"Expected default asyncio.sleep(0.2) but got calls with: {sleep_args}"
-    )
-    assert 0.01 not in sleep_args, (
-        f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
-    )
+    assert (
+        0.2 in sleep_args
+    ), f"Expected default asyncio.sleep(0.2) but got calls with: {sleep_args}"
+    assert (
+        0.01 not in sleep_args
+    ), f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
     assert isinstance(result, str)
 
 
@@ -194,12 +192,12 @@ async def test_integration_arun_respects_scroll_delay():
 
     # Check that our custom scroll_delay was used during screenshot capture
     sleep_args = [c.args[0] for c in mock_sleep.call_args_list]
-    assert 0.5 in sleep_args, (
-        f"Expected asyncio.sleep(0.5) in screenshot capture but got: {sleep_args}"
-    )
-    assert 0.01 not in sleep_args, (
-        f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
-    )
+    assert (
+        0.5 in sleep_args
+    ), f"Expected asyncio.sleep(0.5) in screenshot capture but got: {sleep_args}"
+    assert (
+        0.01 not in sleep_args
+    ), f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
 
 
 # ---------------------------------------------------------------------------
@@ -232,15 +230,15 @@ async def test_integration_generate_media_respects_scroll_delay():
                 TALL_HTML, config
             )
 
-    assert screenshot_data is not None, (
-        "Expected screenshot data from _generate_media_from_html"
-    )
+    assert (
+        screenshot_data is not None
+    ), "Expected screenshot data from _generate_media_from_html"
 
     sleep_args = [c.args[0] for c in mock_sleep.call_args_list]
     assert 0.75 in sleep_args, f"Expected asyncio.sleep(0.75) but got: {sleep_args}"
-    assert 0.01 not in sleep_args, (
-        f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
-    )
+    assert (
+        0.01 not in sleep_args
+    ), f"Old hardcoded 0.01 still present in sleep calls: {sleep_args}"
 
 
 # ---------------------------------------------------------------------------
@@ -252,9 +250,9 @@ async def test_integration_generate_media_respects_scroll_delay():
 async def test_crawler_run_config_default_scroll_delay():
     """CrawlerRunConfig.scroll_delay defaults to 0.2."""
     config = CrawlerRunConfig()
-    assert config.scroll_delay == 0.2, (
-        f"Expected default scroll_delay=0.2, got {config.scroll_delay}"
-    )
+    assert (
+        config.scroll_delay == 0.2
+    ), f"Expected default scroll_delay=0.2, got {config.scroll_delay}"
 
 
 if __name__ == "__main__":

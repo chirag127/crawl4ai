@@ -14,14 +14,13 @@ Covers all the browser launch paths and lock interactions:
 """
 
 import asyncio
-import time
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 import pytest
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig)
 
 # ---------------------------------------------------------------------------
 # Local test server
@@ -84,6 +83,7 @@ def _bm(c):
 # SECTION A — Standalone browser (no CDP, no managed browser)
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_standalone_basic_crawl(srv):
     """Standalone browser: launch, crawl, close. Baseline correctness."""
@@ -141,20 +141,21 @@ async def test_standalone_context_reuse(srv):
         # Same config → same context
         r2 = await c.arun(url=_u(srv, 1), config=run_a)
         assert r2.success
-        assert len(bm.contexts_by_config) == ctx_count_after_first, (
-            "Same config should reuse context"
-        )
+        assert (
+            len(bm.contexts_by_config) == ctx_count_after_first
+        ), "Same config should reuse context"
 
         # Different config → new context
         run_b = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            verbose=False,
             override_navigator=True,
         )
         r3 = await c.arun(url=_u(srv, 2), config=run_b)
         assert r3.success
-        assert len(bm.contexts_by_config) == ctx_count_after_first + 1, (
-            "Different config should create new context"
-        )
+        assert (
+            len(bm.contexts_by_config) == ctx_count_after_first + 1
+        ), "Different config should create new context"
 
 
 @pytest.mark.asyncio
@@ -162,7 +163,9 @@ async def test_standalone_session_multistep(srv):
     """Session across 3 pages on standalone browser."""
     cfg = BrowserConfig(headless=True, verbose=False)
     sess = CrawlerRunConfig(
-        cache_mode=CacheMode.BYPASS, session_id="standalone_sess", verbose=False,
+        cache_mode=CacheMode.BYPASS,
+        session_id="standalone_sess",
+        verbose=False,
     )
 
     async with AsyncWebCrawler(config=cfg) as c:
@@ -190,7 +193,9 @@ async def test_standalone_session_multistep(srv):
 async def test_standalone_recycle(srv):
     """Recycling on standalone browser — close/start cycle."""
     cfg = BrowserConfig(
-        headless=True, verbose=False, max_pages_before_recycle=5,
+        headless=True,
+        verbose=False,
+        max_pages_before_recycle=5,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
 
@@ -208,7 +213,9 @@ async def test_standalone_recycle(srv):
 async def test_standalone_recycle_with_concurrent_crawls(srv):
     """15 concurrent crawls straddling a recycle boundary on standalone."""
     cfg = BrowserConfig(
-        headless=True, verbose=False, max_pages_before_recycle=5,
+        headless=True,
+        verbose=False,
+        max_pages_before_recycle=5,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
 
@@ -225,11 +232,13 @@ async def test_standalone_recycle_with_concurrent_crawls(srv):
 # SECTION B — Managed browser (subprocess + CDP)
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_managed_basic_crawl(srv):
     """Managed browser: start subprocess, connect via CDP, crawl, close."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -244,7 +253,8 @@ async def test_managed_basic_crawl(srv):
 async def test_managed_sequential_crawls(srv):
     """Sequential crawls on managed browser — pages reused from default context."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -260,7 +270,8 @@ async def test_managed_concurrent_crawls(srv):
     """Concurrent crawls on managed browser — _global_pages_lock prevents
     two tasks from grabbing the same page."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -279,7 +290,8 @@ async def test_managed_page_reuse(srv):
     """On managed browser (non-isolated), pages should be reused when
     released back to the pool."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -296,20 +308,21 @@ async def test_managed_page_reuse(srv):
         # (pages reused, not new ones for each crawl)
         default_ctx = bm.default_context
         total_pages = len(default_ctx.pages)
-        assert total_pages <= 3, (
-            f"Expected page reuse, but {total_pages} pages exist"
-        )
+        assert total_pages <= 3, f"Expected page reuse, but {total_pages} pages exist"
 
 
 @pytest.mark.asyncio
 async def test_managed_session_multistep(srv):
     """Multi-step session on managed browser — session page stays alive."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     sess = CrawlerRunConfig(
-        cache_mode=CacheMode.BYPASS, session_id="managed_sess", verbose=False,
+        cache_mode=CacheMode.BYPASS,
+        session_id="managed_sess",
+        verbose=False,
     )
 
     async with AsyncWebCrawler(config=cfg) as c:
@@ -328,7 +341,8 @@ async def test_managed_session_multistep(srv):
 async def test_managed_recycle(srv):
     """Recycling on managed browser — kills subprocess, restarts, crawls resume."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         max_pages_before_recycle=4,
     )
@@ -349,11 +363,13 @@ async def test_managed_recycle(srv):
 # SECTION C — Managed browser with create_isolated_context
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_isolated_context_basic(srv):
     """Isolated context mode: each config gets its own browser context."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -369,7 +385,8 @@ async def test_isolated_context_concurrent(srv):
     """Concurrent crawls with isolated contexts — _contexts_lock prevents
     race conditions in context creation."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -388,7 +405,8 @@ async def test_isolated_context_concurrent(srv):
 async def test_isolated_context_caching(srv):
     """Same config signature → same context. Different config → different context."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -406,7 +424,8 @@ async def test_isolated_context_caching(srv):
 
         # Different config → new context
         run_b = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            verbose=False,
             override_navigator=True,
         )
         await c.arun(url=_u(srv, 2), config=run_b)
@@ -417,7 +436,8 @@ async def test_isolated_context_caching(srv):
 async def test_isolated_context_refcount(srv):
     """Refcount increases with concurrent crawls and decreases on release."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -439,7 +459,8 @@ async def test_isolated_context_refcount(srv):
 async def test_isolated_context_session_with_interleaved(srv):
     """Session on isolated context + non-session crawls interleaved."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -448,7 +469,9 @@ async def test_isolated_context_session_with_interleaved(srv):
         bm = _bm(c)
 
         sess = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="iso_sess", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="iso_sess",
+            verbose=False,
         )
         r = await c.arun(url=f"{srv}/login", config=sess)
         assert r.success
@@ -470,7 +493,8 @@ async def test_isolated_context_recycle(srv):
     """Recycling with isolated contexts — all contexts cleared, new ones
     created fresh on the new browser."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
         max_pages_before_recycle=4,
@@ -487,14 +511,15 @@ async def test_isolated_context_recycle(srv):
         # Recycled at 4 → 5,6 after → counter = 2
         assert bm._pages_served == 2
         # Contexts dict should only have entries from after recycle
-        assert all(rc == 0 for rc in bm._context_refcounts.values()), (
-            "All refcounts should be 0 after sequential crawls"
-        )
+        assert all(
+            rc == 0 for rc in bm._context_refcounts.values()
+        ), "All refcounts should be 0 after sequential crawls"
 
 
 # ===================================================================
 # SECTION D — Two crawlers sharing one managed browser via CDP URL
 # ===================================================================
+
 
 @pytest.mark.asyncio
 async def test_two_crawlers_share_managed_browser(srv):
@@ -502,18 +527,22 @@ async def test_two_crawlers_share_managed_browser(srv):
     via its CDP URL. Both should crawl successfully without interfering."""
     # First crawler owns the managed browser
     cfg1 = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
 
     async with AsyncWebCrawler(config=cfg1) as c1:
         bm1 = _bm(c1)
         # Grab the CDP URL from the managed browser
-        cdp_url = f"http://{bm1.managed_browser.host}:{bm1.managed_browser.debugging_port}"
+        cdp_url = (
+            f"http://{bm1.managed_browser.host}:{bm1.managed_browser.debugging_port}"
+        )
 
         # Second crawler connects to the same browser via CDP
         cfg2 = BrowserConfig(
-            headless=True, verbose=False,
+            headless=True,
+            verbose=False,
             cdp_url=cdp_url,
             cdp_cleanup_on_close=True,
         )
@@ -534,16 +563,20 @@ async def test_two_crawlers_share_managed_browser(srv):
 async def test_two_crawlers_concurrent_heavy(srv):
     """Two crawlers sharing one managed browser, each doing 5 concurrent crawls."""
     cfg1 = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
 
     async with AsyncWebCrawler(config=cfg1) as c1:
         bm1 = _bm(c1)
-        cdp_url = f"http://{bm1.managed_browser.host}:{bm1.managed_browser.debugging_port}"
+        cdp_url = (
+            f"http://{bm1.managed_browser.host}:{bm1.managed_browser.debugging_port}"
+        )
 
         cfg2 = BrowserConfig(
-            headless=True, verbose=False,
+            headless=True,
+            verbose=False,
             cdp_url=cdp_url,
             cdp_cleanup_on_close=True,
         )
@@ -562,13 +595,16 @@ async def test_two_crawlers_concurrent_heavy(srv):
 # SECTION E — Session lifecycle edge cases
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_session_then_nonsession_then_session(srv):
     """session crawl → non-session crawl → session crawl.
     The session should persist across non-session activity."""
     cfg = BrowserConfig(headless=True, verbose=False)
     sess = CrawlerRunConfig(
-        cache_mode=CacheMode.BYPASS, session_id="interleave_sess", verbose=False,
+        cache_mode=CacheMode.BYPASS,
+        session_id="interleave_sess",
+        verbose=False,
     )
     no_sess = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
 
@@ -600,7 +636,9 @@ async def test_multiple_sessions_simultaneous(srv):
 
         sessions = [
             CrawlerRunConfig(
-                cache_mode=CacheMode.BYPASS, session_id=f"sess_{j}", verbose=False,
+                cache_mode=CacheMode.BYPASS,
+                session_id=f"sess_{j}",
+                verbose=False,
             )
             for j in range(3)
         ]
@@ -634,7 +672,9 @@ async def test_session_kill_then_recreate(srv):
     The new session should work on a fresh page."""
     cfg = BrowserConfig(headless=True, verbose=False)
     sess = CrawlerRunConfig(
-        cache_mode=CacheMode.BYPASS, session_id="reuse_id", verbose=False,
+        cache_mode=CacheMode.BYPASS,
+        session_id="reuse_id",
+        verbose=False,
     )
 
     async with AsyncWebCrawler(config=cfg) as c:
@@ -661,13 +701,15 @@ async def test_session_kill_then_recreate(srv):
 # SECTION F — Concurrent recycle + session stress tests
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_recycle_concurrent_sessions_and_nonsessions(srv):
     """Open 2 sessions + fire 10 non-session crawls concurrently with
     recycle threshold=5. Sessions should block recycle until they're
     done or killed. All crawls should succeed."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=5,
     )
 
@@ -676,10 +718,14 @@ async def test_recycle_concurrent_sessions_and_nonsessions(srv):
 
         # Open sessions first
         sess_a = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="stress_a", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="stress_a",
+            verbose=False,
         )
         sess_b = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="stress_b", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="stress_b",
+            verbose=False,
         )
         r = await c.arun(url=f"{srv}/login", config=sess_a)
         assert r.success
@@ -710,7 +756,8 @@ async def test_arun_many_with_session_open(srv):
     """Session open while arun_many batch runs with recycle enabled.
     Session survives the batch."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=5,
     )
 
@@ -718,7 +765,9 @@ async def test_arun_many_with_session_open(srv):
         bm = _bm(c)
 
         sess = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="batch_guard", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="batch_guard",
+            verbose=False,
         )
         r = await c.arun(url=f"{srv}/login", config=sess)
         assert r.success
@@ -737,7 +786,8 @@ async def test_rapid_recycle_stress(srv):
     """Recycle threshold=2 with 20 sequential crawls → 10 recycle cycles.
     Every crawl must succeed. Proves recycle is stable under rapid cycling."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=2,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -753,7 +803,8 @@ async def test_rapid_recycle_concurrent(srv):
     """Recycle threshold=3 with 12 concurrent crawls. Concurrency +
     rapid recycling together."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=3,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -771,13 +822,15 @@ async def test_rapid_recycle_concurrent(srv):
 # SECTION G — Lock correctness under contention
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_context_lock_no_duplicate_contexts(srv):
     """Fire 20 concurrent crawls with the same config on isolated context mode.
     Despite concurrency, only 1 context should be created (all share the
     same config signature)."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -803,7 +856,8 @@ async def test_page_lock_no_duplicate_pages_managed(srv):
     """On managed browser (shared default context), concurrent crawls should
     never get the same page. After all complete, pages_in_use should be empty."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -816,9 +870,9 @@ async def test_page_lock_no_duplicate_pages_managed(srv):
 
         # After all crawls complete, no pages should be marked in use
         piu = bm._get_pages_in_use()
-        assert len(piu) == 0, (
-            f"After all crawls complete, {len(piu)} pages still marked in use"
-        )
+        assert (
+            len(piu) == 0
+        ), f"After all crawls complete, {len(piu)} pages still marked in use"
 
 
 @pytest.mark.asyncio
@@ -826,7 +880,8 @@ async def test_refcount_correctness_under_concurrency(srv):
     """Fire 15 concurrent crawls with isolated context. After all complete,
     all refcounts should be 0."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
     )
@@ -848,6 +903,7 @@ async def test_refcount_correctness_under_concurrency(srv):
 # ===================================================================
 # SECTION H — Close / cleanup correctness
 # ===================================================================
+
 
 @pytest.mark.asyncio
 async def test_close_cleans_up_standalone(srv):
@@ -871,7 +927,8 @@ async def test_close_cleans_up_standalone(srv):
 async def test_close_cleans_up_managed(srv):
     """After closing managed crawler, managed_browser is cleaned up."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -895,9 +952,13 @@ async def test_double_close_safe(srv):
 
     c = AsyncWebCrawler(config=cfg)
     await c.start()
-    r = await c.arun(url=_u(srv, 0), config=CrawlerRunConfig(
-        cache_mode=CacheMode.BYPASS, verbose=False,
-    ))
+    r = await c.arun(
+        url=_u(srv, 0),
+        config=CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            verbose=False,
+        ),
+    )
     assert r.success
 
     await c.close()
@@ -908,6 +969,7 @@ async def test_double_close_safe(srv):
 # ===================================================================
 # SECTION I — Mixed modes: session + recycle + managed + concurrent
 # ===================================================================
+
 
 @pytest.mark.asyncio
 async def test_managed_isolated_session_recycle_concurrent(srv):
@@ -923,7 +985,8 @@ async def test_managed_isolated_session_recycle_concurrent(srv):
     6. Verify session B works
     """
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
         max_pages_before_recycle=5,
@@ -935,7 +998,9 @@ async def test_managed_isolated_session_recycle_concurrent(srv):
 
         # Step 1: open session
         sess_a = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="ultimate_a", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="ultimate_a",
+            verbose=False,
         )
         r = await c.arun(url=f"{srv}/login", config=sess_a)
         assert r.success
@@ -961,7 +1026,9 @@ async def test_managed_isolated_session_recycle_concurrent(srv):
 
         # Step 5: new session on fresh browser
         sess_b = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, session_id="ultimate_b", verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            session_id="ultimate_b",
+            verbose=False,
         )
         r = await c.arun(url=f"{srv}/login", config=sess_b)
         assert r.success

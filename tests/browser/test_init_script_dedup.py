@@ -19,12 +19,10 @@ Tests:
 """
 
 import asyncio
-import sys
 import os
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from crawl4ai.browser_manager import BrowserManager
@@ -49,7 +47,7 @@ async def test_setup_context_sets_flags():
     print("TEST: setup_context sets flags when crawlerRunConfig has anti-bot opts")
     print("=" * 70)
 
-    bm = BrowserManager(BrowserConfig(headless=True, extra_args=['--no-sandbox']))
+    bm = BrowserManager(BrowserConfig(headless=True, extra_args=["--no-sandbox"]))
     await bm.start()
 
     try:
@@ -58,10 +56,14 @@ async def test_setup_context_sets_flags():
         ctx_nav = await bm.create_browser_context(config_nav)
         await bm.setup_context(ctx_nav, config_nav)
 
-        check("nav_overrider flag set after setup_context(override_navigator=True)",
-              getattr(ctx_nav, '_crawl4ai_nav_overrider_injected', False) is True)
-        check("shadow_dom flag NOT set (not requested)",
-              getattr(ctx_nav, '_crawl4ai_shadow_dom_injected', False) is False)
+        check(
+            "nav_overrider flag set after setup_context(override_navigator=True)",
+            getattr(ctx_nav, "_crawl4ai_nav_overrider_injected", False) is True,
+        )
+        check(
+            "shadow_dom flag NOT set (not requested)",
+            getattr(ctx_nav, "_crawl4ai_shadow_dom_injected", False) is False,
+        )
 
         await ctx_nav.close()
 
@@ -70,8 +72,10 @@ async def test_setup_context_sets_flags():
         ctx_magic = await bm.create_browser_context(config_magic)
         await bm.setup_context(ctx_magic, config_magic)
 
-        check("nav_overrider flag set after setup_context(magic=True)",
-              getattr(ctx_magic, '_crawl4ai_nav_overrider_injected', False) is True)
+        check(
+            "nav_overrider flag set after setup_context(magic=True)",
+            getattr(ctx_magic, "_crawl4ai_nav_overrider_injected", False) is True,
+        )
 
         await ctx_magic.close()
 
@@ -80,8 +84,10 @@ async def test_setup_context_sets_flags():
         ctx_sim = await bm.create_browser_context(config_sim)
         await bm.setup_context(ctx_sim, config_sim)
 
-        check("nav_overrider flag set after setup_context(simulate_user=True)",
-              getattr(ctx_sim, '_crawl4ai_nav_overrider_injected', False) is True)
+        check(
+            "nav_overrider flag set after setup_context(simulate_user=True)",
+            getattr(ctx_sim, "_crawl4ai_nav_overrider_injected", False) is True,
+        )
 
         await ctx_sim.close()
 
@@ -90,10 +96,14 @@ async def test_setup_context_sets_flags():
         ctx_shadow = await bm.create_browser_context(config_shadow)
         await bm.setup_context(ctx_shadow, config_shadow)
 
-        check("shadow_dom flag set after setup_context(flatten_shadow_dom=True)",
-              getattr(ctx_shadow, '_crawl4ai_shadow_dom_injected', False) is True)
-        check("nav_overrider flag NOT set (not requested)",
-              getattr(ctx_shadow, '_crawl4ai_nav_overrider_injected', False) is False)
+        check(
+            "shadow_dom flag set after setup_context(flatten_shadow_dom=True)",
+            getattr(ctx_shadow, "_crawl4ai_shadow_dom_injected", False) is True,
+        )
+        check(
+            "nav_overrider flag NOT set (not requested)",
+            getattr(ctx_shadow, "_crawl4ai_nav_overrider_injected", False) is False,
+        )
 
         await ctx_shadow.close()
 
@@ -102,9 +112,11 @@ async def test_setup_context_sets_flags():
         ctx_both = await bm.create_browser_context(config_both)
         await bm.setup_context(ctx_both, config_both)
 
-        check("both flags set when both features requested",
-              getattr(ctx_both, '_crawl4ai_nav_overrider_injected', False) is True
-              and getattr(ctx_both, '_crawl4ai_shadow_dom_injected', False) is True)
+        check(
+            "both flags set when both features requested",
+            getattr(ctx_both, "_crawl4ai_nav_overrider_injected", False) is True
+            and getattr(ctx_both, "_crawl4ai_shadow_dom_injected", False) is True,
+        )
 
         await ctx_both.close()
 
@@ -118,17 +130,21 @@ async def test_setup_context_no_config_no_flags():
     print("TEST: setup_context without crawlerRunConfig does NOT set flags")
     print("=" * 70)
 
-    bm = BrowserManager(BrowserConfig(headless=True, extra_args=['--no-sandbox']))
+    bm = BrowserManager(BrowserConfig(headless=True, extra_args=["--no-sandbox"]))
     await bm.start()
 
     try:
         ctx = await bm.create_browser_context()
         await bm.setup_context(ctx)  # No crawlerRunConfig
 
-        check("nav_overrider flag NOT set (no crawlerRunConfig)",
-              getattr(ctx, '_crawl4ai_nav_overrider_injected', False) is False)
-        check("shadow_dom flag NOT set (no crawlerRunConfig)",
-              getattr(ctx, '_crawl4ai_shadow_dom_injected', False) is False)
+        check(
+            "nav_overrider flag NOT set (no crawlerRunConfig)",
+            getattr(ctx, "_crawl4ai_nav_overrider_injected", False) is False,
+        )
+        check(
+            "shadow_dom flag NOT set (no crawlerRunConfig)",
+            getattr(ctx, "_crawl4ai_shadow_dom_injected", False) is False,
+        )
 
         await ctx.close()
 
@@ -147,7 +163,9 @@ async def test_no_duplication_standard_path():
     print("TEST: No duplication on standard path (setup_context + _crawl_web)")
     print("=" * 70)
 
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, extra_args=['--no-sandbox'])) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, extra_args=["--no-sandbox"])
+    ) as crawler:
         config = CrawlerRunConfig(magic=True, flatten_shadow_dom=True)
         html = "<html><body><p>Test content for dedup check</p></body></html>"
 
@@ -157,10 +175,14 @@ async def test_no_duplication_standard_path():
         # Get the context through the browser manager
         bm = crawler.crawler_strategy.browser_manager
         for sig, ctx in bm.contexts_by_config.items():
-            check("nav_overrider flag is set on context",
-                  getattr(ctx, '_crawl4ai_nav_overrider_injected', False) is True)
-            check("shadow_dom flag is set on context",
-                  getattr(ctx, '_crawl4ai_shadow_dom_injected', False) is True)
+            check(
+                "nav_overrider flag is set on context",
+                getattr(ctx, "_crawl4ai_nav_overrider_injected", False) is True,
+            )
+            check(
+                "shadow_dom flag is set on context",
+                getattr(ctx, "_crawl4ai_shadow_dom_injected", False) is True,
+            )
 
 
 async def test_fallback_path_injects_once():
@@ -173,7 +195,7 @@ async def test_fallback_path_injects_once():
     print("TEST: Fallback path injects once and sets flags")
     print("=" * 70)
 
-    bm = BrowserManager(BrowserConfig(headless=True, extra_args=['--no-sandbox']))
+    bm = BrowserManager(BrowserConfig(headless=True, extra_args=["--no-sandbox"]))
     await bm.start()
 
     try:
@@ -181,9 +203,11 @@ async def test_fallback_path_injects_once():
         ctx = await bm.create_browser_context()
         await bm.setup_context(ctx)  # No crawlerRunConfig — no flags set
 
-        check("flags NOT set before _crawl_web",
-              not getattr(ctx, '_crawl4ai_nav_overrider_injected', False)
-              and not getattr(ctx, '_crawl4ai_shadow_dom_injected', False))
+        check(
+            "flags NOT set before _crawl_web",
+            not getattr(ctx, "_crawl4ai_nav_overrider_injected", False)
+            and not getattr(ctx, "_crawl4ai_shadow_dom_injected", False),
+        )
 
         # Track add_init_script calls
         original_add_init_script = ctx.add_init_script
@@ -205,12 +229,12 @@ async def test_fallback_path_injects_once():
         from crawl4ai.js_snippet import load_js_script
 
         if config.override_navigator or config.simulate_user or config.magic:
-            if not getattr(ctx, '_crawl4ai_nav_overrider_injected', False):
+            if not getattr(ctx, "_crawl4ai_nav_overrider_injected", False):
                 await ctx.add_init_script(load_js_script("navigator_overrider"))
                 ctx._crawl4ai_nav_overrider_injected = True
 
         if config.flatten_shadow_dom:
-            if not getattr(ctx, '_crawl4ai_shadow_dom_injected', False):
+            if not getattr(ctx, "_crawl4ai_shadow_dom_injected", False):
                 await ctx.add_init_script("""
                     const _origAttachShadow = Element.prototype.attachShadow;
                     Element.prototype.attachShadow = function(init) {
@@ -225,12 +249,12 @@ async def test_fallback_path_injects_once():
         call_count = 0
 
         if config.override_navigator or config.simulate_user or config.magic:
-            if not getattr(ctx, '_crawl4ai_nav_overrider_injected', False):
+            if not getattr(ctx, "_crawl4ai_nav_overrider_injected", False):
                 await ctx.add_init_script(load_js_script("navigator_overrider"))
                 ctx._crawl4ai_nav_overrider_injected = True
 
         if config.flatten_shadow_dom:
-            if not getattr(ctx, '_crawl4ai_shadow_dom_injected', False):
+            if not getattr(ctx, "_crawl4ai_shadow_dom_injected", False):
                 await ctx.add_init_script("""...""")
                 ctx._crawl4ai_shadow_dom_injected = True
 
@@ -255,7 +279,9 @@ async def test_concurrent_crawls_no_accumulation():
 
     CONCURRENCY = 10
 
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, extra_args=['--no-sandbox'])) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, extra_args=["--no-sandbox"])
+    ) as crawler:
         config = CrawlerRunConfig(magic=True, flatten_shadow_dom=True)
 
         # Run N concurrent crawls with identical config (same context)
@@ -268,15 +294,22 @@ async def test_concurrent_crawls_no_accumulation():
         results = await asyncio.gather(*tasks)
 
         success_count = sum(1 for r in results if r.success)
-        check(f"all {CONCURRENCY} concurrent crawls succeeded", success_count == CONCURRENCY)
+        check(
+            f"all {CONCURRENCY} concurrent crawls succeeded",
+            success_count == CONCURRENCY,
+        )
 
         # Check that the shared context has the flags set (proving injection happened)
         bm = crawler.crawler_strategy.browser_manager
         for sig, ctx in bm.contexts_by_config.items():
-            check("shared context has nav_overrider flag",
-                  getattr(ctx, '_crawl4ai_nav_overrider_injected', False) is True)
-            check("shared context has shadow_dom flag",
-                  getattr(ctx, '_crawl4ai_shadow_dom_injected', False) is True)
+            check(
+                "shared context has nav_overrider flag",
+                getattr(ctx, "_crawl4ai_nav_overrider_injected", False) is True,
+            )
+            check(
+                "shared context has shadow_dom flag",
+                getattr(ctx, "_crawl4ai_shadow_dom_injected", False) is True,
+            )
 
         # Verify no context crash — all refcounts should be 0
         for sig, count in bm._context_refcounts.items():
@@ -292,7 +325,9 @@ async def test_navigator_overrides_functional():
     print("TEST: Navigator overrides still functional after dedup")
     print("=" * 70)
 
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, extra_args=['--no-sandbox'])) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, extra_args=["--no-sandbox"])
+    ) as crawler:
         config = CrawlerRunConfig(override_navigator=True)
         html = "<html><body><p>Navigator test</p></body></html>"
 
@@ -316,7 +351,9 @@ async def test_concurrent_different_configs():
 
     CRAWLS_PER_CONFIG = 5
 
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, extra_args=['--no-sandbox'])) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, extra_args=["--no-sandbox"])
+    ) as crawler:
         configs = [
             CrawlerRunConfig(magic=True),
             CrawlerRunConfig(magic=False),
@@ -350,7 +387,9 @@ async def test_shadow_dom_flattening_functional():
     print("TEST: Shadow DOM flattening still functional after dedup")
     print("=" * 70)
 
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, extra_args=['--no-sandbox'])) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, extra_args=["--no-sandbox"])
+    ) as crawler:
         config = CrawlerRunConfig(flatten_shadow_dom=True)
 
         # HTML with a shadow DOM component

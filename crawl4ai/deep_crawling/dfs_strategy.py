@@ -1,11 +1,12 @@
 # dfs_deep_crawl_strategy.py
 import asyncio
-from typing import AsyncGenerator, Optional, Set, Dict, List, Tuple
+from typing import AsyncGenerator, Dict, List, Optional, Set, Tuple
 
 from ..models import CrawlResult
-from .bfs_strategy import BFSDeepCrawlStrategy  # noqa
 from ..types import AsyncWebCrawler, CrawlerRunConfig
 from ..utils import normalize_url_for_deep_crawl
+from .bfs_strategy import BFSDeepCrawlStrategy  # noqa
+
 
 class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy):
     """
@@ -76,7 +77,7 @@ class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy):
             # Clone config to disable recursive deep crawling.
             batch_config = config.clone(deep_crawl_strategy=None, stream=False)
             url_results = await crawler.arun_many(urls=[url], config=batch_config)
-            
+
             for result in url_results:
                 result.metadata = result.metadata or {}
                 result.metadata["depth"] = depth
@@ -84,19 +85,23 @@ class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy):
                 if self.url_scorer:
                     result.metadata["score"] = self.url_scorer.score(url)
                 results.append(result)
-                
+
                 # Count only successful crawls toward max_pages limit
                 if result.success:
                     self._pages_crawled += 1
                     # Check if we've reached the limit during batch processing
                     if self._pages_crawled >= self.max_pages:
-                        self.logger.info(f"Max pages limit ({self.max_pages}) reached during batch, stopping crawl")
+                        self.logger.info(
+                            f"Max pages limit ({self.max_pages}) reached during batch, stopping crawl"
+                        )
                         break  # Exit the generator
-                    
+
                     # Only discover links from successful crawls
                     new_links: List[Tuple[str, Optional[str]]] = []
-                    await self.link_discovery(result, url, depth, visited, new_links, depths)
-                    
+                    await self.link_discovery(
+                        result, url, depth, visited, new_links, depths
+                    )
+
                     # Push new links in reverse order so the first discovered is processed next.
                     for new_url, new_parent in reversed(new_links):
                         new_depth = depths.get(new_url, depth + 1)
@@ -124,10 +129,7 @@ class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy):
             state = {
                 "strategy_type": "dfs",
                 "visited": list(visited),
-                "stack": [
-                    {"url": u, "parent_url": p, "depth": d}
-                    for u, p, d in stack
-                ],
+                "stack": [{"url": u, "parent_url": p, "depth": d} for u, p, d in stack],
                 "depths": depths,
                 "pages_crawled": self._pages_crawled,
                 "dfs_seen": list(self._dfs_seen),
@@ -198,11 +200,15 @@ class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy):
                     self._pages_crawled += 1
                     # Check if we've reached the limit during batch processing
                     if self._pages_crawled >= self.max_pages:
-                        self.logger.info(f"Max pages limit ({self.max_pages}) reached during batch, stopping crawl")
+                        self.logger.info(
+                            f"Max pages limit ({self.max_pages}) reached during batch, stopping crawl"
+                        )
                         break  # Exit the generator
-                    
+
                     new_links: List[Tuple[str, Optional[str]]] = []
-                    await self.link_discovery(result, url, depth, visited, new_links, depths)
+                    await self.link_discovery(
+                        result, url, depth, visited, new_links, depths
+                    )
                     for new_url, new_parent in reversed(new_links):
                         new_depth = depths.get(new_url, depth + 1)
                         stack.append((new_url, new_parent, new_depth))
@@ -229,10 +235,7 @@ class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy):
             state = {
                 "strategy_type": "dfs",
                 "visited": list(visited),
-                "stack": [
-                    {"url": u, "parent_url": p, "depth": d}
-                    for u, p, d in stack
-                ],
+                "stack": [{"url": u, "parent_url": p, "depth": d} for u, p, d in stack],
                 "depths": depths,
                 "pages_crawled": self._pages_crawled,
                 "dfs_seen": list(self._dfs_seen),

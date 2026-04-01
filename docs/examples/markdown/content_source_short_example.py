@@ -3,7 +3,10 @@ Example demonstrating how to use the content_source parameter in MarkdownGenerat
 """
 
 import asyncio
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, DefaultMarkdownGenerator
+
+from crawl4ai import (AsyncWebCrawler, CrawlerRunConfig,
+                      DefaultMarkdownGenerator)
+
 
 async def demo_markdown_source_config():
     print("\n=== Demo: Configuring Markdown Source ===")
@@ -13,7 +16,9 @@ async def demo_markdown_source_config():
     config_cleaned = CrawlerRunConfig(markdown_generator=cleaned_md_generator)
 
     async with AsyncWebCrawler() as crawler:
-        result_cleaned = await crawler.arun(url="https://example.com", config=config_cleaned)
+        result_cleaned = await crawler.arun(
+            url="https://example.com", config=config_cleaned
+        )
         print("Markdown from Cleaned HTML (default):")
         print(f"  Length: {len(result_cleaned.markdown.raw_markdown)}")
         print(f"  Start: {result_cleaned.markdown.raw_markdown[:100]}...")
@@ -37,6 +42,7 @@ async def demo_markdown_source_config():
         print("\nMarkdown from Fit HTML:")
         print(f"  Length: {len(result_fit.markdown.raw_markdown)}")
         print(f"  Start: {result_fit.markdown.raw_markdown[:100]}...")
+
 
 if __name__ == "__main__":
     asyncio.run(demo_markdown_source_config())

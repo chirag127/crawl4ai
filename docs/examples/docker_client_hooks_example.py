@@ -11,6 +11,7 @@ This approach is recommended because:
 """
 
 import asyncio
+
 from crawl4ai import Crawl4aiDockerClient
 
 # API_BASE_URL = "http://localhost:11235"
@@ -20,6 +21,7 @@ API_BASE_URL = "http://localhost:11234"
 # ============================================================================
 # Hook Function Definitions
 # ============================================================================
+
 
 # --- All Hooks Demo ---
 async def browser_created_hook(browser, **kwargs):
@@ -36,12 +38,16 @@ async def page_context_hook(page, context, **kwargs):
     await page.set_viewport_size({"width": 1920, "height": 1080})
 
     # Add cookies
-    await context.add_cookies([{
-        "name": "test_session",
-        "value": "abc123xyz",
-        "domain": ".httpbin.org",
-        "path": "/"
-    }])
+    await context.add_cookies(
+        [
+            {
+                "name": "test_session",
+                "value": "abc123xyz",
+                "domain": ".httpbin.org",
+                "path": "/",
+            }
+        ]
+    )
 
     # Block resources
     await context.route("**/*.{png,jpg,jpeg,gif}", lambda route: route.abort())
@@ -61,10 +67,9 @@ async def before_goto_hook(page, context, url, **kwargs):
     """Called before navigating to URL"""
     print(f"[HOOK] Navigating to: {url}")
 
-    await page.set_extra_http_headers({
-        "X-Custom-Header": "crawl4ai-test",
-        "Accept-Language": "en-US"
-    })
+    await page.set_extra_http_headers(
+        {"X-Custom-Header": "crawl4ai-test", "Accept-Language": "en-US"}
+    )
 
     return page
 
@@ -108,11 +113,11 @@ async def before_return_hook(page, context, html, **kwargs):
     """Called before returning HTML"""
     print(f"[HOOK] HTML ready: {len(html)} chars")
 
-    metrics = await page.evaluate('''() => ({
+    metrics = await page.evaluate("""() => ({
         images: document.images.length,
         links: document.links.length,
         scripts: document.scripts.length
-    })''')
+    })""")
 
     print(f"[HOOK] Metrics - Images: {metrics['images']}, Links: {metrics['links']}")
     return page
@@ -124,19 +129,23 @@ async def auth_context_hook(page, context, **kwargs):
     print("[HOOK] Setting up authentication")
 
     # Add auth cookies
-    await context.add_cookies([{
-        "name": "auth_token",
-        "value": "fake_jwt_token",
-        "domain": ".httpbin.org",
-        "path": "/",
-        "httpOnly": True
-    }])
+    await context.add_cookies(
+        [
+            {
+                "name": "auth_token",
+                "value": "fake_jwt_token",
+                "domain": ".httpbin.org",
+                "path": "/",
+                "httpOnly": True,
+            }
+        ]
+    )
 
     # Set localStorage
-    await page.evaluate('''
+    await page.evaluate("""
         localStorage.setItem('user_id', '12345');
         localStorage.setItem('auth_time', new Date().toISOString());
-    ''')
+    """)
 
     print("[HOOK] Auth context ready")
     return page
@@ -147,12 +156,12 @@ async def auth_headers_hook(page, context, url, **kwargs):
     print(f"[HOOK] Adding auth headers for {url}")
 
     import base64
-    credentials = base64.b64encode(b"user:passwd").decode('ascii')
 
-    await page.set_extra_http_headers({
-        'Authorization': f'Basic {credentials}',
-        'X-API-Key': 'test-key-123'
-    })
+    credentials = base64.b64encode(b"user:passwd").decode("ascii")
+
+    await page.set_extra_http_headers(
+        {"Authorization": f"Basic {credentials}", "X-API-Key": "test-key-123"}
+    )
 
     return page
 
@@ -171,12 +180,12 @@ async def performance_hook(page, context, **kwargs):
     await context.route("**/facebook.com/*", lambda r: r.abort())
 
     # Disable animations
-    await page.add_style_tag(content='''
+    await page.add_style_tag(content="""
         *, *::before, *::after {
             animation-duration: 0s !important;
             transition-duration: 0s !important;
         }
-    ''')
+    """)
 
     print("[HOOK] Optimizations applied")
     return page
@@ -186,7 +195,7 @@ async def cleanup_hook(page, context, **kwargs):
     """Clean page before extraction"""
     print("[HOOK] Cleaning page")
 
-    await page.evaluate('''() => {
+    await page.evaluate("""() => {
         const selectors = [
             '.ad', '.ads', '.advertisement',
             '.popup', '.modal', '.overlay',
@@ -198,7 +207,7 @@ async def cleanup_hook(page, context, **kwargs):
         });
 
         document.querySelectorAll('script, style').forEach(el => el.remove());
-    }''')
+    }""")
 
     print("[HOOK] Page cleaned")
     return page
@@ -213,7 +222,9 @@ async def wait_dynamic_content_hook(page, context, url, response, **kwargs):
 
     # Click "Load More" if exists
     try:
-        load_more = await page.query_selector('[class*="load-more"], button:has-text("Load More")')
+        load_more = await page.query_selector(
+            '[class*="load-more"], button:has-text("Load More")'
+        )
         if load_more:
             await load_more.click()
             await page.wait_for_timeout(1000)
@@ -228,7 +239,7 @@ async def extract_metadata_hook(page, context, **kwargs):
     """Extract page metadata"""
     print("[HOOK] Extracting metadata")
 
-    metadata = await page.evaluate('''() => {
+    metadata = await page.evaluate("""() => {
         const getMeta = (name) => {
             const el = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
             return el ? el.getAttribute('content') : null;
@@ -240,7 +251,7 @@ async def extract_metadata_hook(page, context, **kwargs):
             author: getMeta('author'),
             keywords: getMeta('keywords'),
         };
-    }''')
+    }""")
 
     print(f"[HOOK] Metadata: {metadata}")
 
@@ -259,9 +270,9 @@ async def url_specific_hook(page, context, url, **kwargs):
     print(f"[HOOK] Processing URL: {url}")
 
     # URL-specific headers
-    if 'html' in url:
+    if "html" in url:
         await page.set_extra_http_headers({"X-Type": "HTML"})
-    elif 'json' in url:
+    elif "json" in url:
         await page.set_extra_http_headers({"X-Type": "JSON"})
 
     return page
@@ -269,7 +280,7 @@ async def url_specific_hook(page, context, url, **kwargs):
 
 async def track_progress_hook(page, context, url, response, **kwargs):
     """Track crawl progress"""
-    status = response.status if response else 'unknown'
+    status = response.status if response else "unknown"
     print(f"[HOOK] Loaded {url} - Status: {status}")
     return page
 
@@ -277,6 +288,7 @@ async def track_progress_hook(page, context, url, response, **kwargs):
 # ============================================================================
 # Test Functions
 # ============================================================================
+
 
 async def test_all_hooks_comprehensive():
     """Test all 8 hook types"""
@@ -296,13 +308,11 @@ async def test_all_hooks_comprehensive():
             "after_goto": after_goto_hook,
             "on_execution_started": execution_started_hook,
             "before_retrieve_html": before_retrieve_hook,
-            "before_return_html": before_return_hook
+            "before_return_html": before_return_hook,
         }
 
         result = await client.crawl(
-            ["https://httpbin.org/html"],
-            hooks=hooks,
-            hooks_timeout=30
+            ["https://httpbin.org/html"], hooks=hooks, hooks_timeout=30
         )
 
         print("\n✅ Success!")
@@ -322,19 +332,19 @@ async def test_authentication_workflow():
 
         hooks = {
             "on_page_context_created": auth_context_hook,
-            "before_goto": auth_headers_hook
+            "before_goto": auth_headers_hook,
         }
 
         result = await client.crawl(
             ["https://httpbin.org/basic-auth/user/passwd"],
             hooks=hooks,
-            hooks_timeout=15
+            hooks_timeout=15,
         )
 
         print("\n✅ Authentication completed")
 
         if result.success:
-            if '"authenticated"' in result.html and 'true' in result.html:
+            if '"authenticated"' in result.html and "true" in result.html:
                 print("   ✅ Basic auth successful!")
             else:
                 print("   ⚠️ Auth status unclear")
@@ -353,13 +363,11 @@ async def test_performance_optimization():
 
         hooks = {
             "on_page_context_created": performance_hook,
-            "before_retrieve_html": cleanup_hook
+            "before_retrieve_html": cleanup_hook,
         }
 
         result = await client.crawl(
-            ["https://httpbin.org/html"],
-            hooks=hooks,
-            hooks_timeout=10
+            ["https://httpbin.org/html"], hooks=hooks, hooks_timeout=10
         )
 
         print("\n✅ Optimization completed")
@@ -378,13 +386,11 @@ async def test_content_extraction():
 
         hooks = {
             "after_goto": wait_dynamic_content_hook,
-            "before_retrieve_html": extract_metadata_hook
+            "before_retrieve_html": extract_metadata_hook,
         }
 
         result = await client.crawl(
-            ["https://www.kidocode.com/"],
-            hooks=hooks,
-            hooks_timeout=20
+            ["https://www.kidocode.com/"], hooks=hooks, hooks_timeout=20
         )
 
         print("\n✅ Extraction completed")
@@ -402,19 +408,16 @@ async def test_multi_url_crawl():
     async with Crawl4aiDockerClient(base_url=API_BASE_URL, verbose=False) as client:
         print("\nCrawling multiple URLs...")
 
-        hooks = {
-            "before_goto": url_specific_hook,
-            "after_goto": track_progress_hook
-        }
+        hooks = {"before_goto": url_specific_hook, "after_goto": track_progress_hook}
 
         results = await client.crawl(
             [
                 "https://httpbin.org/html",
                 "https://httpbin.org/json",
-                "https://httpbin.org/xml"
+                "https://httpbin.org/xml",
             ],
             hooks=hooks,
-            hooks_timeout=15
+            hooks_timeout=15,
         )
 
         print("\n✅ Multi-URL crawl completed")
@@ -465,13 +468,11 @@ async def test_reusable_hook_library():
 
         hooks = {
             "on_page_context_created": HookLibrary.block_images,
-            "before_retrieve_html": HookLibrary.scroll_infinite
+            "before_retrieve_html": HookLibrary.scroll_infinite,
         }
 
         result = await client.crawl(
-            ["https://www.kidocode.com/"],
-            hooks=hooks,
-            hooks_timeout=20
+            ["https://www.kidocode.com/"], hooks=hooks, hooks_timeout=20
         )
 
         print("\n✅ Library hooks completed")
@@ -481,6 +482,7 @@ async def test_reusable_hook_library():
 # ============================================================================
 # Main
 # ============================================================================
+
 
 async def main():
     """Run all Docker client hook examples"""
@@ -494,7 +496,7 @@ async def main():
         ("Performance", test_performance_optimization),
         ("Extraction", test_content_extraction),
         ("Multi-URL", test_multi_url_crawl),
-        ("Hook Library", test_reusable_hook_library)
+        ("Hook Library", test_reusable_hook_library),
     ]
 
     for i, (name, test_func) in enumerate(tests, 1):
@@ -504,6 +506,7 @@ async def main():
         except Exception as e:
             print(f"\n❌ Test {i}/{len(tests)}: {name} failed: {e}\n")
             import traceback
+
             traceback.print_exc()
 
     print("=" * 70)

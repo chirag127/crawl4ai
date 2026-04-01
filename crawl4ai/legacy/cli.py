@@ -1,9 +1,11 @@
-import click
-import sys
 import asyncio
+import sys
 from typing import List
-from .docs_manager import DocsManager
+
+import click
+
 from .async_logger import AsyncLogger
+from .docs_manager import DocsManager
 
 logger = AsyncLogger(verbose=True)
 docs_manager = DocsManager(logger)

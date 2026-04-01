@@ -6,13 +6,13 @@ Fix: added deduplication by chunk text in filter_content(), keeping the
 first occurrence in document order.
 """
 
-import pytest
-from crawl4ai.content_filter_strategy import BM25ContentFilter
 
+from crawl4ai.content_filter_strategy import BM25ContentFilter
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _wrap_html(body_inner: str) -> str:
     """Wrap body HTML with boilerplate including a title for query extraction."""
@@ -53,6 +53,7 @@ def _make_test_html(target_copies: int = 1, extra_body: str = "") -> str:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestBM25Deduplication:
     """Core deduplication tests for issue #1213."""
 
@@ -67,7 +68,9 @@ class TestBM25Deduplication:
     def test_no_duplicates_unchanged(self):
         """Unique paragraphs should all be preserved (none removed by dedup)."""
         html = _make_test_html(target_copies=1)
-        filt = BM25ContentFilter(user_query="programming languages", bm25_threshold=0.01)
+        filt = BM25ContentFilter(
+            user_query="programming languages", bm25_threshold=0.01
+        )
         results = filt.filter_content(html)
         # At least some pass threshold; key point is no false dedup
         assert len(results) >= 1
@@ -90,8 +93,7 @@ class TestBM25Deduplication:
         body = (
             f"<p>{first_text}</p>"
             f"<p>{second_text}</p>"
-            f"<p>{first_text}</p>"  # duplicate
-            + FILLER_BLOCK
+            f"<p>{first_text}</p>" + FILLER_BLOCK  # duplicate
         )
         html = _wrap_html(body)
         filt = BM25ContentFilter(user_query="Python history", bm25_threshold=0.01)
@@ -153,7 +155,9 @@ class TestBM25Deduplication:
     def test_user_query_with_duplicates(self):
         """Dedup works correctly when a user_query is provided."""
         html = _make_test_html(target_copies=4)
-        filt = BM25ContentFilter(user_query="Python web development", bm25_threshold=0.01)
+        filt = BM25ContentFilter(
+            user_query="Python web development", bm25_threshold=0.01
+        )
         results = filt.filter_content(html)
         matching = [r for r in results if "versatile" in r]
         assert len(matching) == 1

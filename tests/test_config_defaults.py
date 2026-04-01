@@ -1,6 +1,7 @@
 """Tests for BrowserConfig.set_defaults / CrawlerRunConfig.set_defaults."""
 
 import pytest
+
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 
 
@@ -173,11 +174,10 @@ class TestSpecialProcessing:
         assert cfg.proxy_config.server == "http://proxy:8080"
 
     def test_crawler_run_config_proxy_dict_converted(self):
-        CrawlerRunConfig.set_defaults(
-            proxy_config={"server": "http://proxy:8080"}
-        )
+        CrawlerRunConfig.set_defaults(proxy_config={"server": "http://proxy:8080"})
         cfg = CrawlerRunConfig()
         from crawl4ai.async_configs import ProxyConfig
+
         assert isinstance(cfg.proxy_config, ProxyConfig)
 
 

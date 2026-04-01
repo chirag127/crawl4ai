@@ -10,13 +10,10 @@ This example shows how to:
 import asyncio
 import os
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-from crawl4ai import LLMConfig
-from crawl4ai import (
-    LLMExtractionStrategy,
-    JsonCssExtractionStrategy,
-    JsonXPathExtractionStrategy,
-)
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, JsonCssExtractionStrategy,
+                      JsonXPathExtractionStrategy, LLMConfig,
+                      LLMExtractionStrategy)
 from crawl4ai.content_filter_strategy import PruningContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
@@ -61,19 +58,25 @@ async def main():
 
     # 1. LLM Extraction with different input formats
     markdown_strategy = LLMExtractionStrategy(
-        llm_config = LLMConfig(provider="openai/gpt-4o-mini", api_token=os.getenv("OPENAI_API_KEY")),
+        llm_config=LLMConfig(
+            provider="openai/gpt-4o-mini", api_token=os.getenv("OPENAI_API_KEY")
+        ),
         instruction="Extract product information including name, price, and description",
     )
 
     html_strategy = LLMExtractionStrategy(
         input_format="html",
-        llm_config=LLMConfig(provider="openai/gpt-4o-mini", api_token=os.getenv("OPENAI_API_KEY")),
+        llm_config=LLMConfig(
+            provider="openai/gpt-4o-mini", api_token=os.getenv("OPENAI_API_KEY")
+        ),
         instruction="Extract product information from HTML including structured data",
     )
 
     fit_markdown_strategy = LLMExtractionStrategy(
         input_format="fit_markdown",
-        llm_config=LLMConfig(provider="openai/gpt-4o-mini",api_token=os.getenv("OPENAI_API_KEY")),
+        llm_config=LLMConfig(
+            provider="openai/gpt-4o-mini", api_token=os.getenv("OPENAI_API_KEY")
+        ),
         instruction="Extract product information from cleaned markdown",
     )
 

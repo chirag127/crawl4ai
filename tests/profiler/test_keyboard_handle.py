@@ -1,21 +1,23 @@
-import sys
-import pytest
 import asyncio
-from unittest.mock import patch, MagicMock
-from crawl4ai.browser_profiler import BrowserProfiler
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific msvcrt test")
 async def test_keyboard_input_handling():
     # Mock sequence of keystrokes: arrow key followed by 'q'
-    mock_keys = [b'\x00K', b'q']
+    mock_keys = [b"\x00K", b"q"]
     mock_kbhit = MagicMock(side_effect=[True, True, False])
     mock_getch = MagicMock(side_effect=mock_keys)
 
-    with patch('msvcrt.kbhit', mock_kbhit), patch('msvcrt.getch', mock_getch):
+    with patch("msvcrt.kbhit", mock_kbhit), patch("msvcrt.getch", mock_getch):
         # profiler = BrowserProfiler()
         user_done_event = asyncio.Event()
-        
+
         # Create a local async function to simulate the keyboard input handling
         async def test_listen_for_quit_command():
             if sys.platform == "win32":
@@ -36,12 +38,12 @@ async def test_keyboard_input_handling():
                                 return
 
                         await asyncio.sleep(0.1)
-                    except Exception as e:
+                    except Exception:
                         continue
 
         # Run the listener
         listener_task = asyncio.create_task(test_listen_for_quit_command())
-        
+
         # Wait for the event to be set
         try:
             await asyncio.wait_for(user_done_event.wait(), timeout=1.0)

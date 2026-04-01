@@ -1,7 +1,7 @@
-import time
 import asyncio
-from crawl4ai import *
+import time
 
+from crawl4ai import *
 
 # TODO: the user data directory that includes the capsolver extension
 user_data_dir = "/browser-profile/Default1"
@@ -20,12 +20,13 @@ browser_config = BrowserConfig(
     use_persistent_context=True,
 )
 
+
 async def main():
     async with AsyncWebCrawler(config=browser_config) as crawler:
         result_initial = await crawler.arun(
             url="https://clifford.io/demo/cloudflare-turnstile",
             cache_mode=CacheMode.BYPASS,
-            session_id="session_captcha_test"
+            session_id="session_captcha_test",
         )
 
         # do something later

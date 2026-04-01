@@ -1,34 +1,64 @@
 # ==== File: build_dummy_site.py ====
 
+import argparse
 import os
 import random
-import argparse
 from pathlib import Path
 from urllib.parse import quote
 
 # --- Configuration ---
 NUM_CATEGORIES = 3
-NUM_SUBCATEGORIES_PER_CAT = 2 # Results in NUM_CATEGORIES * NUM_SUBCATEGORIES_PER_CAT total L2 categories
-NUM_PRODUCTS_PER_SUBCAT = 5 # Products listed on L3 pages
-MAX_DEPTH_TARGET = 5 # Explicitly set target depth
+NUM_SUBCATEGORIES_PER_CAT = (
+    2  # Results in NUM_CATEGORIES * NUM_SUBCATEGORIES_PER_CAT total L2 categories
+)
+NUM_PRODUCTS_PER_SUBCAT = 5  # Products listed on L3 pages
+MAX_DEPTH_TARGET = 5  # Explicitly set target depth
 
 # --- Helper Functions ---
 
+
 def generate_lorem(words=20):
     """Generates simple placeholder text."""
-    lorem_words = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur",
-                   "adipiscing", "elit", "sed", "do", "eiusmod", "tempor",
-                   "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"]
+    lorem_words = [
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+        "sed",
+        "do",
+        "eiusmod",
+        "tempor",
+        "incididunt",
+        "ut",
+        "labore",
+        "et",
+        "dolore",
+        "magna",
+        "aliqua",
+    ]
     return " ".join(random.choice(lorem_words) for _ in range(words)).capitalize() + "."
 
-def create_html_page(filepath: Path, title: str, body_content: str, breadcrumbs: list = [], head_extras: str = ""):
+
+def create_html_page(
+    filepath: Path,
+    title: str,
+    body_content: str,
+    breadcrumbs: list = [],
+    head_extras: str = "",
+):
     """Creates an HTML file with basic structure and inline CSS."""
     os.makedirs(filepath.parent, exist_ok=True)
 
     # Generate breadcrumb HTML using the 'link' provided in the breadcrumbs list
     breadcrumb_html = ""
     if breadcrumbs:
-        links_html = " » ".join(f'<a href="{bc["link"]}">{bc["name"]}</a>' for bc in breadcrumbs)
+        links_html = " » ".join(
+            f'<a href="{bc["link"]}">{bc["name"]}</a>' for bc in breadcrumbs
+        )
         breadcrumb_html = f"<nav class='breadcrumbs'>{links_html} » {title}</nav>"
 
     # Basic CSS for structure identification (kept the same)
@@ -149,6 +179,7 @@ def create_html_page(filepath: Path, title: str, body_content: str, breadcrumbs:
     # Keep print statement concise for clarity
     # print(f"Created: {filepath}")
 
+
 def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = ""):
     """Generates the dummy website structure."""
     base_dir.mkdir(parents=True, exist_ok=True)
@@ -156,9 +187,9 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
     # --- Clean and prepare the base path for URL construction ---
     # Ensure it starts with '/' if not empty, and remove any trailing '/'
     if base_path:
-        full_base_path = "/" + base_path.strip('/')
+        full_base_path = "/" + base_path.strip("/")
     else:
-        full_base_path = "" # Represents the root
+        full_base_path = ""  # Represents the root
 
     print(f"Using base path for links: '{full_base_path}'")
 
@@ -166,7 +197,7 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
     home_body = "<h2>Welcome to FakeShop!</h2><p>Your one-stop shop for imaginary items.</p><h3>Categories:</h3>\n<ul>"
     # Define the *actual* link path for the homepage breadcrumb
     home_link_path = f"{full_base_path}/index.html"
-    breadcrumbs_home = [{"name": "Home", "link": home_link_path}] # Base breadcrumb
+    breadcrumbs_home = [{"name": "Home", "link": home_link_path}]  # Base breadcrumb
 
     # Links *within* the page content should remain relative
     for i in range(NUM_CATEGORIES):
@@ -176,7 +207,9 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
         cat_relative_page_path = f"{cat_folder_name}/index.html"
         home_body += f'<li><a class="category-link" href="{cat_relative_page_path}">{cat_name}</a> - {generate_lorem(10)}</li>'
     home_body += "</ul>"
-    create_html_page(base_dir / "index.html", "Homepage", home_body, []) # No breadcrumbs *on* the homepage itself
+    create_html_page(
+        base_dir / "index.html", "Homepage", home_body, []
+    )  # No breadcrumbs *on* the homepage itself
 
     # --- Levels 1-5 ---
     for i in range(NUM_CATEGORIES):
@@ -189,7 +222,9 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
         breadcrumbs_cat = breadcrumbs_home + [{"name": cat_name, "link": cat_link_path}]
 
         # --- Level 1: Category Page ---
-        cat_body = f"<p>{generate_lorem(15)} for {cat_name}.</p><h3>Sub-Categories:</h3>\n<ul>"
+        cat_body = (
+            f"<p>{generate_lorem(15)} for {cat_name}.</p><h3>Sub-Categories:</h3>\n<ul>"
+        )
         for j in range(NUM_SUBCATEGORIES_PER_CAT):
             subcat_name = f"{cat_name}-Sub-{j+1}"
             subcat_folder_name = quote(subcat_name.lower().replace(" ", "-"))
@@ -198,21 +233,27 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
             cat_body += f'<li><a class="subcategory-link" href="{subcat_relative_page_path}">{subcat_name}</a> - {generate_lorem(8)}</li>'
         cat_body += "</ul>"
         # Pass the updated breadcrumbs list
-        create_html_page(cat_dir / "index.html", cat_name, cat_body, breadcrumbs_home) # Parent breadcrumb needed here
+        create_html_page(
+            cat_dir / "index.html", cat_name, cat_body, breadcrumbs_home
+        )  # Parent breadcrumb needed here
 
         for j in range(NUM_SUBCATEGORIES_PER_CAT):
             subcat_name = f"{cat_name}-Sub-{j+1}"
             subcat_folder_name = quote(subcat_name.lower().replace(" ", "-"))
             subcat_dir = cat_dir / subcat_folder_name
             # Absolute path for the breadcrumb link
-            subcat_link_path = f"{full_base_path}/{cat_folder_name}/{subcat_folder_name}/index.html"
+            subcat_link_path = (
+                f"{full_base_path}/{cat_folder_name}/{subcat_folder_name}/index.html"
+            )
             # Update breadcrumbs list for this level
-            breadcrumbs_subcat = breadcrumbs_cat + [{"name": subcat_name, "link": subcat_link_path}]
+            breadcrumbs_subcat = breadcrumbs_cat + [
+                {"name": subcat_name, "link": subcat_link_path}
+            ]
 
             # --- Level 2: Sub-Category Page (Product List) ---
             subcat_body = f"<p>Explore products in {subcat_name}. {generate_lorem(12)}</p><h3>Products:</h3>\n<ul class='product-list'>"
             for k in range(NUM_PRODUCTS_PER_SUBCAT):
-                prod_id = f"P{i+1}{j+1}{k+1:03d}" # e.g., P11001
+                prod_id = f"P{i+1}{j+1}{k+1:03d}"  # e.g., P11001
                 prod_name = f"{subcat_name} Product {k+1} ({prod_id})"
                 # Filename relative to the subcategory page
                 prod_filename = f"product_{prod_id}.html"
@@ -232,7 +273,10 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
                 # --- Level 3: Product Page ---
                 prod_price = random.uniform(10, 500)
                 prod_desc = generate_lorem(40)
-                prod_specs = {f"Spec {s+1}": generate_lorem(3) for s in range(random.randint(3,6))}
+                prod_specs = {
+                    f"Spec {s+1}": generate_lorem(3)
+                    for s in range(random.randint(3, 6))
+                }
                 prod_reviews_count = random.randint(0, 150)
                 # Relative filenames for links on this page
                 details_filename_relative = f"product_{prod_id}_details.html"
@@ -261,59 +305,79 @@ def generate_site(base_dir: Path, site_name: str = "FakeShop", base_path: str = 
                 </p>
                 """
                 # Update breadcrumbs list for this level
-                breadcrumbs_prod = breadcrumbs_subcat + [{"name": prod_name, "link": prod_link_path}]
+                breadcrumbs_prod = breadcrumbs_subcat + [
+                    {"name": prod_name, "link": prod_link_path}
+                ]
                 # Pass the updated breadcrumbs list
-                create_html_page(subcat_dir / prod_filename, prod_name, prod_body, breadcrumbs_subcat) # Parent breadcrumb needed here
+                create_html_page(
+                    subcat_dir / prod_filename, prod_name, prod_body, breadcrumbs_subcat
+                )  # Parent breadcrumb needed here
 
                 # --- Level 4: Product Details Page ---
-                details_filename = f"product_{prod_id}_details.html" # Actual filename
+                details_filename = f"product_{prod_id}_details.html"  # Actual filename
                 # Absolute path for the breadcrumb link
                 details_link_path = f"{full_base_path}/{cat_folder_name}/{subcat_folder_name}/{details_filename}"
                 details_body = f"<p>This page contains extremely detailed information about {prod_name}.</p>{generate_lorem(100)}"
                 # Update breadcrumbs list for this level
-                breadcrumbs_details = breadcrumbs_prod + [{"name": "Details", "link": details_link_path}]
+                breadcrumbs_details = breadcrumbs_prod + [
+                    {"name": "Details", "link": details_link_path}
+                ]
                 # Pass the updated breadcrumbs list
-                create_html_page(subcat_dir / details_filename, f"{prod_name} - Details", details_body, breadcrumbs_prod) # Parent breadcrumb needed here
+                create_html_page(
+                    subcat_dir / details_filename,
+                    f"{prod_name} - Details",
+                    details_body,
+                    breadcrumbs_prod,
+                )  # Parent breadcrumb needed here
 
                 # --- Level 5: Product Reviews Page ---
-                reviews_filename = f"product_{prod_id}_reviews.html" # Actual filename
+                reviews_filename = f"product_{prod_id}_reviews.html"  # Actual filename
                 # Absolute path for the breadcrumb link
                 reviews_link_path = f"{full_base_path}/{cat_folder_name}/{subcat_folder_name}/{reviews_filename}"
                 reviews_body = f"<p>All {prod_reviews_count} reviews for {prod_name} are listed here.</p><ul>"
                 for r in range(prod_reviews_count):
-                     reviews_body += f"<li>Review {r+1}: {generate_lorem(random.randint(15, 50))}</li>"
+                    reviews_body += f"<li>Review {r+1}: {generate_lorem(random.randint(15, 50))}</li>"
                 reviews_body += "</ul>"
                 # Update breadcrumbs list for this level
-                breadcrumbs_reviews = breadcrumbs_prod + [{"name": "Reviews", "link": reviews_link_path}]
+                breadcrumbs_reviews = breadcrumbs_prod + [
+                    {"name": "Reviews", "link": reviews_link_path}
+                ]
                 # Pass the updated breadcrumbs list
-                create_html_page(subcat_dir / reviews_filename, f"{prod_name} - Reviews", reviews_body, breadcrumbs_prod) # Parent breadcrumb needed here
+                create_html_page(
+                    subcat_dir / reviews_filename,
+                    f"{prod_name} - Reviews",
+                    reviews_body,
+                    breadcrumbs_prod,
+                )  # Parent breadcrumb needed here
 
-
-            subcat_body += "</ul>" # Close product-list ul
+            subcat_body += "</ul>"  # Close product-list ul
             # Pass the correct breadcrumbs list for the subcategory index page
-            create_html_page(subcat_dir / "index.html", subcat_name, subcat_body, breadcrumbs_cat) # Parent breadcrumb needed here
+            create_html_page(
+                subcat_dir / "index.html", subcat_name, subcat_body, breadcrumbs_cat
+            )  # Parent breadcrumb needed here
 
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a dummy multi-level retail website.")
+    parser = argparse.ArgumentParser(
+        description="Generate a dummy multi-level retail website."
+    )
     parser.add_argument(
-        "-o", "--output-dir",
+        "-o",
+        "--output-dir",
         type=str,
         default="dummy_retail_site",
-        help="Directory to generate the website in."
+        help="Directory to generate the website in.",
     )
     parser.add_argument(
-        "-n", "--site-name",
-        type=str,
-        default="FakeShop",
-        help="Name of the fake shop."
+        "-n", "--site-name", type=str, default="FakeShop", help="Name of the fake shop."
     )
     parser.add_argument(
-        "-b", "--base-path",
+        "-b",
+        "--base-path",
         type=str,
         default="",
-        help="Base path for hosting the site (e.g., 'samples/deepcrawl'). Leave empty if hosted at the root."
+        help="Base path for hosting the site (e.g., 'samples/deepcrawl'). Leave empty if hosted at the root.",
     )
     # Optional: Add more args to configure counts if needed
 
@@ -328,8 +392,12 @@ if __name__ == "__main__":
     generate_site(output_directory, site_name, base_path)
     print(f"\nCreated {sum(1 for _ in output_directory.rglob('*.html'))} HTML pages.")
     print("Dummy site generation complete.")
-    print(f"To serve locally (example): python -m http.server --directory {output_directory} 8000")
+    print(
+        f"To serve locally (example): python -m http.server --directory {output_directory} 8000"
+    )
     if base_path:
-        print(f"Access the site at: http://localhost:8000/{base_path.strip('/')}/index.html")
+        print(
+            f"Access the site at: http://localhost:8000/{base_path.strip('/')}/index.html"
+        )
     else:
-         print(f"Access the site at: http://localhost:8000/index.html")
+        print("Access the site at: http://localhost:8000/index.html")

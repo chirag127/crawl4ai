@@ -1,43 +1,54 @@
 # deploy/docker/mcp_bridge.py
 
 from __future__ import annotations
-import inspect, json, re, anyio
+
+import inspect
+import json
+import re
 from contextlib import suppress
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
+
+import anyio
 import httpx
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from starlette.routing import Route, Mount
-from mcp.server.sse import SseServerTransport
-
 import mcp.types as t
-from mcp.server.lowlevel.server import Server, NotificationOptions
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
+from mcp.server.lowlevel.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
+from mcp.server.sse import SseServerTransport
+from pydantic import BaseModel
+from starlette.routing import Mount, Route
+
 
 # ── opt‑in decorators ───────────────────────────────────────────
 def mcp_resource(name: str | None = None):
     def deco(fn):
         fn.__mcp_kind__, fn.__mcp_name__ = "resource", name
         return fn
+
     return deco
+
 
 def mcp_template(name: str | None = None):
     def deco(fn):
         fn.__mcp_kind__, fn.__mcp_name__ = "template", name
         return fn
+
     return deco
+
 
 def mcp_tool(name: str | None = None):
     def deco(fn):
         fn.__mcp_kind__, fn.__mcp_name__ = "tool", name
         return fn
+
     return deco
+
 
 # ── HTTP‑proxy helper for FastAPI endpoints ─────────────────────
 def _make_http_proxy(base_url: str, route, *, timeout: float | None = None):
     method = list(route.methods - {"HEAD", "OPTIONS"})[0]
+
     async def proxy(**kwargs):
         # replace `/items/{id}` style params first
         path = route.path
@@ -62,15 +73,17 @@ def _make_http_proxy(base_url: str, route, *, timeout: float | None = None):
                 raise HTTPException(e.response.status_code, e.response.text)
             except httpx.TimeoutException:
                 raise HTTPException(504, "upstream request timed out")
+
     return proxy
+
 
 # ── main entry point ────────────────────────────────────────────
 def attach_mcp(
     app: FastAPI,
-    *,                          # keyword‑only
+    *,  # keyword‑only
     base: str = "/mcp",
     name: str | None = None,
-    base_url: str,              # eg. "http://127.0.0.1:8020"
+    base_url: str,  # eg. "http://127.0.0.1:8020"
     timeout: float | None = None,  # httpx timeout in seconds; None = no limit
 ) -> None:
     """Call once after all routes are declared to expose WS+SSE MCP endpoints."""
@@ -118,32 +131,39 @@ def attach_mcp(
     async def _list_tools() -> List[t.Tool]:
         out = []
         for k, (proxy, orig_fn) in tools.items():
-            desc   = getattr(orig_fn, "__mcp_description__", None) or inspect.getdoc(orig_fn) or ""
-            schema = getattr(orig_fn, "__mcp_schema__", None) or _schema(_body_model(orig_fn))
-            out.append(
-                t.Tool(name=k, description=desc, inputSchema=schema)
+            desc = (
+                getattr(orig_fn, "__mcp_description__", None)
+                or inspect.getdoc(orig_fn)
+                or ""
             )
+            schema = getattr(orig_fn, "__mcp_schema__", None) or _schema(
+                _body_model(orig_fn)
+            )
+            out.append(t.Tool(name=k, description=desc, inputSchema=schema))
         return out
-             
 
     @mcp.call_tool()
     async def _call_tool(name: str, arguments: Dict | None) -> List[t.TextContent]:
         if name not in tools:
             raise HTTPException(404, "tool not found")
-        
+
         proxy, _ = tools[name]
         try:
             res = await proxy(**(arguments or {}))
         except HTTPException as exc:
             # map server‑side errors into MCP "text/error" payloads
             err = {"error": exc.status_code, "detail": exc.detail}
-            return [t.TextContent(type = "text", text=json.dumps(err))]
-        return [t.TextContent(type = "text", text=json.dumps(res, default=str))]
+            return [t.TextContent(type="text", text=json.dumps(err))]
+        return [t.TextContent(type="text", text=json.dumps(res, default=str))]
 
     @mcp.list_resources()
     async def _list_resources() -> List[t.Resource]:
         return [
-            t.Resource(name=k, description=inspect.getdoc(f) or "", mime_type="application/json")
+            t.Resource(
+                name=k,
+                description=inspect.getdoc(f) or "",
+                mime_type="application/json",
+            )
             for k, f in resources.items()
         ]
 
@@ -152,7 +172,7 @@ def attach_mcp(
         if name not in resources:
             raise HTTPException(404, "resource not found")
         res = resources[name]()
-        return [t.TextContent(type = "text", text=json.dumps(res, default=str))]
+        return [t.TextContent(type="text", text=json.dumps(res, default=str))]
 
     @mcp.list_resource_templates()
     async def _list_templates() -> List[t.ResourceTemplate]:
@@ -160,9 +180,7 @@ def attach_mcp(
             t.ResourceTemplate(
                 name=k,
                 description=inspect.getdoc(f) or "",
-                parameters={
-                    p: {"type": "string"} for p in _path_params(app, f)
-                },
+                parameters={p: {"type": "string"} for p in _path_params(app, f)},
             )
             for k, f in templates.items()
         ]
@@ -183,14 +201,15 @@ def attach_mcp(
         c2s_send, c2s_recv = anyio.create_memory_object_stream(100)
         s2c_send, s2c_recv = anyio.create_memory_object_stream(100)
 
-        from pydantic import TypeAdapter
         from mcp.types import JSONRPCMessage
+        from pydantic import TypeAdapter
+
         adapter = TypeAdapter(JSONRPCMessage)
 
         init_done = anyio.Event()
 
         async def srv_to_ws():
-            first = True 
+            first = True
             try:
                 async for msg in s2c_recv:
                     await ws.send_json(msg.model_dump())
@@ -200,7 +219,7 @@ def attach_mcp(
             finally:
                 # make sure cleanup survives TaskGroup cancellation
                 with anyio.CancelScope(shield=True):
-                    with suppress(RuntimeError):       # idempotent close
+                    with suppress(RuntimeError):  # idempotent close
                         await ws.close()
 
         async def ws_to_srv():
@@ -208,7 +227,7 @@ def attach_mcp(
                 # 1st frame is always "initialize"
                 first = adapter.validate_python(await ws.receive_json())
                 await c2s_send.send(first)
-                await init_done.wait()          # block until server ready
+                await init_done.wait()  # block until server ready
                 while True:
                     data = await ws.receive_json()
                     await c2s_send.send(adapter.validate_python(data))
@@ -229,7 +248,10 @@ def attach_mcp(
     # as raw ASGI apps.  See #1594, #1850.
     class _MCPSseApp:
         async def __call__(self, scope, receive, send):
-            async with sse.connect_sse(scope, receive, send) as (read_stream, write_stream):
+            async with sse.connect_sse(scope, receive, send) as (
+                read_stream,
+                write_stream,
+            ):
                 await mcp.run(read_stream, write_stream, init_opts)
 
     app.routes.append(Route(f"{base}/sse", endpoint=_MCPSseApp()))
@@ -238,16 +260,19 @@ def attach_mcp(
     # ── schema endpoint ───────────────────────────────────────
     @app.get(f"{base}/schema")
     async def _schema_endpoint():
-        return JSONResponse({
-            "tools": [x.model_dump() for x in await _list_tools()],
-            "resources": [x.model_dump() for x in await _list_resources()],
-            "resource_templates": [x.model_dump() for x in await _list_templates()],
-        })
+        return JSONResponse(
+            {
+                "tools": [x.model_dump() for x in await _list_tools()],
+                "resources": [x.model_dump() for x in await _list_resources()],
+                "resource_templates": [x.model_dump() for x in await _list_templates()],
+            }
+        )
 
 
 # ── helpers ────────────────────────────────────────────────────
 def _route_name(path: str) -> str:
     return re.sub(r"[/{}}]", "_", path).strip("_")
+
 
 def _path_params(app: FastAPI, fn: Callable) -> List[str]:
     for r in app.routes:

@@ -1,13 +1,14 @@
+import difflib
 import json
 import time
-from bs4 import BeautifulSoup
-from crawl4ai.content_scraping_strategy import (
-    WebScrapingStrategy,
-    LXMLWebScrapingStrategy,
-)
 from typing import Dict, List, Tuple
-import difflib
-from lxml import html as lhtml, etree
+
+from bs4 import BeautifulSoup
+from lxml import etree
+from lxml import html as lhtml
+
+from crawl4ai.content_scraping_strategy import (LXMLWebScrapingStrategy,
+                                                WebScrapingStrategy)
 
 
 def normalize_dom(element):
@@ -169,8 +170,7 @@ def compare_html_structurally(html1, html2):
 def generate_large_html(n_elements=1000):
     html = ["<!DOCTYPE html><html><head></head><body>"]
     for i in range(n_elements):
-        html.append(
-            f"""
+        html.append(f"""
             <div class="article">
                 <h2>Heading {i}</h2>
                 <p>This is paragraph {i} with some content and a <a href="http://example.com/{i}">link</a></p>
@@ -180,8 +180,7 @@ def generate_large_html(n_elements=1000):
                     <li>List item {i}.2</li>
                 </ul>
             </div>
-        """
-        )
+        """)
     html.append("</body></html>")
     return "".join(html)
 

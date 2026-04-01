@@ -6,12 +6,13 @@ Test 4: Concurrent Load Testing
 - Validates latency distribution (P50, P95, P99)
 - Monitors memory stability
 """
+
 import asyncio
 import time
+from threading import Event, Thread
+
 import docker
 import httpx
-from threading import Thread, Event
-from collections import defaultdict
 
 # Config
 IMAGE = "crawl4ai-local:latest"
@@ -27,27 +28,30 @@ LOAD_LEVELS = [
 stats_history = []
 stop_monitoring = Event()
 
+
 def monitor_stats(container):
     """Background stats collector."""
     for stat in container.stats(decode=True, stream=True):
         if stop_monitoring.is_set():
             break
         try:
-            mem_usage = stat['memory_stats'].get('usage', 0) / (1024 * 1024)
-            stats_history.append({'timestamp': time.time(), 'memory_mb': mem_usage})
+            mem_usage = stat["memory_stats"].get("usage", 0) / (1024 * 1024)
+            stats_history.append({"timestamp": time.time(), "memory_mb": mem_usage})
         except:
             pass
         time.sleep(0.5)
 
+
 def count_log_markers(container):
     """Extract pool markers."""
-    logs = container.logs().decode('utf-8')
+    logs = container.logs().decode("utf-8")
     return {
-        'permanent': logs.count("🔥 Using permanent browser"),
-        'hot': logs.count("♨️  Using hot pool browser"),
-        'cold': logs.count("❄️  Using cold pool browser"),
-        'new': logs.count("🆕 Creating new browser"),
+        "permanent": logs.count("🔥 Using permanent browser"),
+        "hot": logs.count("♨️  Using hot pool browser"),
+        "cold": logs.count("❄️  Using cold pool browser"),
+        "new": logs.count("🆕 Creating new browser"),
     }
+
 
 async def hit_endpoint(client, url, payload, semaphore):
     """Single request with concurrency control."""
@@ -60,13 +64,17 @@ async def hit_endpoint(client, url, payload, semaphore):
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+
 async def run_concurrent_test(url, payload, concurrent, total_requests):
     """Run concurrent requests."""
     semaphore = asyncio.Semaphore(concurrent)
     async with httpx.AsyncClient() as client:
-        tasks = [hit_endpoint(client, url, payload, semaphore) for _ in range(total_requests)]
+        tasks = [
+            hit_endpoint(client, url, payload, semaphore) for _ in range(total_requests)
+        ]
         results = await asyncio.gather(*tasks)
     return results
+
 
 def calculate_percentiles(latencies):
     """Calculate P50, P95, P99."""
@@ -80,40 +88,52 @@ def calculate_percentiles(latencies):
         sorted_lat[int(n * 0.99)],
     )
 
+
 def start_container(client, image, name, port):
     """Start container."""
     try:
         old = client.containers.get(name)
-        print(f"🧹 Stopping existing container...")
+        print("🧹 Stopping existing container...")
         old.stop()
         old.remove()
     except docker.errors.NotFound:
         pass
 
-    print(f"🚀 Starting container...")
+    print("🚀 Starting container...")
     container = client.containers.run(
-        image, name=name, ports={f"{port}/tcp": port},
-        detach=True, shm_size="1g", mem_limit="4g",
+        image,
+        name=name,
+        ports={f"{port}/tcp": port},
+        detach=True,
+        shm_size="1g",
+        mem_limit="4g",
     )
 
-    print(f"⏳ Waiting for health...")
+    print("⏳ Waiting for health...")
     for _ in range(30):
         time.sleep(1)
         container.reload()
         if container.status == "running":
             try:
                 import requests
-                if requests.get(f"http://localhost:{port}/health", timeout=2).status_code == 200:
-                    print(f"✅ Container healthy!")
+
+                if (
+                    requests.get(
+                        f"http://localhost:{port}/health", timeout=2
+                    ).status_code
+                    == 200
+                ):
+                    print("✅ Container healthy!")
                     return container
             except:
                 pass
     raise TimeoutError("Container failed to start")
 
+
 async def main():
-    print("="*60)
+    print("=" * 60)
     print("TEST 4: Concurrent Load Testing")
-    print("="*60)
+    print("=" * 60)
 
     client = docker.from_env()
     container = None
@@ -122,7 +142,7 @@ async def main():
     try:
         container = start_container(client, IMAGE, CONTAINER_NAME, PORT)
 
-        print(f"\n⏳ Waiting for permanent browser init (3s)...")
+        print("\n⏳ Waiting for permanent browser init (3s)...")
         await asyncio.sleep(3)
 
         # Start monitoring
@@ -132,7 +152,7 @@ async def main():
         monitor_thread.start()
 
         await asyncio.sleep(1)
-        baseline_mem = stats_history[-1]['memory_mb'] if stats_history else 0
+        baseline_mem = stats_history[-1]["memory_mb"] if stats_history else 0
         print(f"📏 Baseline: {baseline_mem:.1f} MB\n")
 
         url = f"http://localhost:{PORT}/html"
@@ -144,11 +164,15 @@ async def main():
         # Run load levels
         for level in LOAD_LEVELS:
             print(f"{'='*60}")
-            print(f"🔄 {level['name']} Load: {level['concurrent']} concurrent, {level['requests']} total")
+            print(
+                f"🔄 {level['name']} Load: {level['concurrent']} concurrent, {level['requests']} total"
+            )
             print(f"{'='*60}")
 
             start_time = time.time()
-            results = await run_concurrent_test(url, payload, level['concurrent'], level['requests'])
+            results = await run_concurrent_test(
+                url, payload, level["concurrent"], level["requests"]
+            )
             duration = time.time() - start_time
 
             successes = sum(1 for r in results if r.get("success"))
@@ -162,13 +186,17 @@ async def main():
             print(f"  Avg Latency:  {avg_lat:.0f}ms")
             print(f"  P50/P95/P99:  {p50:.0f}ms / {p95:.0f}ms / {p99:.0f}ms")
 
-            level_stats.append({
-                'name': level['name'],
-                'concurrent': level['concurrent'],
-                'success_rate': success_rate,
-                'avg_latency': avg_lat,
-                'p50': p50, 'p95': p95, 'p99': p99,
-            })
+            level_stats.append(
+                {
+                    "name": level["name"],
+                    "concurrent": level["concurrent"],
+                    "success_rate": success_rate,
+                    "avg_latency": avg_lat,
+                    "p50": p50,
+                    "p95": p95,
+                    "p99": p99,
+                }
+            )
             all_results.extend(results)
 
             await asyncio.sleep(2)  # Cool down between levels
@@ -181,20 +209,20 @@ async def main():
 
         # Final stats
         pool_stats = count_log_markers(container)
-        memory_samples = [s['memory_mb'] for s in stats_history]
+        memory_samples = [s["memory_mb"] for s in stats_history]
         peak_mem = max(memory_samples) if memory_samples else 0
         final_mem = memory_samples[-1] if memory_samples else 0
 
         print(f"\n{'='*60}")
-        print(f"FINAL RESULTS:")
+        print("FINAL RESULTS:")
         print(f"{'='*60}")
         print(f"  Total Requests: {len(all_results)}")
-        print(f"\n  Pool Utilization:")
+        print("\n  Pool Utilization:")
         print(f"    🔥 Permanent: {pool_stats['permanent']}")
         print(f"    ♨️  Hot:       {pool_stats['hot']}")
         print(f"    ❄️  Cold:      {pool_stats['cold']}")
         print(f"    🆕 New:       {pool_stats['new']}")
-        print(f"\n  Memory:")
+        print("\n  Memory:")
         print(f"    Baseline: {baseline_mem:.1f} MB")
         print(f"    Peak:     {peak_mem:.1f} MB")
         print(f"    Final:    {final_mem:.1f} MB")
@@ -204,17 +232,21 @@ async def main():
         # Pass/Fail
         passed = True
         for ls in level_stats:
-            if ls['success_rate'] < 99:
-                print(f"❌ FAIL: {ls['name']} success rate {ls['success_rate']:.1f}% < 99%")
+            if ls["success_rate"] < 99:
+                print(
+                    f"❌ FAIL: {ls['name']} success rate {ls['success_rate']:.1f}% < 99%"
+                )
                 passed = False
-            if ls['p99'] > 10000:  # 10s threshold
-                print(f"⚠️  WARNING: {ls['name']} P99 latency {ls['p99']:.0f}ms very high")
+            if ls["p99"] > 10000:  # 10s threshold
+                print(
+                    f"⚠️  WARNING: {ls['name']} P99 latency {ls['p99']:.0f}ms very high"
+                )
 
         if final_mem - baseline_mem > 300:
             print(f"⚠️  WARNING: Memory grew {final_mem - baseline_mem:.1f} MB")
 
         if passed:
-            print(f"✅ TEST PASSED")
+            print("✅ TEST PASSED")
             return 0
         else:
             return 1
@@ -222,14 +254,16 @@ async def main():
     except Exception as e:
         print(f"\n❌ TEST ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
     finally:
         stop_monitoring.set()
         if container:
-            print(f"🛑 Stopping container...")
+            print("🛑 Stopping container...")
             container.stop()
             container.remove()
+
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())

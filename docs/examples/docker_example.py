@@ -1,10 +1,11 @@
-import requests
-import json
-import time
-import sys
 import base64
+import json
 import os
-from typing import Dict, Any
+import sys
+import time
+from typing import Any, Dict
+
+import requests
 
 
 class Crawl4AiTester:
@@ -15,9 +16,7 @@ class Crawl4AiTester:
         self, request_data: Dict[str, Any], timeout: int = 300
     ) -> Dict[str, Any]:
         # Submit crawl job using async endpoint
-        response = requests.post(
-            f"{self.base_url}/crawl/job", json=request_data
-        )
+        response = requests.post(f"{self.base_url}/crawl/job", json=request_data)
         response.raise_for_status()
         job_response = response.json()
         task_id = job_response["task_id"]
@@ -31,9 +30,7 @@ class Crawl4AiTester:
                     f"Task {task_id} did not complete within {timeout} seconds"
                 )
 
-            result = requests.get(
-                f"{self.base_url}/crawl/job/{task_id}"
-            )
+            result = requests.get(f"{self.base_url}/crawl/job/{task_id}")
             result.raise_for_status()
             status = result.json()
 
@@ -57,6 +54,7 @@ class Crawl4AiTester:
             raise TimeoutError("Task did not complete within server timeout")
         response.raise_for_status()
         return response.json()
+
 
 def test_docker_deployment(version="basic"):
     tester = Crawl4AiTester(
@@ -97,7 +95,7 @@ def test_basic_crawl(tester: Crawl4AiTester):
     request = {
         "urls": ["https://www.nbcnews.com/business"],
         "browser_config": {},
-        "crawler_config": {}
+        "crawler_config": {},
     }
 
     result = tester.submit_and_wait(request)
@@ -112,7 +110,7 @@ def test_basic_crawl_sync(tester: Crawl4AiTester):
     request = {
         "urls": ["https://www.nbcnews.com/business"],
         "browser_config": {},
-        "crawler_config": {}
+        "crawler_config": {},
     }
 
     result = tester.submit_sync(request)
@@ -131,8 +129,8 @@ def test_js_execution(tester: Crawl4AiTester):
             "js_code": [
                 "const loadMoreButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('Load More')); if(loadMoreButton) loadMoreButton.click();"
             ],
-            "wait_for": "wide-tease-item__wrapper df flex-column flex-row-m flex-nowrap-m enable-new-sports-feed-mobile-design(10)"
-        }
+            "wait_for": "wide-tease-item__wrapper df flex-column flex-row-m flex-nowrap-m enable-new-sports-feed-mobile-design(10)",
+        },
     }
 
     result = tester.submit_and_wait(request)
@@ -147,8 +145,8 @@ def test_css_selector(tester: Crawl4AiTester):
         "browser_config": {"headless": True},
         "crawler_config": {
             "css_selector": ".wide-tease-item__description",
-            "word_count_threshold": 10
-        }
+            "word_count_threshold": 10,
+        },
     }
 
     result = tester.submit_and_wait(request)
@@ -160,41 +158,41 @@ def test_structured_extraction(tester: Crawl4AiTester):
     print("\n=== Testing Structured Extraction ===")
     schema = {
         "name": "Cryptocurrency Prices",
-        "baseSelector": "table[data-testid=\"prices-table\"] tbody tr",
+        "baseSelector": 'table[data-testid="prices-table"] tbody tr',
         "fields": [
             {
                 "name": "asset_name",
                 "selector": "td:nth-child(2) p.cds-headline-h4steop",
-                "type": "text"
+                "type": "text",
             },
             {
                 "name": "asset_symbol",
                 "selector": "td:nth-child(2) p.cds-label2-l1sm09ec",
-                "type": "text"
+                "type": "text",
             },
             {
                 "name": "asset_image_url",
-                "selector": "td:nth-child(2) img[alt=\"Asset Symbol\"]",
+                "selector": 'td:nth-child(2) img[alt="Asset Symbol"]',
                 "type": "attribute",
-                "attribute": "src"
+                "attribute": "src",
             },
             {
                 "name": "asset_url",
-                "selector": "td:nth-child(2) a[aria-label^=\"Asset page for\"]",
+                "selector": 'td:nth-child(2) a[aria-label^="Asset page for"]',
                 "type": "attribute",
-                "attribute": "href"
+                "attribute": "href",
             },
             {
                 "name": "price",
                 "selector": "td:nth-child(3) div.cds-typographyResets-t6muwls.cds-body-bwup3gq",
-                "type": "text"
+                "type": "text",
             },
             {
                 "name": "change",
                 "selector": "td:nth-child(7) p.cds-body-bwup3gq",
-                "type": "text"
-            }
-        ]
+                "type": "text",
+            },
+        ],
     }
 
     request = {
@@ -205,10 +203,10 @@ def test_structured_extraction(tester: Crawl4AiTester):
             "params": {
                 "extraction_strategy": {
                     "type": "JsonCssExtractionStrategy",
-                    "params": {"schema": schema}
+                    "params": {"schema": schema},
                 }
-            }
-        }
+            },
+        },
     }
 
     result = tester.submit_and_wait(request)
@@ -254,17 +252,17 @@ def test_llm_extraction(tester: Crawl4AiTester):
                             "type": "LLMConfig",
                             "params": {
                                 "provider": "gemini/gemini-2.0-flash-exp",
-                                "api_token": os.getenv("GEMINI_API_KEY")
-                            }
+                                "api_token": os.getenv("GEMINI_API_KEY"),
+                            },
                         },
                         "schema": schema,
                         "extraction_type": "schema",
                         "instruction": "From the crawled content, extract asset names along with their prices and change in price.",
-                    }
+                    },
                 },
-                "word_count_threshold": 1
-            }
-        }
+                "word_count_threshold": 1,
+            },
+        },
     }
 
     try:
@@ -280,7 +278,7 @@ def test_llm_extraction(tester: Crawl4AiTester):
 
 def test_llm_with_ollama(tester: Crawl4AiTester):
     print("\n=== Testing LLM with Ollama ===")
-    
+
     # Check if Ollama is accessible first
     try:
         ollama_response = requests.get("http://localhost:11434/api/tags", timeout=5)
@@ -289,7 +287,7 @@ def test_llm_with_ollama(tester: Crawl4AiTester):
     except:
         print("Ollama is not accessible, skipping test")
         return
-    
+
     schema = {
         "type": "object",
         "properties": {
@@ -322,16 +320,16 @@ def test_llm_with_ollama(tester: Crawl4AiTester):
                             "type": "LLMConfig",
                             "params": {
                                 "provider": "ollama/llama3.2:latest",
-                            }
+                            },
                         },
                         "schema": schema,
                         "extraction_type": "schema",
                         "instruction": "Extract the main article information including title, summary, and main topics.",
-                    }
+                    },
                 },
-                "word_count_threshold": 1
-            }
-        }
+                "word_count_threshold": 1,
+            },
+        },
     }
 
     try:
@@ -358,10 +356,10 @@ def test_cosine_extraction(tester: Crawl4AiTester):
                         "word_count_threshold": 10,
                         "max_dist": 0.2,
                         "top_k": 3,
-                    }
+                    },
                 }
-            }
-        }
+            },
+        },
     }
 
     try:
@@ -380,12 +378,7 @@ def test_screenshot(tester: Crawl4AiTester):
     request = {
         "urls": ["https://www.nbcnews.com/business"],
         "browser_config": {"headless": True},
-        "crawler_config": {
-            "type": "CrawlerRunConfig",
-            "params": {
-                "screenshot": True
-            }
-        }
+        "crawler_config": {"type": "CrawlerRunConfig", "params": {"screenshot": True}},
     }
 
     result = tester.submit_and_wait(request)

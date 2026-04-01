@@ -9,26 +9,22 @@ Tests that verify:
 5. No damage to existing system behavior (regression tests)
 """
 
-import pytest
-import asyncio
 import json
-from typing import Dict, Any, List
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any, Dict, List
+from unittest.mock import MagicMock
 
-from crawl4ai.deep_crawling import (
-    BFSDeepCrawlStrategy,
-    DFSDeepCrawlStrategy,
-    BestFirstCrawlingStrategy,
-    FilterChain,
-    URLPatternFilter,
-    DomainFilter,
-)
+import pytest
+
+from crawl4ai.deep_crawling import (BestFirstCrawlingStrategy,
+                                    BFSDeepCrawlStrategy, DFSDeepCrawlStrategy,
+                                    DomainFilter, FilterChain,
+                                    URLPatternFilter)
 from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
-
 
 # ============================================================================
 # Helper Functions for Mock Crawler
 # ============================================================================
+
 
 def create_mock_config(stream=False):
     """Create a mock CrawlerRunConfig."""
@@ -65,9 +61,11 @@ def create_mock_crawler_with_links(num_links: int = 3, include_keyword: bool = F
 
         # For streaming mode, return async generator
         if config.stream:
+
             async def gen():
                 for r in results:
                     yield r
+
             return gen()
         return results
 
@@ -87,14 +85,20 @@ def create_mock_crawler_tracking(crawl_order: List[str], return_no_links: bool =
             result.url = url
             result.success = True
             result.metadata = {}
-            result.links = {"internal": [], "external": []} if return_no_links else {"internal": [{"href": f"{url}/child"}], "external": []}
+            result.links = (
+                {"internal": [], "external": []}
+                if return_no_links
+                else {"internal": [{"href": f"{url}/child"}], "external": []}
+            )
             results.append(result)
 
         # For streaming mode, return async generator
         if config.stream:
+
             async def gen():
                 for r in results:
                     yield r
+
             return gen()
         return results
 
@@ -121,14 +125,16 @@ def create_simple_mock_crawler():
                     {"href": f"{url}/child1"},
                     {"href": f"{url}/child2"},
                 ],
-                "external": []
+                "external": [],
             }
             results.append(result)
 
         if config.stream:
+
             async def gen():
                 for r in results:
                     yield r
+
             return gen()
         return results
 
@@ -139,6 +145,7 @@ def create_simple_mock_crawler():
 
 def create_mock_crawler_unlimited_links():
     """Mock crawler that always returns links (for testing limits)."""
+
     async def mock_arun_many(urls, config):
         results = []
         for url in urls:
@@ -148,14 +155,16 @@ def create_mock_crawler_unlimited_links():
             result.metadata = {}
             result.links = {
                 "internal": [{"href": f"{url}/link{i}"} for i in range(10)],
-                "external": []
+                "external": [],
             }
             results.append(result)
 
         if config.stream:
+
             async def gen():
                 for r in results:
                     yield r
+
             return gen()
         return results
 
@@ -167,6 +176,7 @@ def create_mock_crawler_unlimited_links():
 # ============================================================================
 # TEST SUITE 1: Crash Recovery Tests
 # ============================================================================
+
 
 class TestBFSResume:
     """BFS strategy resume tests."""
@@ -192,7 +202,9 @@ class TestBFSResume:
         mock_crawler = create_mock_crawler_with_links(num_links=3)
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # Verify states were captured
         assert len(captured_states) > 0
@@ -223,9 +235,18 @@ class TestBFSResume:
                 "https://example.com/page4",
             ],
             "pending": [
-                {"url": "https://example.com/page5", "parent_url": "https://example.com/page2"},
-                {"url": "https://example.com/page6", "parent_url": "https://example.com/page3"},
-                {"url": "https://example.com/page7", "parent_url": "https://example.com/page3"},
+                {
+                    "url": "https://example.com/page5",
+                    "parent_url": "https://example.com/page2",
+                },
+                {
+                    "url": "https://example.com/page6",
+                    "parent_url": "https://example.com/page3",
+                },
+                {
+                    "url": "https://example.com/page7",
+                    "parent_url": "https://example.com/page3",
+                },
             ],
             "depths": {
                 "https://example.com": 0,
@@ -258,11 +279,15 @@ class TestBFSResume:
 
         # Should NOT re-crawl already visited URLs
         for visited_url in saved_state["visited"]:
-            assert visited_url not in crawled_urls, f"Re-crawled already visited: {visited_url}"
+            assert (
+                visited_url not in crawled_urls
+            ), f"Re-crawled already visited: {visited_url}"
 
         # Should crawl pending URLs
         for pending in saved_state["pending"]:
-            assert pending["url"] in crawled_urls, f"Did not crawl pending: {pending['url']}"
+            assert (
+                pending["url"] in crawled_urls
+            ), f"Did not crawl pending: {pending['url']}"
 
     @pytest.mark.asyncio
     async def test_simulated_crash_mid_crawl(self):
@@ -286,7 +311,9 @@ class TestBFSResume:
 
         # First crawl - crashes
         with pytest.raises(Exception, match="Simulated crash"):
-            await strategy1._arun_batch("https://example.com", mock_crawler, mock_config)
+            await strategy1._arun_batch(
+                "https://example.com", mock_crawler, mock_config
+            )
 
         # Get last state before crash
         last_state = states_before_crash[-1]
@@ -306,17 +333,23 @@ class TestBFSResume:
             resume_state=last_state,
         )
 
-        mock_crawler2 = create_mock_crawler_tracking(crawled_in_resume, return_no_links=True)
+        mock_crawler2 = create_mock_crawler_tracking(
+            crawled_in_resume, return_no_links=True
+        )
 
         await strategy2._arun_batch("https://example.com", mock_crawler2, mock_config)
 
         # Verify already-crawled URLs are not re-crawled
         for crawled_url in already_crawled_urls:
-            assert crawled_url not in crawled_in_resume, f"Re-crawled already visited: {crawled_url}"
+            assert (
+                crawled_url not in crawled_in_resume
+            ), f"Re-crawled already visited: {crawled_url}"
 
         # Verify pending URLs are crawled
         for pending_url in pending_urls:
-            assert pending_url in crawled_in_resume, f"Did not crawl pending: {pending_url}"
+            assert (
+                pending_url in crawled_in_resume
+            ), f"Did not crawl pending: {pending_url}"
 
     @pytest.mark.asyncio
     async def test_callback_fires_per_url(self):
@@ -341,12 +374,15 @@ class TestBFSResume:
         await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
 
         # Callback should fire once per successful URL
-        assert callback_count == strategy._pages_crawled, \
-            f"Callback fired {callback_count} times, expected {strategy._pages_crawled} (per URL)"
+        assert (
+            callback_count == strategy._pages_crawled
+        ), f"Callback fired {callback_count} times, expected {strategy._pages_crawled} (per URL)"
 
         # pages_crawled should increment by 1 each callback
         for i, count in enumerate(pages_crawled_sequence):
-            assert count == i + 1, f"Expected pages_crawled={i+1} at callback {i}, got {count}"
+            assert (
+                count == i + 1
+            ), f"Expected pages_crawled={i+1} at callback {i}, got {count}"
 
     @pytest.mark.asyncio
     async def test_export_state_returns_last_captured(self):
@@ -357,7 +393,9 @@ class TestBFSResume:
             nonlocal last_state
             last_state = state
 
-        strategy = BFSDeepCrawlStrategy(max_depth=2, max_pages=5, on_state_change=capture)
+        strategy = BFSDeepCrawlStrategy(
+            max_depth=2, max_pages=5, on_state_change=capture
+        )
 
         mock_crawler = create_mock_crawler_with_links(num_links=2)
         mock_config = create_mock_config()
@@ -409,13 +447,30 @@ class TestDFSResume:
             "strategy_type": "dfs",
             "visited": ["https://example.com"],
             "stack": [
-                {"url": "https://example.com/deep3", "parent_url": "https://example.com/deep2", "depth": 3},
-                {"url": "https://example.com/deep2", "parent_url": "https://example.com/deep1", "depth": 2},
-                {"url": "https://example.com/page1", "parent_url": "https://example.com", "depth": 1},
+                {
+                    "url": "https://example.com/deep3",
+                    "parent_url": "https://example.com/deep2",
+                    "depth": 3,
+                },
+                {
+                    "url": "https://example.com/deep2",
+                    "parent_url": "https://example.com/deep1",
+                    "depth": 2,
+                },
+                {
+                    "url": "https://example.com/page1",
+                    "parent_url": "https://example.com",
+                    "depth": 1,
+                },
             ],
             "depths": {"https://example.com": 0},
             "pages_crawled": 1,
-            "dfs_seen": ["https://example.com", "https://example.com/deep3", "https://example.com/deep2", "https://example.com/page1"],
+            "dfs_seen": [
+                "https://example.com",
+                "https://example.com/deep3",
+                "https://example.com/deep2",
+                "https://example.com/page1",
+            ],
         }
 
         crawl_order: List[str] = []
@@ -460,7 +515,9 @@ class TestBestFirstResume:
         mock_crawler = create_mock_crawler_with_links(num_links=3, include_keyword=True)
         mock_config = create_mock_config(stream=True)
 
-        async for _ in strategy._arun_stream("https://example.com", mock_crawler, mock_config):
+        async for _ in strategy._arun_stream(
+            "https://example.com", mock_crawler, mock_config
+        ):
             pass
 
         assert len(captured_states) > 0
@@ -481,9 +538,24 @@ class TestBestFirstResume:
             "strategy_type": "best_first",
             "visited": ["https://example.com"],
             "queue_items": [
-                {"score": -0.9, "depth": 1, "url": "https://example.com/high-priority", "parent_url": "https://example.com"},
-                {"score": -0.5, "depth": 1, "url": "https://example.com/medium-priority", "parent_url": "https://example.com"},
-                {"score": -0.1, "depth": 1, "url": "https://example.com/low-priority", "parent_url": "https://example.com"},
+                {
+                    "score": -0.9,
+                    "depth": 1,
+                    "url": "https://example.com/high-priority",
+                    "parent_url": "https://example.com",
+                },
+                {
+                    "score": -0.5,
+                    "depth": 1,
+                    "url": "https://example.com/medium-priority",
+                    "parent_url": "https://example.com",
+                },
+                {
+                    "score": -0.1,
+                    "depth": 1,
+                    "url": "https://example.com/low-priority",
+                    "parent_url": "https://example.com",
+                },
             ],
             "depths": {"https://example.com": 0},
             "pages_crawled": 1,
@@ -500,7 +572,9 @@ class TestBestFirstResume:
         mock_crawler = create_mock_crawler_tracking(crawl_order, return_no_links=True)
         mock_config = create_mock_config(stream=True)
 
-        async for _ in strategy._arun_stream("https://example.com", mock_crawler, mock_config):
+        async for _ in strategy._arun_stream(
+            "https://example.com", mock_crawler, mock_config
+        ):
             pass
 
         # Higher negative score = higher priority (min-heap)
@@ -512,11 +586,14 @@ class TestCrossStrategyResume:
     """Tests that apply to all strategies."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("strategy_class,strategy_type", [
-        (BFSDeepCrawlStrategy, "bfs"),
-        (DFSDeepCrawlStrategy, "dfs"),
-        (BestFirstCrawlingStrategy, "best_first"),
-    ])
+    @pytest.mark.parametrize(
+        "strategy_class,strategy_type",
+        [
+            (BFSDeepCrawlStrategy, "bfs"),
+            (DFSDeepCrawlStrategy, "dfs"),
+            (BestFirstCrawlingStrategy, "best_first"),
+        ],
+    )
     async def test_no_callback_means_no_overhead(self, strategy_class, strategy_type):
         """Verify no state tracking when callback is None."""
         strategy = strategy_class(max_depth=2, max_pages=5)
@@ -529,11 +606,14 @@ class TestCrossStrategyResume:
         assert strategy._last_state is None
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("strategy_class", [
-        BFSDeepCrawlStrategy,
-        DFSDeepCrawlStrategy,
-        BestFirstCrawlingStrategy,
-    ])
+    @pytest.mark.parametrize(
+        "strategy_class",
+        [
+            BFSDeepCrawlStrategy,
+            DFSDeepCrawlStrategy,
+            BestFirstCrawlingStrategy,
+        ],
+    )
     async def test_export_state_returns_last_captured(self, strategy_class):
         """Verify export_state() returns last captured state."""
         last_state = None
@@ -548,7 +628,9 @@ class TestCrossStrategyResume:
 
         if strategy_class == BestFirstCrawlingStrategy:
             mock_config = create_mock_config(stream=True)
-            async for _ in strategy._arun_stream("https://example.com", mock_crawler, mock_config):
+            async for _ in strategy._arun_stream(
+                "https://example.com", mock_crawler, mock_config
+            ):
                 pass
         else:
             mock_config = create_mock_config()
@@ -561,6 +643,7 @@ class TestCrossStrategyResume:
 # ============================================================================
 # TEST SUITE 2: Regression Tests (No Damage to Current System)
 # ============================================================================
+
 
 class TestBFSRegressions:
     """Ensure BFS works identically when new params not used."""
@@ -583,10 +666,12 @@ class TestBFSRegressions:
     @pytest.mark.asyncio
     async def test_filter_chain_still_works(self):
         """FilterChain integration unchanged."""
-        filter_chain = FilterChain([
-            URLPatternFilter(patterns=["*/blog/*"]),
-            DomainFilter(allowed_domains=["example.com"]),
-        ])
+        filter_chain = FilterChain(
+            [
+                URLPatternFilter(patterns=["*/blog/*"]),
+                DomainFilter(allowed_domains=["example.com"]),
+            ]
+        )
 
         strategy = BFSDeepCrawlStrategy(
             max_depth=2,
@@ -594,8 +679,12 @@ class TestBFSRegressions:
         )
 
         # Test filter still applies
-        assert await strategy.can_process_url("https://example.com/blog/post1", 1) == True
-        assert await strategy.can_process_url("https://other.com/blog/post1", 1) == False
+        assert (
+            await strategy.can_process_url("https://example.com/blog/post1", 1) == True
+        )
+        assert (
+            await strategy.can_process_url("https://other.com/blog/post1", 1) == False
+        )
 
     @pytest.mark.asyncio
     async def test_url_scorer_still_works(self):
@@ -623,7 +712,9 @@ class TestBFSRegressions:
         mock_crawler = create_simple_mock_crawler()
         mock_config = create_mock_config(stream=False)
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         assert isinstance(results, list)
         assert len(results) > 0
@@ -636,7 +727,9 @@ class TestBFSRegressions:
         mock_crawler = create_mock_crawler_unlimited_links()
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # Should stop at max_pages
         assert strategy._pages_crawled <= 3
@@ -649,7 +742,9 @@ class TestBFSRegressions:
         mock_crawler = create_mock_crawler_unlimited_links()
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # All results should have depth <= max_depth
         for result in results:
@@ -663,7 +758,9 @@ class TestBFSRegressions:
         mock_crawler = create_simple_mock_crawler()
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         for result in results:
             assert "depth" in result.metadata
@@ -677,7 +774,9 @@ class TestBFSRegressions:
         mock_crawler = create_simple_mock_crawler()
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # First result (start URL) should have parent_url = None
         assert results[0].metadata.get("parent_url") is None
@@ -710,7 +809,7 @@ class TestDFSRegressions:
         """DFS _dfs_seen set still initialized."""
         strategy = DFSDeepCrawlStrategy(max_depth=2)
 
-        assert hasattr(strategy, '_dfs_seen')
+        assert hasattr(strategy, "_dfs_seen")
         assert isinstance(strategy._dfs_seen, set)
 
 
@@ -761,7 +860,7 @@ class TestAPICompatibility:
         assert s2.max_depth == 3
 
         # Mixed (old style)
-        s3 = BFSDeepCrawlStrategy(2, FilterChain(), None, False, float('-inf'), 100)
+        s3 = BFSDeepCrawlStrategy(2, FilterChain(), None, False, float("-inf"), 100)
         assert s3.max_depth == 2
         assert s3.max_pages == 100
 

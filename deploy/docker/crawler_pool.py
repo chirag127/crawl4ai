@@ -1,18 +1,23 @@
 # crawler_pool.py - Smart browser pool with tiered management
-import asyncio, json, hashlib, time
+import asyncio
+import hashlib
+import json
+import logging
+import time
 from contextlib import suppress
 from typing import Dict, Optional
+
+from utils import get_container_memory_percent, load_config
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig
-from utils import load_config, get_container_memory_percent
-import logging
 
 logger = logging.getLogger(__name__)
 CONFIG = load_config()
 
 # Pool tiers
 PERMANENT: Optional[AsyncWebCrawler] = None  # Always-ready default browser
-HOT_POOL: Dict[str, AsyncWebCrawler] = {}    # Frequent configs
-COLD_POOL: Dict[str, AsyncWebCrawler] = {}   # Rare configs
+HOT_POOL: Dict[str, AsyncWebCrawler] = {}  # Frequent configs
+COLD_POOL: Dict[str, AsyncWebCrawler] = {}  # Rare configs
 LAST_USED: Dict[str, float] = {}
 USAGE_COUNT: Dict[str, int] = {}
 LOCK = asyncio.Lock()
@@ -45,12 +50,14 @@ def get_pool_snapshot() -> dict:
 
 def _sig(cfg: BrowserConfig) -> str:
     """Generate config signature."""
-    payload = json.dumps(cfg.to_dict(), sort_keys=True, separators=(",",":"))
+    payload = json.dumps(cfg.to_dict(), sort_keys=True, separators=(",", ":"))
     return hashlib.sha1(payload.encode()).hexdigest()
+
 
 def _is_default_config(sig: str) -> bool:
     """Check if config matches default."""
     return sig == DEFAULT_CONFIG_SIG
+
 
 async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
     """Get crawler from pool with tiered strategy."""
@@ -60,7 +67,7 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
         if PERMANENT and _is_default_config(sig):
             LAST_USED[sig] = time.time()
             USAGE_COUNT[sig] = USAGE_COUNT.get(sig, 0) + 1
-            if not hasattr(PERMANENT, 'active_requests'):
+            if not hasattr(PERMANENT, "active_requests"):
                 PERMANENT.active_requests = 0
             PERMANENT.active_requests += 1
             logger.info("🔥 Using permanent browser")
@@ -71,10 +78,12 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
             LAST_USED[sig] = time.time()
             USAGE_COUNT[sig] = USAGE_COUNT.get(sig, 0) + 1
             crawler = HOT_POOL[sig]
-            if not hasattr(crawler, 'active_requests'):
+            if not hasattr(crawler, "active_requests"):
                 crawler.active_requests = 0
             crawler.active_requests += 1
-            logger.info(f"♨️  Using hot pool browser (sig={sig[:8]}, active={crawler.active_requests})")
+            logger.info(
+                f"♨️  Using hot pool browser (sig={sig[:8]}, active={crawler.active_requests})"
+            )
             return crawler
 
         # Check cold pool (promote to hot if used 3+ times)
@@ -82,18 +91,23 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
             LAST_USED[sig] = time.time()
             USAGE_COUNT[sig] = USAGE_COUNT.get(sig, 0) + 1
             crawler = COLD_POOL[sig]
-            if not hasattr(crawler, 'active_requests'):
+            if not hasattr(crawler, "active_requests"):
                 crawler.active_requests = 0
             crawler.active_requests += 1
 
             if USAGE_COUNT[sig] >= 3:
-                logger.info(f"⬆️  Promoting to hot pool (sig={sig[:8]}, count={USAGE_COUNT[sig]})")
+                logger.info(
+                    f"⬆️  Promoting to hot pool (sig={sig[:8]}, count={USAGE_COUNT[sig]})"
+                )
                 HOT_POOL[sig] = COLD_POOL.pop(sig)
 
                 # Track promotion in monitor
                 try:
                     from monitor import get_monitor
-                    await get_monitor().track_janitor_event("promote", sig, {"count": USAGE_COUNT[sig]})
+
+                    await get_monitor().track_janitor_event(
+                        "promote", sig, {"count": USAGE_COUNT[sig]}
+                    )
                 except:
                     pass
 
@@ -109,7 +123,9 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
             raise MemoryError(f"Memory at {mem_pct:.1f}%, refusing new browser")
 
         # Create new in cold pool
-        logger.info(f"🆕 Creating new browser in cold pool (sig={sig[:8]}, mem={mem_pct:.1f}%)")
+        logger.info(
+            f"🆕 Creating new browser in cold pool (sig={sig[:8]}, mem={mem_pct:.1f}%)"
+        )
         crawler = AsyncWebCrawler(config=cfg, thread_safe=False)
         await crawler.start()
         crawler.active_requests = 1
@@ -117,6 +133,7 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
         LAST_USED[sig] = time.time()
         USAGE_COUNT[sig] = 1
         return crawler
+
 
 async def release_crawler(crawler: AsyncWebCrawler):
     """Decrement active request count for a pooled crawler.
@@ -126,8 +143,9 @@ async def release_crawler(crawler: AsyncWebCrawler):
     to close idle browsers.
     """
     async with LOCK:
-        if hasattr(crawler, 'active_requests'):
+        if hasattr(crawler, "active_requests"):
             crawler.active_requests = max(0, crawler.active_requests - 1)
+
 
 async def init_permanent(cfg: BrowserConfig):
     """Initialize permanent default browser."""
@@ -142,6 +160,7 @@ async def init_permanent(cfg: BrowserConfig):
         LAST_USED[DEFAULT_CONFIG_SIG] = time.time()
         USAGE_COUNT[DEFAULT_CONFIG_SIG] = 0
 
+
 async def close_all():
     """Close all browsers."""
     async with LOCK:
@@ -155,6 +174,7 @@ async def close_all():
         COLD_POOL.clear()
         LAST_USED.clear()
         USAGE_COUNT.clear()
+
 
 async def janitor():
     """Adaptive cleanup based on memory pressure."""
@@ -177,10 +197,12 @@ async def janitor():
             for sig in list(COLD_POOL.keys()):
                 if now - LAST_USED.get(sig, now) > cold_ttl:
                     crawler = COLD_POOL[sig]
-                    if getattr(crawler, 'active_requests', 0) > 0:
+                    if getattr(crawler, "active_requests", 0) > 0:
                         continue  # still serving requests, skip
                     idle_time = now - LAST_USED[sig]
-                    logger.info(f"🧹 Closing cold browser (sig={sig[:8]}, idle={idle_time:.0f}s)")
+                    logger.info(
+                        f"🧹 Closing cold browser (sig={sig[:8]}, idle={idle_time:.0f}s)"
+                    )
                     with suppress(Exception):
                         await crawler.close()
                     COLD_POOL.pop(sig, None)
@@ -190,7 +212,12 @@ async def janitor():
                     # Track in monitor
                     try:
                         from monitor import get_monitor
-                        await get_monitor().track_janitor_event("close_cold", sig, {"idle_seconds": int(idle_time), "ttl": cold_ttl})
+
+                        await get_monitor().track_janitor_event(
+                            "close_cold",
+                            sig,
+                            {"idle_seconds": int(idle_time), "ttl": cold_ttl},
+                        )
                     except:
                         pass
 
@@ -198,10 +225,12 @@ async def janitor():
             for sig in list(HOT_POOL.keys()):
                 if now - LAST_USED.get(sig, now) > hot_ttl:
                     crawler = HOT_POOL[sig]
-                    if getattr(crawler, 'active_requests', 0) > 0:
+                    if getattr(crawler, "active_requests", 0) > 0:
                         continue  # still serving requests, skip
                     idle_time = now - LAST_USED[sig]
-                    logger.info(f"🧹 Closing hot browser (sig={sig[:8]}, idle={idle_time:.0f}s)")
+                    logger.info(
+                        f"🧹 Closing hot browser (sig={sig[:8]}, idle={idle_time:.0f}s)"
+                    )
                     with suppress(Exception):
                         await crawler.close()
                     HOT_POOL.pop(sig, None)
@@ -211,10 +240,17 @@ async def janitor():
                     # Track in monitor
                     try:
                         from monitor import get_monitor
-                        await get_monitor().track_janitor_event("close_hot", sig, {"idle_seconds": int(idle_time), "ttl": hot_ttl})
+
+                        await get_monitor().track_janitor_event(
+                            "close_hot",
+                            sig,
+                            {"idle_seconds": int(idle_time), "ttl": hot_ttl},
+                        )
                     except:
                         pass
 
             # Log pool stats
             if mem_pct > 60:
-                logger.info(f"📊 Pool: hot={len(HOT_POOL)}, cold={len(COLD_POOL)}, mem={mem_pct:.1f}%")
+                logger.info(
+                    f"📊 Pool: hot={len(HOT_POOL)}, cold={len(COLD_POOL)}, mem={mem_pct:.1f}%"
+                )

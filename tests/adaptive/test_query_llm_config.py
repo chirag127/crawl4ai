@@ -10,25 +10,30 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import numpy as np
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from crawl4ai import AdaptiveConfig, LLMConfig
-from crawl4ai.adaptive_crawler import EmbeddingStrategy, AdaptiveCrawler
-
+from crawl4ai.adaptive_crawler import AdaptiveCrawler, EmbeddingStrategy
 
 # ---------------------------------------------------------------------------
 # Test 1: Config plumbing — AdaptiveConfig → AdaptiveCrawler → EmbeddingStrategy
 # ---------------------------------------------------------------------------
 
+
 def test_config_plumbing():
     """query_llm_config flows from AdaptiveConfig through _create_strategy."""
     config = AdaptiveConfig(
         strategy="embedding",
-        embedding_llm_config=LLMConfig(provider="openai/text-embedding-3-small", api_token="emb-key"),
-        query_llm_config=LLMConfig(provider="openai/gpt-4o-mini", api_token="query-key"),
+        embedding_llm_config=LLMConfig(
+            provider="openai/text-embedding-3-small", api_token="emb-key"
+        ),
+        query_llm_config=LLMConfig(
+            provider="openai/gpt-4o-mini", api_token="query-key"
+        ),
     )
 
     # Simulate what AdaptiveCrawler.__init__ does
@@ -56,6 +61,7 @@ def test_config_plumbing():
 # Test 2: Backward compat — no query_llm_config falls back to llm_config
 # ---------------------------------------------------------------------------
 
+
 def test_backward_compat_fallback():
     """When query_llm_config is not set, falls back to llm_config (legacy)."""
     strategy = EmbeddingStrategy(
@@ -81,6 +87,7 @@ def test_backward_compat_no_config():
 # ---------------------------------------------------------------------------
 # Test 3: Fallback priority chain
 # ---------------------------------------------------------------------------
+
 
 def test_fallback_priority():
     """Explicit query_llm_config beats AdaptiveConfig beats llm_config."""
@@ -120,6 +127,7 @@ def test_fallback_priority():
 # Test 4: E2E — map_query_semantic_space uses query config, not embedding config
 # ---------------------------------------------------------------------------
 
+
 async def test_map_query_uses_query_config():
     """map_query_semantic_space should call perform_completion_with_backoff
     with the query LLM config (chat model), NOT the embedding config."""
@@ -148,9 +156,9 @@ async def test_map_query_uses_query_config():
     # Mock perform_completion_with_backoff to capture its arguments
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = json.dumps({
-        "queries": [f"variation {i}" for i in range(13)]
-    })
+    mock_response.choices[0].message.content = json.dumps(
+        {"queries": [f"variation {i}" for i in range(13)]}
+    )
 
     captured_kwargs = {}
 
@@ -162,17 +170,27 @@ async def test_map_query_uses_query_config():
     # Also mock _get_embeddings to avoid real embedding calls
     fake_embeddings = np.random.rand(11, 384).astype(np.float32)
 
-    with patch("crawl4ai.utils.perform_completion_with_backoff", side_effect=mock_completion):
-        with patch.object(strategy, "_get_embeddings", new_callable=AsyncMock, return_value=fake_embeddings):
+    with patch(
+        "crawl4ai.utils.perform_completion_with_backoff", side_effect=mock_completion
+    ):
+        with patch.object(
+            strategy,
+            "_get_embeddings",
+            new_callable=AsyncMock,
+            return_value=fake_embeddings,
+        ):
             await strategy.map_query_semantic_space("test query", n_synthetic=10)
 
     # Verify the query config was used, NOT the embedding config
-    assert captured_kwargs["provider"] == "openai/gpt-4o-mini", \
-        f"Expected query model, got {captured_kwargs['provider']}"
-    assert captured_kwargs["api_token"] == "query-key", \
-        f"Expected query-key, got {captured_kwargs['api_token']}"
-    assert captured_kwargs["base_url"] == "https://query.example.com", \
-        f"Expected query base_url, got {captured_kwargs['base_url']}"
+    assert (
+        captured_kwargs["provider"] == "openai/gpt-4o-mini"
+    ), f"Expected query model, got {captured_kwargs['provider']}"
+    assert (
+        captured_kwargs["api_token"] == "query-key"
+    ), f"Expected query-key, got {captured_kwargs['api_token']}"
+    assert (
+        captured_kwargs["base_url"] == "https://query.example.com"
+    ), f"Expected query base_url, got {captured_kwargs['base_url']}"
 
     # Verify backoff params are passed (bug fix)
     assert "base_delay" in captured_kwargs
@@ -185,6 +203,7 @@ async def test_map_query_uses_query_config():
 # ---------------------------------------------------------------------------
 # Test 5: E2E — legacy single-config still works for query expansion
 # ---------------------------------------------------------------------------
+
 
 async def test_legacy_single_config_for_query():
     """When only embedding_llm_config is set (old usage), query expansion
@@ -210,9 +229,9 @@ async def test_legacy_single_config_for_query():
 
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = json.dumps({
-        "queries": [f"variation {i}" for i in range(13)]
-    })
+    mock_response.choices[0].message.content = json.dumps(
+        {"queries": [f"variation {i}" for i in range(13)]}
+    )
 
     captured_kwargs = {}
 
@@ -222,8 +241,15 @@ async def test_legacy_single_config_for_query():
 
     fake_embeddings = np.random.rand(11, 384).astype(np.float32)
 
-    with patch("crawl4ai.utils.perform_completion_with_backoff", side_effect=mock_completion):
-        with patch.object(strategy, "_get_embeddings", new_callable=AsyncMock, return_value=fake_embeddings):
+    with patch(
+        "crawl4ai.utils.perform_completion_with_backoff", side_effect=mock_completion
+    ):
+        with patch.object(
+            strategy,
+            "_get_embeddings",
+            new_callable=AsyncMock,
+            return_value=fake_embeddings,
+        ):
             await strategy.map_query_semantic_space("test query", n_synthetic=10)
 
     # Should fall back to llm_config (the single shared config)
@@ -236,6 +262,7 @@ async def test_legacy_single_config_for_query():
 # ---------------------------------------------------------------------------
 # Test 6: LLMConfig.to_dict() includes backoff params (bug fix verification)
 # ---------------------------------------------------------------------------
+
 
 def test_to_dict_includes_backoff():
     """_embedding_llm_config_dict now uses to_dict() which includes backoff params."""
@@ -258,6 +285,7 @@ def test_to_dict_includes_backoff():
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main():
     print("=" * 60)

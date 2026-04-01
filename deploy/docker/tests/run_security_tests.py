@@ -10,15 +10,15 @@ Example:
     python run_security_tests.py http://localhost:11235
 """
 
+import re
 import subprocess
 import sys
-import re
 
 # Colors for terminal output
-GREEN = '\033[0;32m'
-RED = '\033[0;31m'
-YELLOW = '\033[1;33m'
-NC = '\033[0m'  # No Color
+GREEN = "\033[0;32m"
+RED = "\033[0;31m"
+YELLOW = "\033[1;33m"
+NC = "\033[0m"  # No Color
 
 PASSED = 0
 FAILED = 0
@@ -28,10 +28,7 @@ def run_curl(args: list) -> str:
     """Run curl command and return output."""
     try:
         result = subprocess.run(
-            ['curl', '-s'] + args,
-            capture_output=True,
-            text=True,
-            timeout=30
+            ["curl", "-s"] + args, capture_output=True, text=True, timeout=30
         )
         return result.stdout + result.stderr
     except subprocess.TimeoutExpired:
@@ -71,8 +68,8 @@ def main():
 
     # Check server availability
     print("Checking server availability...")
-    result = run_curl(['-o', '/dev/null', '-w', '%{http_code}', f'{base_url}/health'])
-    if '200' not in result:
+    result = run_curl(["-o", "/dev/null", "-w", "%{http_code}", f"{base_url}/health"])
+    if "200" not in result:
         print(f"{RED}ERROR: Server not reachable at {base_url}{NC}")
         print("Please start the server first.")
         sys.exit(1)
@@ -87,41 +84,71 @@ def main():
     test_expect(
         "A1: Hooks disabled by default (403)",
         r"403|disabled|Hooks are disabled",
-        ['-X', 'POST', f'{base_url}/crawl',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"urls":["https://example.com"],"hooks":{"code":{"on_page_context_created":"async def hook(page, context, **kwargs): return page"}}}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/crawl",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"urls":["https://example.com"],"hooks":{"code":{"on_page_context_created":"async def hook(page, context, **kwargs): return page"}}}',
+        ],
     )
 
     test_expect(
         "A2: file:// blocked on /execute_js (400)",
         r"400|must start with",
-        ['-X', 'POST', f'{base_url}/execute_js',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"file:///etc/passwd","scripts":["1"]}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/execute_js",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"file:///etc/passwd","scripts":["1"]}',
+        ],
     )
 
     test_expect(
         "A3: file:// blocked on /screenshot (400)",
         r"400|must start with",
-        ['-X', 'POST', f'{base_url}/screenshot',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"file:///etc/passwd"}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/screenshot",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"file:///etc/passwd"}',
+        ],
     )
 
     test_expect(
         "A4: file:// blocked on /pdf (400)",
         r"400|must start with",
-        ['-X', 'POST', f'{base_url}/pdf',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"file:///etc/passwd"}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/pdf",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"file:///etc/passwd"}',
+        ],
     )
 
     test_expect(
         "A5: file:// blocked on /html (400)",
         r"400|must start with",
-        ['-X', 'POST', f'{base_url}/html',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"file:///etc/passwd"}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/html",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"file:///etc/passwd"}',
+        ],
     )
 
     print()
@@ -134,24 +161,32 @@ def main():
     test_expect(
         "B1: Basic crawl works",
         r"success.*true|results",
-        ['-X', 'POST', f'{base_url}/crawl',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"urls":["https://example.com"]}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/crawl",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"urls":["https://example.com"]}',
+        ],
     )
 
     test_expect(
         "B2: /md works with https://",
         r"success.*true|markdown",
-        ['-X', 'POST', f'{base_url}/md',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"https://example.com"}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/md",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"https://example.com"}',
+        ],
     )
 
-    test_expect(
-        "B3: Health endpoint works",
-        r"ok",
-        [f'{base_url}/health']
-    )
+    test_expect("B3: Health endpoint works", r"ok", [f"{base_url}/health"])
 
     print()
 
@@ -163,17 +198,29 @@ def main():
     test_expect(
         "C1: javascript: URL rejected (400)",
         r"400|must start with",
-        ['-X', 'POST', f'{base_url}/execute_js',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"javascript:alert(1)","scripts":["1"]}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/execute_js",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"javascript:alert(1)","scripts":["1"]}',
+        ],
     )
 
     test_expect(
         "C2: data: URL rejected (400)",
         r"400|must start with",
-        ['-X', 'POST', f'{base_url}/execute_js',
-         '-H', 'Content-Type: application/json',
-         '-d', '{"url":"data:text/html,<h1>test</h1>","scripts":["1"]}']
+        [
+            "-X",
+            "POST",
+            f"{base_url}/execute_js",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            '{"url":"data:text/html,<h1>test</h1>","scripts":["1"]}',
+        ],
     )
 
     print()
@@ -192,5 +239,5 @@ def main():
         sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

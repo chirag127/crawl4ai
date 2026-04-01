@@ -10,17 +10,18 @@ Usage:
     pytest tests/regression/ -v -k "core"          # only core tests
 """
 
-import pytest
+import asyncio
 import socket
 import threading
-import asyncio
 import time
-from aiohttp import web
 
+import pytest
+from aiohttp import web
 
 # ---------------------------------------------------------------------------
 # Pytest configuration
 # ---------------------------------------------------------------------------
+
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "network: tests requiring real network access")
@@ -400,6 +401,7 @@ def _generate_large_html(num_sections=50):
 </body>
 </html>"""
 
+
 LARGE_HTML = _generate_large_html(50)
 
 
@@ -464,6 +466,7 @@ IFRAME_HTML = """\
 # Server Handlers
 # ---------------------------------------------------------------------------
 
+
 async def _serve_html(html, content_type="text/html"):
     return web.Response(text=html, content_type=content_type)
 
@@ -471,48 +474,63 @@ async def _serve_html(html, content_type="text/html"):
 async def _home_handler(request):
     return await _serve_html(HOME_HTML)
 
+
 async def _products_handler(request):
     return await _serve_html(PRODUCTS_HTML)
+
 
 async def _tables_handler(request):
     return await _serve_html(TABLES_HTML)
 
+
 async def _js_dynamic_handler(request):
     return await _serve_html(JS_DYNAMIC_HTML)
+
 
 async def _links_handler(request):
     return await _serve_html(LINKS_HTML)
 
+
 async def _images_handler(request):
     return await _serve_html(IMAGES_HTML)
+
 
 async def _structured_handler(request):
     return await _serve_html(STRUCTURED_DATA_HTML)
 
+
 async def _empty_handler(request):
     return await _serve_html(EMPTY_HTML)
+
 
 async def _malformed_handler(request):
     return await _serve_html(MALFORMED_HTML)
 
+
 async def _regex_test_handler(request):
     return await _serve_html(REGEX_TEST_HTML)
+
 
 async def _large_handler(request):
     return await _serve_html(LARGE_HTML)
 
+
 async def _iframe_handler(request):
     return await _serve_html(IFRAME_HTML)
+
 
 async def _redirect_handler(request):
     raise web.HTTPFound("/")
 
+
 async def _not_found_handler(request):
     return web.Response(
         text="<html><head><title>404 Not Found</title></head>"
-             "<body><h1>Page Not Found</h1><p>The requested page does not exist.</p></body></html>",
-        status=404, content_type="text/html",
+        "<body><h1>Page Not Found</h1><p>The requested page does not exist.</p></body></html>",
+        status=404,
+        content_type="text/html",
     )
+
 
 async def _slow_handler(request):
     await asyncio.sleep(2)
@@ -521,8 +539,10 @@ async def _slow_handler(request):
         "<body><h1>Slow Response</h1><p>This page had a 2-second delay.</p></body></html>"
     )
 
+
 async def _deep_hub_handler(request):
     return await _serve_html(DEEP_HUB_HTML)
+
 
 async def _deep_sub_handler(request):
     sub_id = request.match_info["sub_id"]
@@ -531,12 +551,14 @@ async def _deep_sub_handler(request):
     html = DEEP_SUB_TEMPLATE.format(title=title, prefix=sub_id)
     return await _serve_html(html)
 
+
 async def _deep_leaf_handler(request):
     sub_id = request.match_info["sub_id"]
     leaf_id = request.match_info["leaf_id"]
     title = f"Leaf {leaf_id} under {sub_id}"
     html = DEEP_LEAF_TEMPLATE.format(title=title)
     return await _serve_html(html)
+
 
 async def _catch_all_handler(request):
     """Serve a simple page for any unmatched path (useful for link targets)."""
@@ -552,6 +574,7 @@ async def _catch_all_handler(request):
 # ---------------------------------------------------------------------------
 # Server Setup
 # ---------------------------------------------------------------------------
+
 
 def _find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

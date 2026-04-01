@@ -3,14 +3,16 @@
 # - **Title:** [user data crawling opens two windows, unable to control correct user browser](https://github.com/unclecode/crawl4ai/issues/236)
 # - **State:** open
 
-import os, sys, time
+import os
+import sys
+import time
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 import os
-import time
-from typing import Dict, Any
+from typing import Any, Dict
+
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 # Get current directory

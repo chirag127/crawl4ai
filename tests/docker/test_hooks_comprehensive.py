@@ -4,10 +4,11 @@ Comprehensive test demonstrating all hook types from hooks_example.py
 adapted for the Docker API with real URLs
 """
 
-import requests
 import json
 import time
 from typing import Dict, Optional
+
+import requests
 
 API_BASE_URL = "http://localhost:11235"
 
@@ -26,27 +27,23 @@ def get_auth_token(email: str = "test@gmail.com") -> str:
         return _auth_token
 
     print(f"🔐 Requesting JWT token for {email}...")
-    response = requests.post(
-        f"{API_BASE_URL}/token",
-        json={"email": email}
-    )
+    response = requests.post(f"{API_BASE_URL}/token", json={"email": email})
 
     if response.status_code == 200:
         data = response.json()
         _auth_token = data["access_token"]
-        print(f"✅ Token obtained successfully")
+        print("✅ Token obtained successfully")
         return _auth_token
     else:
-        raise Exception(f"Failed to get token: {response.status_code} - {response.text}")
+        raise Exception(
+            f"Failed to get token: {response.status_code} - {response.text}"
+        )
 
 
 def get_auth_headers() -> Dict[str, str]:
     """Get headers with JWT Bearer token."""
     token = get_auth_token()
-    return {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
 def test_all_hooks_demo():
@@ -54,7 +51,7 @@ def test_all_hooks_demo():
     print("=" * 70)
     print("Testing: All Hooks Comprehensive Demo")
     print("=" * 70)
-    
+
     hooks_code = {
         "on_browser_created": """
 async def hook(browser, **kwargs):
@@ -63,7 +60,6 @@ async def hook(browser, **kwargs):
     # Browser-level configurations would go here
     return browser
 """,
-        
         "on_page_context_created": """
 async def hook(page, context, **kwargs):
     # Hook called after a new page and context are created
@@ -92,14 +88,12 @@ async def hook(page, context, **kwargs):
     print("[HOOK] Viewport set, cookies added, and ads blocked")
     return page
 """,
-        
         "on_user_agent_updated": """
 async def hook(page, context, user_agent, **kwargs):
     # Hook called when user agent is updated
     print(f"[HOOK] on_user_agent_updated - User agent: {user_agent[:50]}...")
     return page
 """,
-        
         "before_goto": """
 async def hook(page, context, url, **kwargs):
     # Hook called before navigating to each URL
@@ -114,7 +108,6 @@ async def hook(page, context, url, **kwargs):
     
     return page
 """,
-        
         "after_goto": """
 async def hook(page, context, url, response, **kwargs):
     # Hook called after navigating to each URL
@@ -133,7 +126,6 @@ async def hook(page, context, url, response, **kwargs):
     
     return page
 """,
-        
         "on_execution_started": """
 async def hook(page, context, **kwargs):
     # Hook called after custom JavaScript execution
@@ -144,7 +136,6 @@ async def hook(page, context, **kwargs):
     
     return page
 """,
-        
         "before_retrieve_html": """
 async def hook(page, context, **kwargs):
     # Hook called before retrieving the HTML content
@@ -164,7 +155,6 @@ async def hook(page, context, **kwargs):
     print("[HOOK] Scrolling completed for lazy-loaded content")
     return page
 """,
-        
         "before_return_html": """
 async def hook(page, context, html, **kwargs):
     # Hook called before returning the HTML content
@@ -182,70 +172,71 @@ async def hook(page, context, html, **kwargs):
     print(f"[HOOK] Page metrics - Images: {metrics['images']}, Links: {metrics['links']}, Scripts: {metrics['scripts']}")
     
     return page
-"""
+""",
     }
-    
+
     # Create request payload
     payload = {
         "urls": ["https://httpbin.org/html"],
-        "hooks": {
-            "code": hooks_code,
-            "timeout": 30
-        },
+        "hooks": {"code": hooks_code, "timeout": 30},
         "crawler_config": {
             "js_code": "window.scrollTo(0, document.body.scrollHeight);",
             "wait_for": "body",
-            "cache_mode": "bypass"
-        }
+            "cache_mode": "bypass",
+        },
     }
-    
+
     print("\nSending request with all 8 hooks...")
     start_time = time.time()
 
-    response = requests.post(f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers())
-    
+    response = requests.post(
+        f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers()
+    )
+
     elapsed_time = time.time() - start_time
     print(f"Request completed in {elapsed_time:.2f} seconds")
-    
+
     if response.status_code == 200:
         data = response.json()
         print("\n✅ Request successful!")
-        
+
         # Check hooks execution
-        if 'hooks' in data:
-            hooks_info = data['hooks']
+        if "hooks" in data:
+            hooks_info = data["hooks"]
             print("\n📊 Hooks Execution Summary:")
             print(f"  Status: {hooks_info['status']['status']}")
             print(f"  Attached hooks: {len(hooks_info['status']['attached_hooks'])}")
-            
-            for hook_name in hooks_info['status']['attached_hooks']:
+
+            for hook_name in hooks_info["status"]["attached_hooks"]:
                 print(f"    ✓ {hook_name}")
-            
-            if 'summary' in hooks_info:
-                summary = hooks_info['summary']
-                print(f"\n📈 Execution Statistics:")
+
+            if "summary" in hooks_info:
+                summary = hooks_info["summary"]
+                print("\n📈 Execution Statistics:")
                 print(f"  Total executions: {summary['total_executions']}")
                 print(f"  Successful: {summary['successful']}")
                 print(f"  Failed: {summary['failed']}")
                 print(f"  Timed out: {summary['timed_out']}")
                 print(f"  Success rate: {summary['success_rate']:.1f}%")
-            
-            if hooks_info.get('execution_log'):
-                print(f"\n📝 Execution Log:")
-                for log_entry in hooks_info['execution_log']:
-                    status_icon = "✅" if log_entry['status'] == 'success' else "❌"
-                    exec_time = log_entry.get('execution_time', 0)
-                    print(f"  {status_icon} {log_entry['hook_point']}: {exec_time:.3f}s")
-        
+
+            if hooks_info.get("execution_log"):
+                print("\n📝 Execution Log:")
+                for log_entry in hooks_info["execution_log"]:
+                    status_icon = "✅" if log_entry["status"] == "success" else "❌"
+                    exec_time = log_entry.get("execution_time", 0)
+                    print(
+                        f"  {status_icon} {log_entry['hook_point']}: {exec_time:.3f}s"
+                    )
+
         # Check crawl results
-        if 'results' in data and len(data['results']) > 0:
-            print(f"\n📄 Crawl Results:")
-            for result in data['results']:
+        if "results" in data and len(data["results"]) > 0:
+            print("\n📄 Crawl Results:")
+            for result in data["results"]:
                 print(f"  URL: {result['url']}")
                 print(f"  Success: {result.get('success', False)}")
-                if result.get('html'):
+                if result.get("html"):
                     print(f"  HTML length: {len(result['html'])} characters")
-    
+
     else:
         print(f"❌ Error: {response.status_code}")
         try:
@@ -260,7 +251,7 @@ def test_authentication_flow():
     print("\n" + "=" * 70)
     print("Testing: Authentication Flow with Multiple Hooks")
     print("=" * 70)
-    
+
     hooks_code = {
         "on_page_context_created": """
 async def hook(page, context, **kwargs):
@@ -286,7 +277,6 @@ async def hook(page, context, **kwargs):
     
     return page
 """,
-        
         "before_goto": """
 async def hook(page, context, url, **kwargs):
     print(f"[HOOK] Adding auth headers for {url}")
@@ -301,38 +291,37 @@ async def hook(page, context, url, **kwargs):
     })
     
     return page
-"""
+""",
     }
-    
+
     payload = {
-        "urls": [
-            "https://httpbin.org/basic-auth/user/passwd"
-        ],
-        "hooks": {
-            "code": hooks_code,
-            "timeout": 15
-        }
+        "urls": ["https://httpbin.org/basic-auth/user/passwd"],
+        "hooks": {"code": hooks_code, "timeout": 15},
     }
-    
+
     print("\nTesting authentication with httpbin endpoints...")
-    response = requests.post(f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers())
-    
+    response = requests.post(
+        f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers()
+    )
+
     if response.status_code == 200:
         data = response.json()
         print("✅ Authentication test completed")
-        
-        if 'results' in data:
-            for i, result in enumerate(data['results']):
+
+        if "results" in data:
+            for i, result in enumerate(data["results"]):
                 print(f"\n  URL {i+1}: {result['url']}")
-                if result.get('success'):
+                if result.get("success"):
                     # Check for authentication success indicators
-                    html_content = result.get('html', '')
-                    if '"authenticated"' in html_content and 'true' in html_content:
+                    html_content = result.get("html", "")
+                    if '"authenticated"' in html_content and "true" in html_content:
                         print("    ✅ Authentication successful! Basic auth worked.")
                     else:
                         print("    ⚠️ Page loaded but auth status unclear")
                 else:
-                    print(f"    ❌ Failed: {result.get('error_message', 'Unknown error')}")
+                    print(
+                        f"    ❌ Failed: {result.get('error_message', 'Unknown error')}"
+                    )
     else:
         print(f"❌ Error: {response.status_code}")
 
@@ -342,7 +331,7 @@ def test_performance_optimization_hooks():
     print("\n" + "=" * 70)
     print("Testing: Performance Optimization Hooks")
     print("=" * 70)
-    
+
     hooks_code = {
         "on_page_context_created": """
 async def hook(page, context, **kwargs):
@@ -370,7 +359,6 @@ async def hook(page, context, **kwargs):
     print("[HOOK] Performance optimizations applied")
     return page
 """,
-        
         "before_retrieve_html": """
 async def hook(page, context, **kwargs):
     print("[HOOK] Removing unnecessary elements before extraction")
@@ -395,32 +383,31 @@ async def hook(page, context, **kwargs):
     }''')
     
     return page
-"""
+""",
     }
-    
+
     payload = {
         "urls": ["https://httpbin.org/html"],
-        "hooks": {
-            "code": hooks_code,
-            "timeout": 10
-        }
+        "hooks": {"code": hooks_code, "timeout": 10},
     }
-    
+
     print("\nTesting performance optimization hooks...")
     start_time = time.time()
 
-    response = requests.post(f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers())
-    
+    response = requests.post(
+        f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers()
+    )
+
     elapsed_time = time.time() - start_time
     print(f"Request completed in {elapsed_time:.2f} seconds")
-    
+
     if response.status_code == 200:
         data = response.json()
         print("✅ Performance optimization test completed")
-        
-        if 'results' in data and len(data['results']) > 0:
-            result = data['results'][0]
-            if result.get('html'):
+
+        if "results" in data and len(data["results"]) > 0:
+            result = data["results"][0]
+            if result.get("html"):
                 print(f"  HTML size: {len(result['html'])} characters")
                 print("  Resources blocked, ads removed, animations disabled")
     else:
@@ -432,7 +419,7 @@ def test_content_extraction_hooks():
     print("\n" + "=" * 70)
     print("Testing: Content Extraction Hooks")
     print("=" * 70)
-    
+
     hooks_code = {
         "after_goto": """
 async def hook(page, context, url, response, **kwargs):
@@ -453,7 +440,6 @@ async def hook(page, context, url, response, **kwargs):
     
     return page
 """,
-        
         "before_retrieve_html": """
 async def hook(page, context, **kwargs):
     print("[HOOK] Extracting structured data")
@@ -487,30 +473,31 @@ async def hook(page, context, **kwargs):
         print(f"[HOOK] Scroll iteration {i+1}/3")
     
     return page
-"""
+""",
     }
-    
+
     payload = {
         "urls": ["https://httpbin.org/html", "https://httpbin.org/json"],
-        "hooks": {
-            "code": hooks_code,
-            "timeout": 20
-        }
+        "hooks": {"code": hooks_code, "timeout": 20},
     }
-    
+
     print("\nTesting content extraction hooks...")
-    response = requests.post(f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers())
-    
+    response = requests.post(
+        f"{API_BASE_URL}/crawl", json=payload, headers=get_auth_headers()
+    )
+
     if response.status_code == 200:
         data = response.json()
         print("✅ Content extraction test completed")
-        
-        if 'hooks' in data and 'summary' in data['hooks']:
-            summary = data['hooks']['summary']
-            print(f"  Hooks executed: {summary['successful']}/{summary['total_executions']}")
-        
-        if 'results' in data:
-            for result in data['results']:
+
+        if "hooks" in data and "summary" in data["hooks"]:
+            summary = data["hooks"]["summary"]
+            print(
+                f"  Hooks executed: {summary['successful']}/{summary['total_executions']}"
+            )
+
+        if "results" in data:
+            for result in data["results"]:
                 print(f"\n  URL: {result['url']}")
                 print(f"  Success: {result.get('success', False)}")
     else:
@@ -529,7 +516,9 @@ def main():
         print("=" * 70)
     except Exception as e:
         print(f"❌ Failed to authenticate: {e}")
-        print("Make sure the server is running and jwt_enabled is configured correctly.")
+        print(
+            "Make sure the server is running and jwt_enabled is configured correctly."
+        )
         return
 
     tests = [
@@ -538,7 +527,7 @@ def main():
         ("Performance Optimization", test_performance_optimization_hooks),
         ("Content Extraction", test_content_extraction_hooks),
     ]
-    
+
     for i, (name, test_func) in enumerate(tests, 1):
         print(f"\n📌 Test {i}/{len(tests)}: {name}")
         try:
@@ -547,8 +536,9 @@ def main():
         except Exception as e:
             print(f"❌ {name} failed: {e}")
             import traceback
+
             traceback.print_exc()
-    
+
     print("\n" + "=" * 70)
     print("🎉 All comprehensive hook tests completed!")
     print("=" * 70)

@@ -2,6 +2,7 @@ import asyncio
 import os
 import shutil
 import uuid
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from crawl4ai.async_configs import ProxyConfig
 
@@ -60,7 +61,9 @@ async def main():
         md_len = len(result.markdown.raw_markdown)
         print(f"Markdown: {md_len:,} chars")
         if md_len > 500:
-            print(f"\nFirst 500 chars of markdown:\n{result.markdown.raw_markdown[:500]}")
+            print(
+                f"\nFirst 500 chars of markdown:\n{result.markdown.raw_markdown[:500]}"
+            )
     if result.error_message:
         print(f"Error: {result.error_message}")
 

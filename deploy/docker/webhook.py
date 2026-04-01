@@ -3,11 +3,13 @@ Webhook delivery service for Crawl4AI.
 
 This module provides webhook notification functionality with exponential backoff retry logic.
 """
+
 import asyncio
-import httpx
 import logging
-from typing import Dict, Optional
 from datetime import datetime, timezone
+from typing import Dict, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +26,14 @@ class WebhookDeliveryService:
         """
         self.config = config.get("webhooks", {})
         self.max_attempts = self.config.get("retry", {}).get("max_attempts", 5)
-        self.initial_delay = self.config.get("retry", {}).get("initial_delay_ms", 1000) / 1000
+        self.initial_delay = (
+            self.config.get("retry", {}).get("initial_delay_ms", 1000) / 1000
+        )
         self.max_delay = self.config.get("retry", {}).get("max_delay_ms", 32000) / 1000
         self.timeout = self.config.get("retry", {}).get("timeout_ms", 30000) / 1000
 
     async def send_webhook(
-        self,
-        webhook_url: str,
-        payload: Dict,
-        headers: Optional[Dict[str, str]] = None
+        self, webhook_url: str, payload: Dict, headers: Optional[Dict[str, str]] = None
     ) -> bool:
         """
         Send webhook with exponential backoff retry logic.
@@ -57,15 +58,15 @@ class WebhookDeliveryService:
                     )
 
                     response = await client.post(
-                        webhook_url,
-                        json=payload,
-                        headers=merged_headers
+                        webhook_url, json=payload, headers=merged_headers
                     )
 
                     # Success or client error (don't retry client errors)
                     if response.status_code < 500:
                         if 200 <= response.status_code < 300:
-                            logger.info(f"Webhook delivered successfully to {webhook_url}")
+                            logger.info(
+                                f"Webhook delivered successfully to {webhook_url}"
+                            )
                             return True
                         else:
                             logger.warning(
@@ -81,13 +82,17 @@ class WebhookDeliveryService:
                 except httpx.TimeoutException as exc:
                     logger.error(f"Webhook timeout (attempt {attempt + 1}): {exc}")
                 except httpx.RequestError as exc:
-                    logger.error(f"Webhook request error (attempt {attempt + 1}): {exc}")
+                    logger.error(
+                        f"Webhook request error (attempt {attempt + 1}): {exc}"
+                    )
                 except Exception as exc:
-                    logger.error(f"Webhook delivery error (attempt {attempt + 1}): {exc}")
+                    logger.error(
+                        f"Webhook delivery error (attempt {attempt + 1}): {exc}"
+                    )
 
                 # Calculate exponential backoff delay
                 if attempt < self.max_attempts - 1:
-                    delay = min(self.initial_delay * (2 ** attempt), self.max_delay)
+                    delay = min(self.initial_delay * (2**attempt), self.max_delay)
                     logger.info(f"Retrying in {delay}s...")
                     await asyncio.sleep(delay)
 
@@ -104,7 +109,7 @@ class WebhookDeliveryService:
         urls: list,
         webhook_config: Optional[Dict],
         result: Optional[Dict] = None,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ):
         """
         Notify webhook of job completion.
@@ -125,7 +130,9 @@ class WebhookDeliveryService:
 
         if webhook_config:
             webhook_url = webhook_config.get("webhook_url")
-            data_in_payload = webhook_config.get("webhook_data_in_payload", data_in_payload)
+            data_in_payload = webhook_config.get(
+                "webhook_data_in_payload", data_in_payload
+            )
             custom_headers = webhook_config.get("webhook_headers")
 
         if not webhook_url:
@@ -146,7 +153,7 @@ class WebhookDeliveryService:
             "task_type": task_type,
             "status": status,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "urls": urls
+            "urls": urls,
         }
 
         if error:

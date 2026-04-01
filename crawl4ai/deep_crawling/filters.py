@@ -1,19 +1,19 @@
-from abc import ABC, abstractmethod
-from typing import List, Pattern, Set, Union
-from urllib.parse import urlparse
-from array import array
-import re
-import logging
-from functools import lru_cache
-import fnmatch
-from dataclasses import dataclass
-import weakref
-import math
-from collections import defaultdict
-from typing import Dict
-from ..utils import HeadPeekr
 import asyncio
+import fnmatch
 import inspect
+import logging
+import math
+import re
+import weakref
+from abc import ABC, abstractmethod
+from array import array
+from collections import defaultdict
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Dict, List, Pattern, Set, Union
+from urllib.parse import urlparse
+
+from ..utils import HeadPeekr
 
 
 @dataclass
@@ -121,8 +121,8 @@ class URLPatternFilter(URLFilter):
 
     __slots__ = (
         "patterns",  # Store original patterns for serialization
-        "use_glob",  # Store original use_glob for serialization  
-        "reverse",   # Store original reverse for serialization
+        "use_glob",  # Store original use_glob for serialization
+        "reverse",  # Store original reverse for serialization
         "_simple_suffixes",
         "_simple_prefixes",
         "_domain_patterns",
@@ -149,7 +149,7 @@ class URLPatternFilter(URLFilter):
         self.patterns = patterns
         self.use_glob = use_glob
         self.reverse = reverse
-        
+
         self._reverse = reverse
         patterns = [patterns] if isinstance(patterns, (str, Pattern)) else patterns
 
@@ -237,9 +237,11 @@ class URLPatternFilter(URLFilter):
         if self._simple_prefixes:
             for prefix in self._simple_prefixes:
                 # Use url_path for path-only prefixes, full URL for absolute prefixes
-                match_against = url if '://' in prefix else url_path
+                match_against = url if "://" in prefix else url_path
                 if match_against.startswith(prefix):
-                    if len(match_against) == len(prefix) or match_against[len(prefix)] in ['/', '?', '#']:
+                    if len(match_against) == len(prefix) or match_against[
+                        len(prefix)
+                    ] in ["/", "?", "#"]:
                         result = True
                         self._update_stats(result)
                         return not result if self._reverse else result
@@ -357,7 +359,6 @@ class ContentTypeFilter(URLFilter):
         "php7": "application/x-httpd-php",
         "phtml": "application/x-httpd-php",
         "phps": "application/x-httpd-php-source",
-
     }
 
     @staticmethod
@@ -455,7 +456,7 @@ class DomainFilter(URLFilter):
         if isinstance(domains, str):
             return {domains.lower()}
         return {d.lower() for d in domains}
-    
+
     @staticmethod
     def _is_subdomain(domain: str, parent_domain: str) -> bool:
         """Check if domain is a subdomain of parent_domain"""

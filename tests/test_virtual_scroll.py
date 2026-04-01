@@ -6,13 +6,16 @@ Test virtual scroll implementation according to the design:
 
 import asyncio
 import os
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, VirtualScrollConfig, CacheMode, BrowserConfig
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, VirtualScrollConfig)
+
 
 async def test_virtual_scroll():
     """Test virtual scroll with content replacement (true virtual scroll)"""
-    
+
     # Create test HTML with true virtual scroll that replaces content
-    test_html = '''
+    test_html = """
     <html>
     <head>
         <style>
@@ -86,25 +89,25 @@ async def test_virtual_scroll():
         </script>
     </body>
     </html>
-    '''
-    
+    """
+
     # Save test HTML to a file
     import tempfile
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
         f.write(test_html)
         test_file_path = f.name
-    
+
     httpd = None
     old_cwd = os.getcwd()
-    
+
     try:
         # Start a simple HTTP server
         import http.server
+        import random
         import socketserver
         import threading
-        import random
-        
+
         # Find available port
         for _ in range(10):
             PORT = random.randint(8000, 9999)
@@ -115,17 +118,17 @@ async def test_virtual_scroll():
                 break
             except OSError:
                 continue
-        
+
         if httpd is None:
             raise RuntimeError("Could not find available port")
-            
+
         server_thread = threading.Thread(target=httpd.serve_forever)
         server_thread.daemon = True
         server_thread.start()
-        
+
         # Give server time to start
         await asyncio.sleep(0.5)
-        
+
         # Configure virtual scroll
         # With 10 items per page and 1000 total, we need 100 pages
         # Let's do 120 scrolls to ensure we get everything
@@ -133,65 +136,69 @@ async def test_virtual_scroll():
             container_selector="#container",
             scroll_count=120,
             scroll_by="container_height",  # Scroll by container height
-            wait_after_scroll=0.1  # Quick wait for test
+            wait_after_scroll=0.1,  # Quick wait for test
         )
-        
+
         config = CrawlerRunConfig(
             virtual_scroll_config=virtual_config,
             cache_mode=CacheMode.BYPASS,
-            verbose=True
+            verbose=True,
         )
-        
-        browserConfig = BrowserConfig(
-            headless= False
-        )
-        
+
+        browserConfig = BrowserConfig(headless=False)
+
         async with AsyncWebCrawler(verbose=True, config=browserConfig) as crawler:
             result = await crawler.arun(
                 url=f"http://localhost:{PORT}/{os.path.basename(test_file_path)}",
-                config=config
+                config=config,
             )
-            
+
             # Count all items in the result
             import re
+
             items = re.findall(r'data-index="(\d+)"', result.html)
             unique_indices = sorted(set(int(idx) for idx in items))
-            
+
             print(f"\n{'='*60}")
-            print(f"TEST RESULTS:")
+            print("TEST RESULTS:")
             print(f"HTML Length: {len(result.html)}")
             print(f"Total items found: {len(items)}")
             print(f"Unique items: {len(unique_indices)}")
-            
+
             if unique_indices:
                 print(f"Item indices: {min(unique_indices)} to {max(unique_indices)}")
-                print(f"Expected: 0 to 999")
-                
+                print("Expected: 0 to 999")
+
                 # Check for gaps
                 expected = set(range(1000))
                 actual = set(unique_indices)
                 missing = expected - actual
-                
+
                 if missing:
                     print(f"\n❌ FAILED! Missing {len(missing)} items")
-                    print(f"Missing indices: {sorted(missing)[:10]}{'...' if len(missing) > 10 else ''}")
+                    print(
+                        f"Missing indices: {sorted(missing)[:10]}{'...' if len(missing) > 10 else ''}"
+                    )
                 else:
-                    print(f"\n✅ SUCCESS! All 1000 items captured!")
-                    
+                    print("\n✅ SUCCESS! All 1000 items captured!")
+
                 # Show some sample items
-                print(f"\nSample items from result:")
-                sample_items = re.findall(r'<div class="item"[^>]*>([^<]+)</div>', result.html)[:5]
+                print("\nSample items from result:")
+                sample_items = re.findall(
+                    r'<div class="item"[^>]*>([^<]+)</div>', result.html
+                )[:5]
                 for item in sample_items:
                     print(f"  - {item}")
-            
+
             print(f"{'='*60}\n")
-                
+
     finally:
         # Clean up
         if httpd:
             httpd.shutdown()
         os.chdir(old_cwd)
         os.unlink(test_file_path)
+
 
 if __name__ == "__main__":
     asyncio.run(test_virtual_scroll())

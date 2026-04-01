@@ -4,10 +4,12 @@
 3. Non-persistent + proxy on CrawlerRunConfig (existing path, must not break)
 4. Non-persistent, no proxy (basic crawl, must not break)
 """
+
 import asyncio
 import os
 import shutil
 import uuid
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from crawl4ai.async_configs import ProxyConfig
 
@@ -89,7 +91,7 @@ async def main():
         BrowserConfig(headless=True),
     )
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("All regression tests complete.")
 
 

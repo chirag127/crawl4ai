@@ -13,7 +13,7 @@ def pytest_configure(config):
 @pytest.fixture
 def sample_head_html():
     """Sample HTML head section for testing."""
-    return '''
+    return """
     <head>
         <meta charset="utf-8">
         <title>Test Page Title</title>
@@ -25,16 +25,16 @@ def sample_head_html():
         <link rel="stylesheet" href="style.css">
         <script src="app.js"></script>
     </head>
-    '''
+    """
 
 
 @pytest.fixture
 def minimal_head_html():
     """Minimal head with just a title."""
-    return '<head><title>Minimal</title></head>'
+    return "<head><title>Minimal</title></head>"
 
 
 @pytest.fixture
 def empty_head_html():
     """Empty head section."""
-    return '<head></head>'
+    return "<head></head>"

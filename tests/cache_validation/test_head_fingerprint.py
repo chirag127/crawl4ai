@@ -1,6 +1,6 @@
 """Unit tests for head fingerprinting."""
 
-import pytest
+
 from crawl4ai.utils import compute_head_fingerprint
 
 
@@ -80,7 +80,7 @@ class TestHeadFingerprint:
 
     def test_real_world_head(self):
         """Test with a realistic head section."""
-        head = '''
+        head = """
         <head>
             <meta charset="utf-8">
             <title>Python Documentation</title>
@@ -90,7 +90,7 @@ class TestHeadFingerprint:
             <meta property="og:image" content="https://python.org/logo.png">
             <link rel="stylesheet" href="styles.css">
         </head>
-        '''
+        """
         fp = compute_head_fingerprint(head)
         assert fp != ""
         # Should be deterministic

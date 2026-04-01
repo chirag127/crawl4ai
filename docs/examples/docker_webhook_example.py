@@ -19,11 +19,12 @@ Usage:
 3. Jobs will be submitted and webhooks will be received automatically
 """
 
-import requests
 import json
 import time
-from flask import Flask, request, jsonify
 from threading import Thread
+
+import requests
+from flask import Flask, jsonify, request
 
 # Configuration
 CRAWL4AI_BASE_URL = "http://localhost:11235"
@@ -36,7 +37,7 @@ app = Flask(__name__)
 received_webhooks = []
 
 
-@app.route('/webhooks/crawl-complete', methods=['POST'])
+@app.route("/webhooks/crawl-complete", methods=["POST"])
 def handle_crawl_webhook():
     """
     Webhook handler that receives notifications when crawl jobs complete.
@@ -59,29 +60,29 @@ def handle_crawl_webhook():
     print(f"   Timestamp: {payload['timestamp']}")
     print(f"   URLs: {payload['urls']}")
 
-    if payload['status'] == 'completed':
+    if payload["status"] == "completed":
         # If data is in payload, process it directly
-        if 'data' in payload:
-            print(f"   ✅ Data included in webhook")
-            data = payload['data']
+        if "data" in payload:
+            print("   ✅ Data included in webhook")
+            data = payload["data"]
             # Process the crawl results here
-            for result in data.get('results', []):
+            for result in data.get("results", []):
                 print(f"      - Crawled: {result.get('url')}")
                 print(f"      - Markdown length: {len(result.get('markdown', ''))}")
         else:
             # Fetch results from API if not included
-            print(f"   📥 Fetching results from API...")
-            task_id = payload['task_id']
+            print("   📥 Fetching results from API...")
+            task_id = payload["task_id"]
             result_response = requests.get(f"{CRAWL4AI_BASE_URL}/crawl/job/{task_id}")
             if result_response.ok:
                 data = result_response.json()
-                print(f"   ✅ Results fetched successfully")
+                print("   ✅ Results fetched successfully")
                 # Process the crawl results here
-                for result in data['result'].get('results', []):
+                for result in data["result"].get("results", []):
                     print(f"      - Crawled: {result.get('url')}")
                     print(f"      - Markdown length: {len(result.get('markdown', ''))}")
 
-    elif payload['status'] == 'failed':
+    elif payload["status"] == "failed":
         print(f"   ❌ Job failed: {payload.get('error', 'Unknown error')}")
 
     print(f"{'='*60}\n")
@@ -93,7 +94,7 @@ def handle_crawl_webhook():
     return jsonify({"status": "received"}), 200
 
 
-@app.route('/webhooks/llm-complete', methods=['POST'])
+@app.route("/webhooks/llm-complete", methods=["POST"])
 def handle_llm_webhook():
     """
     Webhook handler that receives notifications when LLM extraction jobs complete.
@@ -117,29 +118,29 @@ def handle_llm_webhook():
     print(f"   Timestamp: {payload['timestamp']}")
     print(f"   URL: {payload['urls'][0]}")
 
-    if payload['status'] == 'completed':
+    if payload["status"] == "completed":
         # If data is in payload, process it directly
-        if 'data' in payload:
-            print(f"   ✅ Data included in webhook")
-            data = payload['data']
+        if "data" in payload:
+            print("   ✅ Data included in webhook")
+            data = payload["data"]
             # Webhook wraps extracted content in 'extracted_content' field
-            extracted = data.get('extracted_content', {})
-            print(f"      - Extracted content:")
+            extracted = data.get("extracted_content", {})
+            print("      - Extracted content:")
             print(f"        {json.dumps(extracted, indent=8)}")
         else:
             # Fetch results from API if not included
-            print(f"   📥 Fetching results from API...")
-            task_id = payload['task_id']
+            print("   📥 Fetching results from API...")
+            task_id = payload["task_id"]
             result_response = requests.get(f"{CRAWL4AI_BASE_URL}/llm/job/{task_id}")
             if result_response.ok:
                 data = result_response.json()
-                print(f"   ✅ Results fetched successfully")
+                print("   ✅ Results fetched successfully")
                 # API returns unwrapped content in 'result' field
-                extracted = data['result']
-                print(f"      - Extracted content:")
+                extracted = data["result"]
+                print("      - Extracted content:")
                 print(f"        {json.dumps(extracted, indent=8)}")
 
-    elif payload['status'] == 'failed':
+    elif payload["status"] == "failed":
         print(f"   ❌ Job failed: {payload.get('error', 'Unknown error')}")
 
     print(f"{'='*60}\n")
@@ -153,7 +154,7 @@ def handle_llm_webhook():
 
 def start_webhook_server():
     """Start the Flask webhook server in a separate thread"""
-    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=8080, debug=False, use_reloader=False)
 
 
 def submit_crawl_job_with_webhook(urls, webhook_url, include_data=False):
@@ -179,10 +180,10 @@ def submit_crawl_job_with_webhook(urls, webhook_url, include_data=False):
             # "webhook_headers": {
             #     "X-Webhook-Secret": "your-secret-token"
             # }
-        }
+        },
     }
 
-    print(f"\n🚀 Submitting crawl job...")
+    print("\n🚀 Submitting crawl job...")
     print(f"   URLs: {urls}")
     print(f"   Webhook: {webhook_url}")
     print(f"   Include data: {include_data}")
@@ -190,13 +191,13 @@ def submit_crawl_job_with_webhook(urls, webhook_url, include_data=False):
     response = requests.post(
         f"{CRAWL4AI_BASE_URL}/crawl/job",
         json=payload,
-        headers={"Content-Type": "application/json"}
+        headers={"Content-Type": "application/json"},
     )
 
     if response.ok:
         data = response.json()
-        task_id = data['task_id']
-        print(f"   ✅ Job submitted successfully")
+        task_id = data["task_id"]
+        print("   ✅ Job submitted successfully")
         print(f"   Task ID: {task_id}")
         return task_id
     else:
@@ -204,7 +205,9 @@ def submit_crawl_job_with_webhook(urls, webhook_url, include_data=False):
         return None
 
 
-def submit_llm_job_with_webhook(url, query, webhook_url, include_data=False, schema=None, provider=None):
+def submit_llm_job_with_webhook(
+    url, query, webhook_url, include_data=False, schema=None, provider=None
+):
     """
     Submit an LLM extraction job with webhook notification.
 
@@ -230,7 +233,7 @@ def submit_llm_job_with_webhook(url, query, webhook_url, include_data=False, sch
             # "webhook_headers": {
             #     "X-Webhook-Secret": "your-secret-token"
             # }
-        }
+        },
     }
 
     if schema:
@@ -239,7 +242,7 @@ def submit_llm_job_with_webhook(url, query, webhook_url, include_data=False, sch
     if provider:
         payload["provider"] = provider
 
-    print(f"\n🤖 Submitting LLM extraction job...")
+    print("\n🤖 Submitting LLM extraction job...")
     print(f"   URL: {url}")
     print(f"   Query: {query}")
     print(f"   Webhook: {webhook_url}")
@@ -250,13 +253,13 @@ def submit_llm_job_with_webhook(url, query, webhook_url, include_data=False, sch
     response = requests.post(
         f"{CRAWL4AI_BASE_URL}/llm/job",
         json=payload,
-        headers={"Content-Type": "application/json"}
+        headers={"Content-Type": "application/json"},
     )
 
     if response.ok:
         data = response.json()
-        task_id = data['task_id']
-        print(f"   ✅ Job submitted successfully")
+        task_id = data["task_id"]
+        print("   ✅ Job submitted successfully")
         print(f"   Task ID: {task_id}")
         return task_id
     else:
@@ -277,21 +280,18 @@ def submit_job_without_webhook(urls):
     payload = {
         "urls": urls,
         "browser_config": {"headless": True},
-        "crawler_config": {"cache_mode": "bypass"}
+        "crawler_config": {"cache_mode": "bypass"},
     }
 
-    print(f"\n🚀 Submitting crawl job (without webhook)...")
+    print("\n🚀 Submitting crawl job (without webhook)...")
     print(f"   URLs: {urls}")
 
-    response = requests.post(
-        f"{CRAWL4AI_BASE_URL}/crawl/job",
-        json=payload
-    )
+    response = requests.post(f"{CRAWL4AI_BASE_URL}/crawl/job", json=payload)
 
     if response.ok:
         data = response.json()
-        task_id = data['task_id']
-        print(f"   ✅ Job submitted successfully")
+        task_id = data["task_id"]
+        print("   ✅ Job submitted successfully")
         print(f"   Task ID: {task_id}")
         return task_id
     else:
@@ -307,7 +307,7 @@ def poll_job_status(task_id, timeout=60):
         task_id: The job's task identifier
         timeout: Maximum time to wait in seconds
     """
-    print(f"\n⏳ Polling for job status...")
+    print("\n⏳ Polling for job status...")
     start_time = time.time()
 
     while time.time() - start_time < timeout:
@@ -315,12 +315,12 @@ def poll_job_status(task_id, timeout=60):
 
         if response.ok:
             data = response.json()
-            status = data.get('status', 'unknown')
+            status = data.get("status", "unknown")
 
-            if status == 'completed':
-                print(f"   ✅ Job completed!")
+            if status == "completed":
+                print("   ✅ Job completed!")
                 return data
-            elif status == 'failed':
+            elif status == "failed":
                 print(f"   ❌ Job failed: {data.get('error', 'Unknown error')}")
                 return data
             else:
@@ -330,7 +330,7 @@ def poll_job_status(task_id, timeout=60):
             print(f"   ❌ Failed to get status: {response.text}")
             return None
 
-    print(f"   ⏰ Timeout reached")
+    print("   ⏰ Timeout reached")
     return None
 
 
@@ -344,7 +344,9 @@ def main():
     except:
         print(f"❌ Cannot connect to Crawl4AI at {CRAWL4AI_BASE_URL}")
         print("   Please make sure Docker container is running:")
-        print("   docker run -d -p 11235:11235 --name crawl4ai unclecode/crawl4ai:latest")
+        print(
+            "   docker run -d -p 11235:11235 --name crawl4ai unclecode/crawl4ai:latest"
+        )
         return
 
     # Start webhook server in background thread
@@ -360,7 +362,7 @@ def main():
     task_id_1 = submit_crawl_job_with_webhook(
         urls=["https://example.com"],
         webhook_url=f"{WEBHOOK_BASE_URL}/webhooks/crawl-complete",
-        include_data=False
+        include_data=False,
     )
 
     # Example 2: Job with webhook (data included in payload)
@@ -371,7 +373,7 @@ def main():
     task_id_2 = submit_crawl_job_with_webhook(
         urls=["https://www.python.org"],
         webhook_url=f"{WEBHOOK_BASE_URL}/webhooks/crawl-complete",
-        include_data=True
+        include_data=True,
     )
 
     # Example 3: LLM extraction with webhook (notification only)
@@ -384,7 +386,7 @@ def main():
         query="Extract the main heading and description from this page.",
         webhook_url=f"{WEBHOOK_BASE_URL}/webhooks/llm-complete",
         include_data=False,
-        provider="openai/gpt-4o-mini"
+        provider="openai/gpt-4o-mini",
     )
 
     # Example 4: LLM extraction with webhook (data included + schema)
@@ -394,14 +396,16 @@ def main():
     print(f"{'='*60}")
 
     # Define a schema for structured extraction
-    schema = json.dumps({
-        "type": "object",
-        "properties": {
-            "title": {"type": "string", "description": "Page title"},
-            "description": {"type": "string", "description": "Page description"}
-        },
-        "required": ["title"]
-    })
+    schema = json.dumps(
+        {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Page title"},
+                "description": {"type": "string", "description": "Page description"},
+            },
+            "required": ["title"],
+        }
+    )
 
     task_id_4 = submit_llm_job_with_webhook(
         url="https://www.python.org",
@@ -409,7 +413,7 @@ def main():
         webhook_url=f"{WEBHOOK_BASE_URL}/webhooks/llm-complete",
         include_data=True,
         schema=schema,
-        provider="openai/gpt-4o-mini"
+        provider="openai/gpt-4o-mini",
     )
 
     # Example 5: Traditional polling (no webhook)
@@ -417,16 +421,14 @@ def main():
     print(f"\n{'='*60}")
     print("Example 5: Traditional Polling (No Webhook)")
     print(f"{'='*60}")
-    task_id_5 = submit_job_without_webhook(
-        urls=["https://github.com"]
-    )
+    task_id_5 = submit_job_without_webhook(urls=["https://github.com"])
     if task_id_5:
         result = poll_job_status(task_id_5)
-        if result and result.get('status') == 'completed':
-            print(f"   ✅ Results retrieved via polling")
+        if result and result.get("status") == "completed":
+            print("   ✅ Results retrieved via polling")
 
     # Wait for webhooks to arrive
-    print(f"\n⏳ Waiting for webhooks to be received...")
+    print("\n⏳ Waiting for webhooks to be received...")
     time.sleep(30)  # Give jobs time to complete and webhooks to arrive (longer for LLM)
 
     # Summary
@@ -435,26 +437,30 @@ def main():
     print(f"{'='*60}")
     print(f"Total webhooks received: {len(received_webhooks)}")
 
-    crawl_webhooks = [w for w in received_webhooks if w['task_type'] == 'crawl']
-    llm_webhooks = [w for w in received_webhooks if w['task_type'] == 'llm_extraction']
+    crawl_webhooks = [w for w in received_webhooks if w["task_type"] == "crawl"]
+    llm_webhooks = [w for w in received_webhooks if w["task_type"] == "llm_extraction"]
 
-    print(f"\n📊 Breakdown:")
+    print("\n📊 Breakdown:")
     print(f"   - Crawl webhooks: {len(crawl_webhooks)}")
     print(f"   - LLM extraction webhooks: {len(llm_webhooks)}")
 
-    print(f"\n📋 Details:")
+    print("\n📋 Details:")
     for i, webhook in enumerate(received_webhooks, 1):
-        task_type = webhook['task_type']
+        task_type = webhook["task_type"]
         icon = "🕷️" if task_type == "crawl" else "🤖"
-        print(f"{i}. {icon} Task {webhook['task_id']}: {webhook['status']} ({task_type})")
+        print(
+            f"{i}. {icon} Task {webhook['task_id']}: {webhook['status']} ({task_type})"
+        )
 
-    print(f"\n✅ Demo completed!")
-    print(f"\n💡 Pro tips:")
-    print(f"   - In production, your webhook URL should be publicly accessible")
-    print(f"     (e.g., https://myapp.com/webhooks) or use ngrok for testing")
-    print(f"   - Both /crawl/job and /llm/job support the same webhook configuration")
-    print(f"   - Use webhook_data_in_payload=true to get results directly in the webhook")
-    print(f"   - LLM jobs may take longer, adjust timeouts accordingly")
+    print("\n✅ Demo completed!")
+    print("\n💡 Pro tips:")
+    print("   - In production, your webhook URL should be publicly accessible")
+    print("     (e.g., https://myapp.com/webhooks) or use ngrok for testing")
+    print("   - Both /crawl/job and /llm/job support the same webhook configuration")
+    print(
+        "   - Use webhook_data_in_payload=true to get results directly in the webhook"
+    )
+    print("   - LLM jobs may take longer, adjust timeouts accordingly")
 
 
 if __name__ == "__main__":

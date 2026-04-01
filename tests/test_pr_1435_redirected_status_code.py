@@ -1,9 +1,9 @@
 """Tests for PR #1435: redirected_status_code in CrawlResult."""
 
 import pytest
-import pytest_asyncio
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
-from crawl4ai.models import CrawlResult, AsyncCrawlResponse
+from crawl4ai.models import AsyncCrawlResponse, CrawlResult
 
 
 class TestRedirectedStatusCodeModel:
@@ -14,15 +14,24 @@ class TestRedirectedStatusCodeModel:
         assert result.redirected_status_code is None
 
     def test_crawl_result_set_value(self):
-        result = CrawlResult(url="http://example.com", html="", success=True, redirected_status_code=200)
+        result = CrawlResult(
+            url="http://example.com", html="", success=True, redirected_status_code=200
+        )
         assert result.redirected_status_code == 200
 
     def test_async_crawl_response_default_none(self):
-        resp = AsyncCrawlResponse(html="<html></html>", response_headers={}, status_code=200)
+        resp = AsyncCrawlResponse(
+            html="<html></html>", response_headers={}, status_code=200
+        )
         assert resp.redirected_status_code is None
 
     def test_async_crawl_response_set_value(self):
-        resp = AsyncCrawlResponse(html="<html></html>", response_headers={}, status_code=200, redirected_status_code=301)
+        resp = AsyncCrawlResponse(
+            html="<html></html>",
+            response_headers={},
+            status_code=200,
+            redirected_status_code=301,
+        )
         assert resp.redirected_status_code == 301
 
 
@@ -66,7 +75,9 @@ async def test_redirected_status_code_on_raw_html():
     run_config = CrawlerRunConfig()
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        result = await crawler.arun("raw:<html><body>test</body></html>", config=run_config)
+        result = await crawler.arun(
+            "raw:<html><body>test</body></html>", config=run_config
+        )
 
     assert result.success
     assert result.redirected_status_code is None

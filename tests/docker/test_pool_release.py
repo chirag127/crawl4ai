@@ -5,9 +5,9 @@ server. They test the release logic directly using mock crawler objects.
 """
 
 import asyncio
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Standalone release_crawler implementation for testing

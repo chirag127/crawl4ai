@@ -11,16 +11,18 @@ Tests:
 7. Real browser: batch crawl reuses same context
 8. Storage state path: temporary context is closed
 """
+
 import asyncio
 import time
+
 import pytest
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
-from crawl4ai.async_configs import ProxyConfig, GeolocationConfig
+from crawl4ai.async_configs import GeolocationConfig, ProxyConfig
 from crawl4ai.browser_manager import BrowserManager
 
-
 # ── Unit tests (no browser needed) ──────────────────────────────────────
+
 
 class TestSignatureShrink:
     """Verify the whitelist signature only considers context-affecting fields."""
@@ -44,9 +46,9 @@ class TestSignatureShrink:
             CrawlerRunConfig(exclude_external_links=True),
         ]
         sigs = [bm._make_config_signature(c) for c in configs]
-        assert len(set(sigs)) == 1, (
-            f"Expected all same sig, got {len(set(sigs))} unique: {sigs[:3]}"
-        )
+        assert (
+            len(set(sigs)) == 1
+        ), f"Expected all same sig, got {len(set(sigs))} unique: {sigs[:3]}"
 
     def test_proxy_changes_signature(self):
         bm = self._bm()
@@ -76,9 +78,11 @@ class TestSignatureShrink:
     def test_geolocation_changes_signature(self):
         bm = self._bm()
         s1 = bm._make_config_signature(CrawlerRunConfig())
-        s2 = bm._make_config_signature(CrawlerRunConfig(
-            geolocation=GeolocationConfig(latitude=40.7, longitude=-74.0)
-        ))
+        s2 = bm._make_config_signature(
+            CrawlerRunConfig(
+                geolocation=GeolocationConfig(latitude=40.7, longitude=-74.0)
+            )
+        )
         assert s1 != s2
 
     def test_navigator_overrides_change_signature(self):
@@ -100,12 +104,16 @@ class TestSignatureShrink:
     def test_proxy_config_with_credentials(self):
         """ProxyConfig with username/password produces distinct stable sigs."""
         bm = self._bm()
-        c1 = CrawlerRunConfig(proxy_config=ProxyConfig(
-            server="http://proxy:8080", username="user1", password="pass1"
-        ))
-        c2 = CrawlerRunConfig(proxy_config=ProxyConfig(
-            server="http://proxy:8080", username="user2", password="pass2"
-        ))
+        c1 = CrawlerRunConfig(
+            proxy_config=ProxyConfig(
+                server="http://proxy:8080", username="user1", password="pass1"
+            )
+        )
+        c2 = CrawlerRunConfig(
+            proxy_config=ProxyConfig(
+                server="http://proxy:8080", username="user2", password="pass2"
+            )
+        )
         s1 = bm._make_config_signature(c1)
         s2 = bm._make_config_signature(c2)
         assert s1 != s2, "different credentials should differ"
@@ -199,6 +207,7 @@ class TestLRUEviction:
 
 # ── Integration tests (real browser) ────────────────────────────────────
 
+
 @pytest.fixture
 def event_loop():
     loop = asyncio.new_event_loop()
@@ -220,6 +229,7 @@ class TestRealBrowserContextLifecycle:
 
     def test_varying_configs_same_context(self):
         """Different non-context fields should reuse the same context."""
+
         async def _test():
             async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
                 bm = crawler.crawler_strategy.browser_manager
@@ -233,13 +243,15 @@ class TestRealBrowserContextLifecycle:
 
                 # Should have at most 1 context (all configs hash the same)
                 ctx_count = len(bm.contexts_by_config)
-                assert ctx_count <= 1, (
-                    f"Expected 1 context for identical browser config, got {ctx_count}"
-                )
+                assert (
+                    ctx_count <= 1
+                ), f"Expected 1 context for identical browser config, got {ctx_count}"
+
         run(_test())
 
     def test_batch_crawl_reuses_context(self):
         """Multiple URLs with same config should reuse a single context."""
+
         async def _test():
             async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
                 bm = crawler.crawler_strategy.browser_manager
@@ -255,10 +267,12 @@ class TestRealBrowserContextLifecycle:
 
                 ctx_count = len(bm.contexts_by_config)
                 assert ctx_count <= 1, f"Batch should reuse context, got {ctx_count}"
+
         run(_test())
 
     def test_refcount_drops_to_zero_after_crawl(self):
         """After a crawl completes, the context refcount should be 0."""
+
         async def _test():
             async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
                 bm = crawler.crawler_strategy.browser_manager
@@ -269,13 +283,15 @@ class TestRealBrowserContextLifecycle:
 
                 # All refcounts should be 0 after crawl completes
                 for sig, count in bm._context_refcounts.items():
-                    assert count == 0, (
-                        f"Refcount for {sig[:8]} should be 0 after crawl, got {count}"
-                    )
+                    assert (
+                        count == 0
+                    ), f"Refcount for {sig[:8]} should be 0 after crawl, got {count}"
+
         run(_test())
 
     def test_page_to_sig_cleaned_after_crawl(self):
         """After crawl, the page->sig mapping should be empty (pages released)."""
+
         async def _test():
             async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
                 bm = crawler.crawler_strategy.browser_manager
@@ -283,13 +299,15 @@ class TestRealBrowserContextLifecycle:
                 result = await crawler.arun(f"raw:{html}", config=CrawlerRunConfig())
                 assert result.success
 
-                assert len(bm._page_to_sig) == 0, (
-                    f"Expected empty _page_to_sig after crawl, got {len(bm._page_to_sig)} entries"
-                )
+                assert (
+                    len(bm._page_to_sig) == 0
+                ), f"Expected empty _page_to_sig after crawl, got {len(bm._page_to_sig)} entries"
+
         run(_test())
 
     def test_concurrent_crawls_refcount_tracking(self):
         """Concurrent crawls should all properly increment/decrement refcounts."""
+
         async def _test():
             async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
                 bm = crawler.crawler_strategy.browser_manager
@@ -306,14 +324,16 @@ class TestRealBrowserContextLifecycle:
 
                 # All done — refcounts should be 0
                 for sig, count in bm._context_refcounts.items():
-                    assert count == 0, (
-                        f"After concurrent crawls, refcount for {sig[:8]} = {count}"
-                    )
+                    assert (
+                        count == 0
+                    ), f"After concurrent crawls, refcount for {sig[:8]} = {count}"
                 assert len(bm._page_to_sig) == 0
+
         run(_test())
 
     def test_lru_eviction_real_browser(self):
         """Verify LRU eviction actually closes contexts when limit exceeded."""
+
         async def _test():
             async with AsyncWebCrawler(config=BrowserConfig(headless=True)) as crawler:
                 bm = crawler.crawler_strategy.browser_manager
@@ -329,17 +349,19 @@ class TestRealBrowserContextLifecycle:
 
                 # Should have at most 2 contexts (limit)
                 ctx_count = len(bm.contexts_by_config)
-                assert ctx_count <= 2, (
-                    f"Expected <= 2 contexts (limit), got {ctx_count}"
-                )
+                assert (
+                    ctx_count <= 2
+                ), f"Expected <= 2 contexts (limit), got {ctx_count}"
 
                 # Refcounts should all be 0
                 for sig, count in bm._context_refcounts.items():
                     assert count == 0, f"refcount {sig[:8]} = {count}"
+
         run(_test())
 
     def test_close_clears_everything(self):
         """close() should clear all tracking dicts."""
+
         async def _test():
             crawler = AsyncWebCrawler(config=BrowserConfig(headless=True))
             await crawler.start()
@@ -355,4 +377,5 @@ class TestRealBrowserContextLifecycle:
             assert len(bm._context_refcounts) == 0
             assert len(bm._context_last_used) == 0
             assert len(bm._page_to_sig) == 0
+
         run(_test())

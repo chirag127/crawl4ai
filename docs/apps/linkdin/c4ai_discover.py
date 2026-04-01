@@ -16,14 +16,17 @@ Key design rules
 
 Author: Tom @ Kidocode 2025‑04‑26
 """
+
 from __future__ import annotations
 
-import warnings, re
+import re
+import warnings
+
 warnings.filterwarnings(
     "ignore",
     message=r"The pseudo class ':contains' is deprecated, ':-soup-contains' should be used.*",
     category=FutureWarning,
-    module=r"soupsieve"
+    module=r"soupsieve",
 )
 
 
@@ -31,34 +34,27 @@ warnings.filterwarnings(
 # Imports
 # ───────────────────────────────────────────────────────────────────────────────
 import argparse
-import random
 import asyncio
 import json
 import logging
 import os
 import pathlib
+import random
 import sys
-# 3rd-party rich for pretty logging
-from rich.console import Console
-from rich.logging import RichHandler
-
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from pathlib import Path
 from textwrap import dedent
 from types import SimpleNamespace
 from typing import Dict, List, Optional
 from urllib.parse import quote
-from pathlib import Path
-from glob import glob
 
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CacheMode,
-    CrawlerRunConfig,
-    JsonCssExtractionStrategy,
-    BrowserProfiler,
-    LLMConfig,
-)
+# 3rd-party rich for pretty logging
+from rich.console import Console
+from rich.logging import RichHandler
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, BrowserProfiler,
+                      CacheMode, CrawlerRunConfig, JsonCssExtractionStrategy,
+                      LLMConfig)
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Constants / paths
@@ -76,7 +72,7 @@ _COMPANY_SCHEMA_EXAMPLE = {
     "name": "Management Research Services, Inc. (MRS, Inc)",
     "descriptor": "Insurance • Milwaukee, Wisconsin",
     "about": "Insurance • Milwaukee, Wisconsin",
-    "followers": 1000
+    "followers": 1000,
 }
 
 _PEOPLE_SCHEMA_EXAMPLE = {
@@ -85,16 +81,19 @@ _PEOPLE_SCHEMA_EXAMPLE = {
     "headline": "VP Product @ Posify",
     "followers": 890,
     "connection_degree": "2nd",
-    "avatar_url": "https://media.licdn.com/dms/image/v2/.../lily.jpg"
+    "avatar_url": "https://media.licdn.com/dms/image/v2/.../lily.jpg",
 }
 
 # Provided sample HTML snippets (trimmed) — used exactly once to cold‑generate schema.
-_SAMPLE_COMPANY_HTML = (Path(__file__).resolve().parent / "snippets/company.html").read_text()
-_SAMPLE_PEOPLE_HTML = (Path(__file__).resolve().parent / "snippets/people.html").read_text()
+_SAMPLE_COMPANY_HTML = (
+    Path(__file__).resolve().parent / "snippets/company.html"
+).read_text()
+_SAMPLE_PEOPLE_HTML = (
+    Path(__file__).resolve().parent / "snippets/people.html"
+).read_text()
 
 # --------- tighter schema prompts ----------
-_COMPANY_SCHEMA_QUERY = dedent(
-    """
+_COMPANY_SCHEMA_QUERY = dedent("""
     Using the supplied <li> company-card HTML, build a JsonCssExtractionStrategy schema that,
     for every card, outputs *exactly* the keys shown in the example JSON below.
     JSON spec:
@@ -115,11 +114,9 @@ _COMPANY_SCHEMA_QUERY = dedent(
     
     IMPORTANT: Be very smart in selecting the correct and unique way to address the element. You should ensure 
     your selector points to a single element and is unique to the place that contains the information.
-    """
-)
+    """)
 
-_PEOPLE_SCHEMA_QUERY = dedent(
-    """
+_PEOPLE_SCHEMA_QUERY = dedent("""
     Using the supplied <li> people-card HTML, build a JsonCssExtractionStrategy schema that
     outputs exactly the keys in the example JSON below.
     Fields:
@@ -132,19 +129,15 @@ _PEOPLE_SCHEMA_QUERY = dedent(
       
     IMPORTANT: Do not use the base64 kind of classes to target element. It's not reliable.
     The main div parent contains these li element is a "div" has these classes "artdeco-card org-people-profile-card__card-spacing org-people__card-margin-bottom".
-    """
-)
+    """)
 
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_or_build_schema(
-    path: pathlib.Path, 
-    sample_html: str, 
-    query: str, 
-    example_json: Dict,
-    force = False
+    path: pathlib.Path, sample_html: str, query: str, example_json: Dict, force=False
 ) -> Dict:
     """Load schema from path, else call generate_schema once and persist."""
     if path.exists() and not force:
@@ -166,7 +159,6 @@ def _load_or_build_schema(
 
 def _openai_friendly_number(text: str) -> Optional[int]:
     """Extract first int from text like '1K followers' (returns 1000)."""
-    import re
 
     m = re.search(r"(\d[\d,]*)", text.replace(",", ""))
     if not m:
@@ -178,20 +170,23 @@ def _openai_friendly_number(text: str) -> Optional[int]:
         val *= 1_000_000
     return val
 
+
 # ---------------------------------------------------------------------------
 # Core async workers
 # ---------------------------------------------------------------------------
-async def crawl_company_search(crawler: AsyncWebCrawler, url: str, schema: Dict, limit: int) -> List[Dict]:
+async def crawl_company_search(
+    crawler: AsyncWebCrawler, url: str, schema: Dict, limit: int
+) -> List[Dict]:
     """Paginate 10-item company search pages until `limit` reached."""
     extraction = JsonCssExtractionStrategy(schema)
     cfg = CrawlerRunConfig(
         extraction_strategy=extraction,
         cache_mode=CacheMode.BYPASS,
-        wait_for = ".search-marvel-srp",
+        wait_for=".search-marvel-srp",
         session_id="company_search",
         delay_before_return_html=1,
-        magic = True,
-        verbose= False,
+        magic=True,
+        verbose=False,
     )
     companies, page = [], 1
     while len(companies) < max(limit, 10):
@@ -216,7 +211,8 @@ async def crawl_company_search(crawler: AsyncWebCrawler, url: str, schema: Dict,
                     "about": about,
                     "followers": followers,
                     "people_url": f"{handle}people/",
-                    "captured_at": datetime.now(UTC).isoformat(timespec="seconds") + "Z",
+                    "captured_at": datetime.now(UTC).isoformat(timespec="seconds")
+                    + "Z",
                 }
             )
         page += 1
@@ -224,7 +220,7 @@ async def crawl_company_search(crawler: AsyncWebCrawler, url: str, schema: Dict,
             f"[dim]Page {page}[/] — running total: {len(companies)}/{limit} companies"
         )
 
-    return companies[:max(limit, 10)]
+    return companies[: max(limit, 10)]
 
 
 async def crawl_people_page(
@@ -265,9 +261,11 @@ async def crawl_people_page(
         )
     return people
 
+
 # ---------------------------------------------------------------------------
 # CLI + main
 # ---------------------------------------------------------------------------
+
 
 def build_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser("c4ai-discover — Crawl4AI LinkedIn discovery")
@@ -276,13 +274,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
     def add_flags(parser: argparse.ArgumentParser):
         parser.add_argument("--query", required=False, help="query keyword(s)")
         parser.add_argument("--geo", required=False, type=int, help="LinkedIn geoUrn")
-        parser.add_argument("--title-filters", default="Product,Engineering", help="comma list of job keywords")
+        parser.add_argument(
+            "--title-filters",
+            default="Product,Engineering",
+            help="comma list of job keywords",
+        )
         parser.add_argument("--max-companies", type=int, default=1000)
         parser.add_argument("--max-people", type=int, default=500)
-        parser.add_argument("--profile-name", default=str(pathlib.Path.home() / ".crawl4ai/profiles/profile_linkedin_uc"))
+        parser.add_argument(
+            "--profile-name",
+            default=str(pathlib.Path.home() / ".crawl4ai/profiles/profile_linkedin_uc"),
+        )
         parser.add_argument("--outdir", default="./output")
         parser.add_argument("--concurrency", type=int, default=4)
-        parser.add_argument("--log-level", default="info", choices=["debug", "info", "warn", "error"])
+        parser.add_argument(
+            "--log-level", default="info", choices=["debug", "info", "warn", "error"]
+        )
 
     add_flags(sub.add_parser("full"))
     add_flags(sub.add_parser("companies"))
@@ -297,7 +304,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return ap
 
 
-def detect_debug_defaults(force = False) -> SimpleNamespace:
+def detect_debug_defaults(force=False) -> SimpleNamespace:
     if not force and sys.gettrace() is None and not os.getenv("C4AI_DEMO_DEBUG"):
         return SimpleNamespace()
     # ----- debug‑friendly defaults -----
@@ -354,18 +361,15 @@ async def async_main(opts):
     profiler = BrowserProfiler()
     path = profiler.get_profile_path(opts.profile_name)
     bc = BrowserConfig(
-        headless=False,        
+        headless=False,
         verbose=False,
         user_data_dir=path,
         use_managed_browser=True,
-        user_agent_mode = "random",
-        user_agent_generator_config= {
-            "platforms": "mobile",
-            "os": "Android"
-        }
+        user_agent_mode="random",
+        user_agent_generator_config={"platforms": "mobile", "os": "Android"},
     )
     crawler = AsyncWebCrawler(config=bc)
-    
+
     await crawler.start()
 
     # Single worker for simplicity; concurrency can be scaled by arun_many if needed.
@@ -393,7 +397,13 @@ async def async_main(opts):
                     return 10
                 companies = [json.loads(l) for l in src.read_text().splitlines()]
             total_people = 0
-            title_kw = " ".join([t.strip() for t in opts.title_filters.split(",") if t.strip()]) if opts.title_filters else ""
+            title_kw = (
+                " ".join(
+                    [t.strip() for t in opts.title_filters.split(",") if t.strip()]
+                )
+                if opts.title_filters
+                else ""
+            )
             for comp in companies:
                 people = await crawl_people_page(
                     crawler,
@@ -406,7 +416,8 @@ async def async_main(opts):
                     rec = p | {
                         "company_handle": comp["handle"],
                         # "captured_at": datetime.now(UTC).isoformat(timespec="seconds") + "Z",
-                        "captured_at": datetime.now(UTC).isoformat(timespec="seconds") + "Z",
+                        "captured_at": datetime.now(UTC).isoformat(timespec="seconds")
+                        + "Z",
                     }
                     f_people.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 total_people += len(people)

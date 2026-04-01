@@ -3,12 +3,9 @@ import nest_asyncio
 nest_asyncio.apply()
 
 import asyncio
-from crawl4ai import (
-    AsyncWebCrawler,
-    CrawlerRunConfig,
-    LXMLWebScrapingStrategy,
-    CacheMode,
-)
+
+from crawl4ai import (AsyncWebCrawler, CacheMode, CrawlerRunConfig,
+                      LXMLWebScrapingStrategy)
 
 
 async def main():

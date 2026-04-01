@@ -1,14 +1,17 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, Tuple
-from .models import MarkdownGenerationResult
-from .html2text import CustomHTML2Text
-# from .types import RelevantContentFilter
-from .content_filter_strategy import RelevantContentFilter
 import re
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urljoin
 
+# from .types import RelevantContentFilter
+from .content_filter_strategy import RelevantContentFilter
+from .html2text import CustomHTML2Text
+from .models import MarkdownGenerationResult
+
 # Pre-compile the regex pattern
-LINK_PATTERN = re.compile(r'!?\[((?:[^\[\]]|\[(?:[^\[\]]|\[[^\]]*\])*\])*)\]\(((?:[^()\s]|\([^()]*\))*)(?:\s+"([^"]*)")?\)')
+LINK_PATTERN = re.compile(
+    r'!?\[((?:[^\[\]]|\[(?:[^\[\]]|\[[^\]]*\])*\])*)\]\(((?:[^()\s]|\([^()]*\))*)(?:\s+"([^"]*)")?\)'
+)
 
 
 def fast_urljoin(base: str, url: str) -> str:
@@ -77,7 +80,9 @@ class DefaultMarkdownGenerator(MarkdownGenerationStrategy):
         options: Optional[Dict[str, Any]] = None,
         content_source: str = "cleaned_html",
     ):
-        super().__init__(content_filter, options, verbose=False, content_source=content_source)
+        super().__init__(
+            content_filter, options, verbose=False, content_source=content_source
+        )
 
     def convert_links_to_citations(
         self, markdown: str, base_url: str = ""

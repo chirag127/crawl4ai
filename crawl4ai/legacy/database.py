@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 from typing import Optional, Tuple
 
 DB_PATH = os.path.join(os.getenv("CRAWL4_AI_BASE_DIRECTORY", Path.home()), ".crawl4ai")
@@ -12,8 +12,7 @@ def init_db():
     global DB_PATH
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS crawled_data (
             url TEXT PRIMARY KEY,
             html TEXT,
@@ -26,8 +25,7 @@ def init_db():
             metadata TEXT DEFAULT "{}",
             screenshot TEXT DEFAULT ""
         )
-    """
-    )
+    """)
     conn.commit()
     conn.close()
 

@@ -10,6 +10,7 @@ This test can run without full crawl4ai dependencies installed.
 """
 
 import sys
+
 from packaging import version
 
 
@@ -24,6 +25,7 @@ def test_package_versions():
     # Test pyOpenSSL version
     try:
         import OpenSSL
+
         pyopenssl_version = OpenSSL.__version__
         print(f"\n✓ pyOpenSSL is installed: {pyopenssl_version}")
 
@@ -40,6 +42,7 @@ def test_package_versions():
     # Test cryptography version
     try:
         import cryptography
+
         crypto_version = cryptography.__version__
         print(f"\n✓ cryptography is installed: {crypto_version}")
 
@@ -47,14 +50,16 @@ def test_package_versions():
         # We need >= 45.0.7 to be safe
         if version.parse(crypto_version) >= version.parse("45.0.7"):
             print(f"  ✓ PASS: cryptography {crypto_version} >= 45.0.7 (secure)")
-            print(f"  ✓ NOT in vulnerable range (37.0.0 to 43.0.0)")
-        elif version.parse(crypto_version) >= version.parse("37.0.0") and version.parse(crypto_version) < version.parse("43.0.1"):
+            print("  ✓ NOT in vulnerable range (37.0.0 to 43.0.0)")
+        elif version.parse(crypto_version) >= version.parse("37.0.0") and version.parse(
+            crypto_version
+        ) < version.parse("43.0.1"):
             print(f"  ✗ FAIL: cryptography {crypto_version} is VULNERABLE")
-            print(f"  ✗ Version is in vulnerable range (>=37.0.0 & <43.0.1)")
+            print("  ✗ Version is in vulnerable range (>=37.0.0 & <43.0.1)")
             all_passed = False
         else:
             print(f"  ⚠ WARNING: cryptography {crypto_version} < 45.0.7")
-            print(f"  ⚠ May not meet security requirements")
+            print("  ⚠ May not meet security requirements")
 
     except ImportError as e:
         print(f"\n✗ FAIL: cryptography not installed - {e}")
@@ -103,6 +108,7 @@ def test_pyopenssl_crypto_integration():
     except Exception as e:
         print(f"\n✗ FAIL: Integration test failed - {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -125,7 +131,9 @@ def main():
     results.append(("SSL Functionality", test_ssl_basic_functionality()))
 
     # Test 3: Integration
-    results.append(("pyOpenSSL-crypto Integration", test_pyopenssl_crypto_integration()))
+    results.append(
+        ("pyOpenSSL-crypto Integration", test_pyopenssl_crypto_integration())
+    )
 
     # Summary
     print("\n" + "=" * 70)
@@ -164,5 +172,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n✗ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

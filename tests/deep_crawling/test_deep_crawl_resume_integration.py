@@ -6,10 +6,10 @@ designed for scraping practice with a clear hierarchy:
 - Home page → Category pages → Book detail pages
 """
 
-import pytest
-import asyncio
 import json
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import pytest
 
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
@@ -105,12 +105,14 @@ class TestBFSResumeIntegration:
         async with AsyncWebCrawler(verbose=False) as crawler:
             results = await crawler.arun("https://books.toscrape.com", config=config2)
 
-        print(f"\n=== Phase 2: Resumed crawl ===")
+        print("\n=== Phase 2: Resumed crawl ===")
         print(f"New URLs crawled: {len(crawled_urls_phase2)}")
         print(f"Final pages_crawled: {strategy2._pages_crawled}")
 
         # Verify no duplicates - URLs from phase 1 should not be re-crawled
-        already_crawled = set(last_state["visited"]) - {item["url"] for item in last_state["pending"]}
+        already_crawled = set(last_state["visited"]) - {
+            item["url"] for item in last_state["pending"]
+        }
         duplicates = set(crawled_urls_phase2) & already_crawled
 
         assert len(duplicates) == 0, f"Duplicate crawls detected: {duplicates}"
@@ -124,8 +126,9 @@ class TestBFSResumeIntegration:
         # Final state should show more pages crawled than before crash
         final_state = strategy2.export_state()
         if final_state:
-            assert final_state["pages_crawled"] >= last_state["pages_crawled"], \
-                "Resume did not make progress"
+            assert (
+                final_state["pages_crawled"] >= last_state["pages_crawled"]
+            ), "Resume did not make progress"
 
         print("\n=== Integration test PASSED ===")
 
@@ -156,7 +159,11 @@ class TestBFSResumeIntegration:
         exported = strategy.export_state()
 
         assert exported is not None, "export_state() returned None"
-        assert exported == states_from_callback[-1], "export_state() doesn't match last callback"
+        assert (
+            exported == states_from_callback[-1]
+        ), "export_state() doesn't match last callback"
 
-        print(f"\n=== export_state() test PASSED ===")
-        print(f"Final state: {exported['pages_crawled']} pages, {len(exported['visited'])} visited")
+        print("\n=== export_state() test PASSED ===")
+        print(
+            f"Final state: {exported['pages_crawled']} pages, {len(exported['visited'])} visited"
+        )

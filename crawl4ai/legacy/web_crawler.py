@@ -1,20 +1,22 @@
-import os, time
+import os
+import time
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-from pathlib import Path
-
-from .models import UrlModel, CrawlResult
-from .database import init_db, get_cached_url, cache_url
-from .utils import *
-from .chunking_strategy import *
-from .extraction_strategy import *
-from .crawler_strategy import *
-from typing import List
-from concurrent.futures import ThreadPoolExecutor
-from ..content_scraping_strategy import LXMLWebScrapingStrategy as WebScrapingStrategy
-from .config import *
-import warnings
 import json
+import warnings
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import List
+
+from ..content_scraping_strategy import \
+    LXMLWebScrapingStrategy as WebScrapingStrategy
+from .chunking_strategy import *
+from .config import *
+from .crawler_strategy import *
+from .database import cache_url, get_cached_url, init_db
+from .extraction_strategy import *
+from .models import CrawlResult, UrlModel
+from .utils import *
 
 warnings.filterwarnings(
     "ignore",

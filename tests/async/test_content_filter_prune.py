@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 import pytest
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -1,40 +1,25 @@
+import json
+import os
+from typing import Any, AsyncGenerator, Dict, List
+
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
-import json
-import asyncio
-import os
-from typing import List, Dict, Any, AsyncGenerator
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
 
 # Optional: Import crawl4ai classes directly for reference/easier payload creation aid
 # You don't strictly NEED these imports for the tests to run against the server,
 # but they help in understanding the structure you are mimicking in JSON.
-from crawl4ai import (
-    BrowserConfig,
-    CrawlerRunConfig,
-    CacheMode,
-    DefaultMarkdownGenerator,
-    PruningContentFilter,
-    BM25ContentFilter,
-    BFSDeepCrawlStrategy,
-    FilterChain,
-    ContentTypeFilter,
-    DomainFilter,
-    CompositeScorer,
-    KeywordRelevanceScorer,
-    PathDepthScorer,
-    JsonCssExtractionStrategy,
-    LLMExtractionStrategy,
-    LLMConfig
-)
+from crawl4ai import (CacheMode)
 
 # --- Test Configuration ---
 # BASE_URL = os.getenv("CRAWL4AI_TEST_URL", "http://localhost:8020") # Make base URL configurable
-BASE_URL = os.getenv("CRAWL4AI_TEST_URL", "http://localhost:11235") # Make base URL configurable
+BASE_URL = os.getenv(
+    "CRAWL4AI_TEST_URL", "http://localhost:11235"
+)  # Make base URL configurable
 # Use a known simple HTML page for basic tests
 SIMPLE_HTML_URL = "https://httpbin.org/html"
 # Use a site suitable for scraping tests
@@ -47,14 +32,19 @@ DEEP_CRAWL_URL = "https://python.org"
 # Use the built-in event_loop fixture from pytest_asyncio
 # The custom implementation was causing issues with closing the loop
 
-@pytest_asyncio.fixture(scope="function")  # Changed to function scope to avoid event loop issues
+
+@pytest_asyncio.fixture(
+    scope="function"
+)  # Changed to function scope to avoid event loop issues
 async def async_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Provides an async HTTP client"""
     client = httpx.AsyncClient(base_url=BASE_URL, timeout=120.0)
     yield client
     await client.aclose()
 
+
 # --- Helper Functions ---
+
 
 async def check_server_health(client: httpx.AsyncClient):
     """Check if the server is healthy before running tests."""
@@ -64,7 +54,11 @@ async def check_server_health(client: httpx.AsyncClient):
         print(f"\nServer healthy: {response.json()}")
         return True
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
-        pytest.fail(f"Server health check failed: {e}. Is the server running at {BASE_URL}?", pytrace=False)
+        pytest.fail(
+            f"Server health check failed: {e}. Is the server running at {BASE_URL}?",
+            pytrace=False,
+        )
+
 
 async def assert_crawl_result_structure(result: Dict[str, Any]):
     """Asserts the basic structure of a single crawl result."""
@@ -73,6 +67,7 @@ async def assert_crawl_result_structure(result: Dict[str, Any]):
     assert "success" in result
     assert "html" in result
     # Add more common checks if needed
+
 
 async def process_streaming_response(response: httpx.Response) -> List[Dict[str, Any]]:
     """Processes an NDJSON streaming response."""
@@ -84,7 +79,7 @@ async def process_streaming_response(response: httpx.Response) -> List[Dict[str,
                 data = json.loads(line)
                 if data.get("status") == "completed":
                     completed = True
-                    break # Stop processing after completion marker
+                    break  # Stop processing after completion marker
                 else:
                     results.append(data)
             except json.JSONDecodeError:
@@ -94,6 +89,7 @@ async def process_streaming_response(response: httpx.Response) -> List[Dict[str,
 
 
 # --- Test Class ---
+
 
 @pytest.mark.asyncio
 class TestCrawlEndpoints:
@@ -112,16 +108,16 @@ class TestCrawlEndpoints:
                 "type": "BrowserConfig",
                 "params": {
                     "headless": True,
-                }
+                },
             },
             "crawler_config": {
                 "type": "CrawlerRunConfig",
                 "params": {
-                    "stream": False, # Explicitly false for /crawl
+                    "stream": False,  # Explicitly false for /crawl
                     "screenshot": False,
-                    "cache_mode": CacheMode.BYPASS.value # Use enum value
-                }
-            }
+                    "cache_mode": CacheMode.BYPASS.value,  # Use enum value
+                },
+            },
         }
         try:
             response = await async_client.post("/crawl", json=payload)
@@ -143,6 +139,7 @@ class TestCrawlEndpoints:
         assert "<h1>Herman Melville - Moby-Dick</h1>" in result["html"]
         # We don't specify a markdown generator in this test, so don't make assumptions about markdown field
         # It might be null, missing, or populated depending on the server's default behavior
+
     async def test_crawl_with_stream_direct(self, async_client: httpx.AsyncClient):
         """Test that /crawl endpoint handles stream=True directly without redirect."""
         payload = {
@@ -151,16 +148,16 @@ class TestCrawlEndpoints:
                 "type": "BrowserConfig",
                 "params": {
                     "headless": True,
-                }
+                },
             },
             "crawler_config": {
-                "type": "CrawlerRunConfig", 
+                "type": "CrawlerRunConfig",
                 "params": {
                     "stream": True,  # Set stream to True for direct streaming
                     "screenshot": False,
-                    "cache_mode": CacheMode.BYPASS.value
-                }
-            }
+                    "cache_mode": CacheMode.BYPASS.value,
+                },
+            },
         }
 
         # Send a request to the /crawl endpoint - should handle streaming directly
@@ -177,7 +174,10 @@ class TestCrawlEndpoints:
             assert result["success"] is True
             assert result["url"] == SIMPLE_HTML_URL
             assert "<h1>Herman Melville - Moby-Dick</h1>" in result["html"]
-    async def test_simple_crawl_single_url_streaming(self, async_client: httpx.AsyncClient):
+
+    async def test_simple_crawl_single_url_streaming(
+        self, async_client: httpx.AsyncClient
+    ):
         """Test /crawl/stream with a single URL and simple config values."""
         payload = {
             "urls": [SIMPLE_HTML_URL],
@@ -185,18 +185,20 @@ class TestCrawlEndpoints:
                 "type": "BrowserConfig",
                 "params": {
                     "headless": True,
-                }
+                },
             },
             "crawler_config": {
                 "type": "CrawlerRunConfig",
                 "params": {
-                    "stream": True, # Must be true for /crawl/stream
+                    "stream": True,  # Must be true for /crawl/stream
                     "screenshot": False,
-                    "cache_mode": CacheMode.BYPASS.value
-                }
-            }
+                    "cache_mode": CacheMode.BYPASS.value,
+                },
+            },
         }
-        async with async_client.stream("POST", "/crawl/stream", json=payload) as response:
+        async with async_client.stream(
+            "POST", "/crawl/stream", json=payload
+        ) as response:
             response.raise_for_status()
             results = await process_streaming_response(response)
 
@@ -207,32 +209,28 @@ class TestCrawlEndpoints:
         assert result["url"] == SIMPLE_HTML_URL
         assert "<h1>Herman Melville - Moby-Dick</h1>" in result["html"]
 
-
     # 2. Multi-URL and Dispatcher
     async def test_multi_url_crawl(self, async_client: httpx.AsyncClient):
         """Test /crawl with multiple URLs, implicitly testing dispatcher."""
         urls = [SIMPLE_HTML_URL, "https://httpbin.org/links/10/0"]
         payload = {
             "urls": urls,
-            "browser_config": {
-                "type": "BrowserConfig",
-                "params": {"headless": True}
-            },
+            "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
             "crawler_config": {
                 "type": "CrawlerRunConfig",
-                "params": {"stream": False, "cache_mode": CacheMode.BYPASS.value}
-            }
+                "params": {"stream": False, "cache_mode": CacheMode.BYPASS.value},
+            },
         }
         try:
-            print(f"Sending deep crawl request to server...")
+            print("Sending deep crawl request to server...")
             response = await async_client.post("/crawl", json=payload)
             print(f"Response status: {response.status_code}")
-            
+
             if response.status_code >= 400:
-                error_detail = response.json().get('detail', 'No detail provided')
+                error_detail = response.json().get("detail", "No detail provided")
                 print(f"Error detail: {error_detail}")
                 print(f"Full response: {response.text}")
-            
+
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -258,16 +256,15 @@ class TestCrawlEndpoints:
         urls = [SIMPLE_HTML_URL, "https://httpbin.org/links/10/0"]
         payload = {
             "urls": urls,
-            "browser_config": {
-                "type": "BrowserConfig",
-                "params": {"headless": True}
-            },
+            "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
             "crawler_config": {
                 "type": "CrawlerRunConfig",
-                "params": {"stream": True, "cache_mode": CacheMode.BYPASS.value}
-            }
+                "params": {"stream": True, "cache_mode": CacheMode.BYPASS.value},
+            },
         }
-        async with async_client.stream("POST", "/crawl/stream", json=payload) as response:
+        async with async_client.stream(
+            "POST", "/crawl/stream", json=payload
+        ) as response:
             response.raise_for_status()
             results = await process_streaming_response(response)
 
@@ -278,11 +275,12 @@ class TestCrawlEndpoints:
             assert result["success"] is True
             assert result["url"] in urls
             processed_urls.add(result["url"])
-        assert processed_urls == set(urls) # Ensure all URLs were processed
-
+        assert processed_urls == set(urls)  # Ensure all URLs were processed
 
     # 3. Class Values and Nested Classes (Markdown Generator)
-    async def test_crawl_with_markdown_pruning_filter(self, async_client: httpx.AsyncClient):
+    async def test_crawl_with_markdown_pruning_filter(
+        self, async_client: httpx.AsyncClient
+    ):
         """Test /crawl with MarkdownGenerator using PruningContentFilter."""
         payload = {
             "urls": [SIMPLE_HTML_URL],
@@ -290,32 +288,32 @@ class TestCrawlEndpoints:
             "crawler_config": {
                 "type": "CrawlerRunConfig",
                 "params": {
-                    "cache_mode": CacheMode.ENABLED.value, # Test different cache mode
+                    "cache_mode": CacheMode.ENABLED.value,  # Test different cache mode
                     "markdown_generator": {
                         "type": "DefaultMarkdownGenerator",
                         "params": {
                             "content_filter": {
                                 "type": "PruningContentFilter",
                                 "params": {
-                                    "threshold": 0.5, # Example param
-                                    "threshold_type": "relative"
-                                }
+                                    "threshold": 0.5,  # Example param
+                                    "threshold_type": "relative",
+                                },
                             }
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         }
         try:
-            print(f"Sending deep crawl request to server...")
+            print("Sending deep crawl request to server...")
             response = await async_client.post("/crawl", json=payload)
             print(f"Response status: {response.status_code}")
-            
+
             if response.status_code >= 400:
-                error_detail = response.json().get('detail', 'No detail provided')
+                error_detail = response.json().get("detail", "No detail provided")
                 print(f"Error detail: {error_detail}")
                 print(f"Full response: {response.text}")
-            
+
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -336,12 +334,16 @@ class TestCrawlEndpoints:
         assert "markdown" in result
         assert isinstance(result["markdown"], dict)
         assert "raw_markdown" in result["markdown"]
-        assert "fit_markdown" in result["markdown"] # Pruning creates fit_markdown
+        assert "fit_markdown" in result["markdown"]  # Pruning creates fit_markdown
         assert "Moby-Dick" in result["markdown"]["raw_markdown"]
         # Fit markdown content might be different/shorter due to pruning
-        assert len(result["markdown"]["fit_markdown"]) <= len(result["markdown"]["raw_markdown"])
+        assert len(result["markdown"]["fit_markdown"]) <= len(
+            result["markdown"]["raw_markdown"]
+        )
 
-    async def test_crawl_with_markdown_bm25_filter(self, async_client: httpx.AsyncClient):
+    async def test_crawl_with_markdown_bm25_filter(
+        self, async_client: httpx.AsyncClient
+    ):
         """Test /crawl with MarkdownGenerator using BM25ContentFilter."""
         payload = {
             "urls": [SIMPLE_HTML_URL],
@@ -355,26 +357,26 @@ class TestCrawlEndpoints:
                             "content_filter": {
                                 "type": "BM25ContentFilter",
                                 "params": {
-                                    "user_query": "Herman Melville", # Query for BM25
-                                    "bm25_threshold": 0.1, # Lower threshold to increase matches
-                                    "language": "english"  # Valid parameters
-                                }
+                                    "user_query": "Herman Melville",  # Query for BM25
+                                    "bm25_threshold": 0.1,  # Lower threshold to increase matches
+                                    "language": "english",  # Valid parameters
+                                },
                             }
-                        }
+                        },
                     }
-                }
-            }
+                },
+            },
         }
         try:
             print(f"Payload for BM25 test: {json.dumps(payload)}")
             response = await async_client.post("/crawl", json=payload)
             print(f"Response status: {response.status_code}")
-            
+
             if response.status_code >= 400:
-                error_detail = response.json().get('detail', 'No detail provided')
+                error_detail = response.json().get("detail", "No detail provided")
                 print(f"Error detail: {error_detail}")
                 print(f"Full response: {response.text}")
-            
+
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -395,22 +397,21 @@ class TestCrawlEndpoints:
         assert "markdown" in result
         assert isinstance(result["markdown"], dict)
         assert "raw_markdown" in result["markdown"]
-        assert "fit_markdown" in result["markdown"] # BM25 creates fit_markdown
-        
+        assert "fit_markdown" in result["markdown"]  # BM25 creates fit_markdown
+
         # Print values for debug
         print(f"Raw markdown length: {len(result['markdown']['raw_markdown'])}")
         print(f"Fit markdown length: {len(result['markdown']['fit_markdown'])}")
-        
+
         # Either fit_markdown has content (possibly including our query terms)
         # or it might be empty if no good BM25 matches were found
         # Don't assert specific content since it can be environment-dependent
-
 
     # 4. Deep Crawling
     async def test_deep_crawl(self, async_client: httpx.AsyncClient):
         """Test /crawl with a deep crawl strategy."""
         payload = {
-            "urls": [DEEP_CRAWL_URL], # Start URL
+            "urls": [DEEP_CRAWL_URL],  # Start URL
             "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
             "crawler_config": {
                 "type": "CrawlerRunConfig",
@@ -420,22 +421,27 @@ class TestCrawlEndpoints:
                     "deep_crawl_strategy": {
                         "type": "BFSDeepCrawlStrategy",
                         "params": {
-                            "max_depth": 1, # Limit depth for testing speed
-                            "max_pages": 5, # Limit pages to crawl
+                            "max_depth": 1,  # Limit depth for testing speed
+                            "max_pages": 5,  # Limit pages to crawl
                             "filter_chain": {
                                 "type": "FilterChain",
                                 "params": {
                                     "filters": [
                                         {
                                             "type": "ContentTypeFilter",
-                                            "params": {"allowed_types": ["text/html"]}
+                                            "params": {"allowed_types": ["text/html"]},
                                         },
                                         {
                                             "type": "DomainFilter",
-                                            "params": {"allowed_domains": ["python.org", "docs.python.org"]} # Include important subdomains
-                                        }
+                                            "params": {
+                                                "allowed_domains": [
+                                                    "python.org",
+                                                    "docs.python.org",
+                                                ]
+                                            },  # Include important subdomains
+                                        },
                                     ]
-                                }
+                                },
                             },
                             "url_scorer": {
                                 "type": "CompositeScorer",
@@ -443,30 +449,38 @@ class TestCrawlEndpoints:
                                     "scorers": [
                                         {
                                             "type": "KeywordRelevanceScorer",
-                                            "params": {"keywords": ["documentation", "tutorial"]}
+                                            "params": {
+                                                "keywords": [
+                                                    "documentation",
+                                                    "tutorial",
+                                                ]
+                                            },
                                         },
                                         {
                                             "type": "PathDepthScorer",
-                                            "params": {"weight": 0.5, "optimal_depth": 2}
-                                        }
+                                            "params": {
+                                                "weight": 0.5,
+                                                "optimal_depth": 2,
+                                            },
+                                        },
                                     ]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         }
         try:
-            print(f"Sending deep crawl request to server...")
+            print("Sending deep crawl request to server...")
             response = await async_client.post("/crawl", json=payload)
             print(f"Response status: {response.status_code}")
-            
+
             if response.status_code >= 400:
-                error_detail = response.json().get('detail', 'No detail provided')
+                error_detail = response.json().get("detail", "No detail provided")
                 print(f"Error detail: {error_detail}")
                 print(f"Full response: {response.text}")
-            
+
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -483,17 +497,17 @@ class TestCrawlEndpoints:
         assert isinstance(data["results"], list)
         # Expect more than 1 result due to deep crawl (start URL + crawled links)
         assert len(data["results"]) > 1
-        assert len(data["results"]) <= 6 # Start URL + max_links=5
+        assert len(data["results"]) <= 6  # Start URL + max_links=5
 
         start_url_found = False
         crawled_urls_found = False
         for result in data["results"]:
             await assert_crawl_result_structure(result)
             assert result["success"] is True
-            
+
             # Print URL for debugging
             print(f"Crawled URL: {result['url']}")
-            
+
             # Allow URLs that contain python.org (including subdomains like docs.python.org)
             assert "python.org" in result["url"]
             if result["url"] == DEEP_CRAWL_URL:
@@ -503,7 +517,6 @@ class TestCrawlEndpoints:
 
         assert start_url_found
         assert crawled_urls_found
-
 
     # 5. Extraction without LLM (JSON/CSS)
     async def test_json_css_extraction(self, async_client: httpx.AsyncClient):
@@ -518,33 +531,47 @@ class TestCrawlEndpoints:
                     "extraction_strategy": {
                         "type": "JsonCssExtractionStrategy",
                         "params": {
-                            "schema": { 
-                                "type": "dict", # IMPORTANT: Wrap schema dict with type/value structure
+                            "schema": {
+                                "type": "dict",  # IMPORTANT: Wrap schema dict with type/value structure
                                 "value": {
                                     "name": "BookList",
-                                    "baseSelector": "ol.row li.col-xs-6", # Select each book item
+                                    "baseSelector": "ol.row li.col-xs-6",  # Select each book item
                                     "fields": [
-                                        {"name": "title", "selector": "article.product_pod h3 a", "type": "attribute", "attribute": "title"},
-                                        {"name": "price", "selector": "article.product_pod .price_color", "type": "text"},
-                                        {"name": "rating", "selector": "article.product_pod p.star-rating", "type": "attribute", "attribute": "class"}
-                                    ]
-                                }
+                                        {
+                                            "name": "title",
+                                            "selector": "article.product_pod h3 a",
+                                            "type": "attribute",
+                                            "attribute": "title",
+                                        },
+                                        {
+                                            "name": "price",
+                                            "selector": "article.product_pod .price_color",
+                                            "type": "text",
+                                        },
+                                        {
+                                            "name": "rating",
+                                            "selector": "article.product_pod p.star-rating",
+                                            "type": "attribute",
+                                            "attribute": "class",
+                                        },
+                                    ],
+                                },
                             }
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         }
         try:
-            print(f"Sending deep crawl request to server...")
+            print("Sending deep crawl request to server...")
             response = await async_client.post("/crawl", json=payload)
             print(f"Response status: {response.status_code}")
-            
+
             if response.status_code >= 400:
-                error_detail = response.json().get('detail', 'No detail provided')
+                error_detail = response.json().get("detail", "No detail provided")
                 print(f"Error detail: {error_detail}")
                 print(f"Full response: {response.text}")
-            
+
             response.raise_for_status()
             data = response.json()
         except httpx.HTTPStatusError as e:
@@ -569,16 +596,17 @@ class TestCrawlEndpoints:
         try:
             extracted_data = json.loads(result["extracted_content"])
             assert isinstance(extracted_data, list)
-            assert len(extracted_data) > 0 # Should find some books
+            assert len(extracted_data) > 0  # Should find some books
             # Check structure of the first extracted item
             first_item = extracted_data[0]
             assert "title" in first_item
             assert "price" in first_item
             assert "rating" in first_item
-            assert "star-rating" in first_item["rating"] # e.g., "star-rating Three"
+            assert "star-rating" in first_item["rating"]  # e.g., "star-rating Three"
         except (json.JSONDecodeError, AssertionError) as e:
-            pytest.fail(f"Extracted content parsing or validation failed: {e}\nContent: {result['extracted_content']}")
-
+            pytest.fail(
+                f"Extracted content parsing or validation failed: {e}\nContent: {result['extracted_content']}"
+            )
 
     # 6. Extraction with LLM
     async def test_llm_extraction(self, async_client: httpx.AsyncClient):
@@ -602,39 +630,49 @@ class TestCrawlEndpoints:
                             # LLMConfig is implicitly defined by server's config.yml and .llm.env
                             # If you needed to override provider/token PER REQUEST:
                             "llm_config": {
-                               "type": "LLMConfig",
-                               "params": {
-                                  "provider": "openai/gpt-4o", # Example override
-                                  "api_token": os.getenv("OPENAI_API_KEY") # Example override
-                               }
+                                "type": "LLMConfig",
+                                "params": {
+                                    "provider": "openai/gpt-4o",  # Example override
+                                    "api_token": os.getenv(
+                                        "OPENAI_API_KEY"
+                                    ),  # Example override
+                                },
                             },
-                            "schema": { # Optional: Provide a schema for structured output
-                                "type": "dict", # IMPORTANT: Wrap schema dict
+                            "schema": {  # Optional: Provide a schema for structured output
+                                "type": "dict",  # IMPORTANT: Wrap schema dict
                                 "value": {
                                     "title": "Book Info",
                                     "type": "object",
                                     "properties": {
-                                        "title": {"type": "string", "description": "The main title of the work"},
-                                        "author": {"type": "string", "description": "The author of the work"}
+                                        "title": {
+                                            "type": "string",
+                                            "description": "The main title of the work",
+                                        },
+                                        "author": {
+                                            "type": "string",
+                                            "description": "The author of the work",
+                                        },
                                     },
-                                     "required": ["title", "author"]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                                    "required": ["title", "author"],
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         }
 
         try:
             response = await async_client.post("/crawl", json=payload)
-            response.raise_for_status() # Will raise if server returns 500 (e.g., bad API key)
+            response.raise_for_status()  # Will raise if server returns 500 (e.g., bad API key)
             data = response.json()
         except httpx.HTTPStatusError as e:
             # Catch potential server errors (like 500 due to missing/invalid API keys)
-            pytest.fail(f"LLM extraction request failed: {e}. Response: {e.response.text}. Check server logs and ensure API keys are correctly configured for the server.")
+            pytest.fail(
+                f"LLM extraction request failed: {e}. Response: {e.response.text}. Check server logs and ensure API keys are correctly configured for the server."
+            )
         except httpx.RequestError as e:
-             pytest.fail(f"LLM extraction request failed: {e}.")
+            pytest.fail(f"LLM extraction request failed: {e}.")
 
         assert data["success"] is True
         assert len(data["results"]) == 1
@@ -647,8 +685,8 @@ class TestCrawlEndpoints:
         # Extracted content should be JSON (because we provided a schema)
         try:
             extracted_data = json.loads(result["extracted_content"])
-            print(f"\nLLM Extracted Data: {extracted_data}") # Print for verification
-            
+            print(f"\nLLM Extracted Data: {extracted_data}")  # Print for verification
+
             # Handle both dict and list formats (server returns a list)
             if isinstance(extracted_data, list):
                 assert len(extracted_data) > 0
@@ -665,10 +703,13 @@ class TestCrawlEndpoints:
                 assert "Moby-Dick" in extracted_data.get("title", "")
                 assert "Herman Melville" in extracted_data.get("author", "")
         except (json.JSONDecodeError, AssertionError) as e:
-            pytest.fail(f"LLM extracted content parsing or validation failed: {e}\nContent: {result['extracted_content']}")
-        except Exception as e: # Catch any other unexpected error
-            pytest.fail(f"An unexpected error occurred during LLM result processing: {e}\nContent: {result['extracted_content']}")
-
+            pytest.fail(
+                f"LLM extracted content parsing or validation failed: {e}\nContent: {result['extracted_content']}"
+            )
+        except Exception as e:  # Catch any other unexpected error
+            pytest.fail(
+                f"An unexpected error occurred during LLM result processing: {e}\nContent: {result['extracted_content']}"
+            )
 
     # 7. Error Handling Tests
     async def test_invalid_url_handling(self, async_client: httpx.AsyncClient):
@@ -676,9 +717,12 @@ class TestCrawlEndpoints:
         payload = {
             "urls": ["invalid-url", "https://nonexistent-domain-12345.com"],
             "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
-            "crawler_config": {"type": "CrawlerRunConfig", "params": {"cache_mode": CacheMode.BYPASS.value}}
+            "crawler_config": {
+                "type": "CrawlerRunConfig",
+                "params": {"cache_mode": CacheMode.BYPASS.value},
+            },
         }
-        
+
         response = await async_client.post("/crawl", json=payload)
         # Should return 200 with failed results, not 500
         print(f"Status code: {response.status_code}")
@@ -697,7 +741,7 @@ class TestCrawlEndpoints:
             ],
             "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
             "crawler_config": {
-                "type": "CrawlerRunConfig", 
+                "type": "CrawlerRunConfig",
                 "params": {
                     "cache_mode": CacheMode.BYPASS.value,
                     "markdown_generator": {
@@ -705,23 +749,23 @@ class TestCrawlEndpoints:
                         "params": {
                             "content_filter": {
                                 "type": "PruningContentFilter",
-                                "params": {"threshold": 0.5}
+                                "params": {"threshold": 0.5},
                             }
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         }
-        
+
         response = await async_client.post("/crawl", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert len(data["results"]) == 3
-        
+
         success_count = 0
         failure_count = 0
-        
+
         for result in data["results"]:
             if result["success"]:
                 success_count += 1
@@ -729,7 +773,7 @@ class TestCrawlEndpoints:
                 failure_count += 1
                 assert "error_message" in result
                 assert len(result["error_message"]) > 0
-                
+
         assert success_count >= 1  # At least one should succeed
         assert failure_count >= 1  # At least one should fail
 
@@ -742,23 +786,22 @@ class TestCrawlEndpoints:
             ],
             "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
             "crawler_config": {
-                "type": "CrawlerRunConfig", 
-                "params": {
-                    "stream": True,
-                    "cache_mode": CacheMode.BYPASS.value
-                }
-            }
+                "type": "CrawlerRunConfig",
+                "params": {"stream": True, "cache_mode": CacheMode.BYPASS.value},
+            },
         }
-        
-        async with async_client.stream("POST", "/crawl/stream", json=payload) as response:
+
+        async with async_client.stream(
+            "POST", "/crawl/stream", json=payload
+        ) as response:
             response.raise_for_status()
             results = await process_streaming_response(response)
-        
+
         assert len(results) == 2
-        
+
         success_count = 0
         failure_count = 0
-        
+
         for result in results:
             if result["success"]:
                 success_count += 1
@@ -767,20 +810,25 @@ class TestCrawlEndpoints:
                 failure_count += 1
                 assert "error_message" in result
                 assert result["error_message"] is not None
-        
+
         assert success_count == 1
         assert failure_count == 1
 
-    async def test_markdown_endpoint_error_handling(self, async_client: httpx.AsyncClient):
+    async def test_markdown_endpoint_error_handling(
+        self, async_client: httpx.AsyncClient
+    ):
         """Test error handling for markdown endpoint."""
         # Test invalid URL
         invalid_payload = {"url": "invalid-url", "f": "fit"}
         response = await async_client.post("/md", json=invalid_payload)
         # Should return 400 for invalid URL format
         assert response.status_code == 400
-        
+
         # Test non-existent URL
-        nonexistent_payload = {"url": "https://nonexistent-domain-12345.com", "f": "fit"}
+        nonexistent_payload = {
+            "url": "https://nonexistent-domain-12345.com",
+            "f": "fit",
+        }
         response = await async_client.post("/md", json=nonexistent_payload)
         # Should return 500 for crawl failure
         assert response.status_code == 500
@@ -793,7 +841,9 @@ class TestCrawlEndpoints:
         # Should return 500 for crawl failure
         assert response.status_code == 500
 
-    async def test_screenshot_endpoint_error_handling(self, async_client: httpx.AsyncClient):
+    async def test_screenshot_endpoint_error_handling(
+        self, async_client: httpx.AsyncClient
+    ):
         """Test error handling for screenshot endpoint."""
         # Test invalid URL
         invalid_payload = {"url": "invalid-url"}
@@ -809,7 +859,9 @@ class TestCrawlEndpoints:
         # Should return 500 for crawl failure
         assert response.status_code == 500
 
-    async def test_execute_js_endpoint_error_handling(self, async_client: httpx.AsyncClient):
+    async def test_execute_js_endpoint_error_handling(
+        self, async_client: httpx.AsyncClient
+    ):
         """Test error handling for execute_js endpoint."""
         # Test invalid URL
         invalid_payload = {"url": "invalid-url", "scripts": ["return document.title;"]}
@@ -822,7 +874,7 @@ class TestCrawlEndpoints:
         # Test missing query parameter
         response = await async_client.get("/llm/https://example.com")
         assert response.status_code == 422  # FastAPI validation error, not 400
-        
+
         # Test invalid URL
         response = await async_client.get("/llm/invalid-url?q=test")
         # Should return 500 for crawl failure
@@ -833,11 +885,11 @@ class TestCrawlEndpoints:
         # Test invalid context_type
         response = await async_client.get("/ask?context_type=invalid")
         assert response.status_code == 422  # Validation error
-        
+
         # Test invalid score_ratio
         response = await async_client.get("/ask?score_ratio=2.0")  # > 1.0
         assert response.status_code == 422  # Validation error
-        
+
         # Test invalid max_results
         response = await async_client.get("/ask?max_results=0")  # < 1
         assert response.status_code == 422  # Validation error
@@ -848,7 +900,7 @@ class TestCrawlEndpoints:
         invalid_payload = {"code": "invalid_code"}
         response = await async_client.post("/config/dump", json=invalid_payload)
         assert response.status_code == 400
-        
+
         # Test nested function calls (not allowed)
         nested_payload = {"code": "CrawlerRunConfig(BrowserConfig())"}
         response = await async_client.post("/config/dump", json=nested_payload)
@@ -861,15 +913,16 @@ class TestCrawlEndpoints:
         response = await async_client.post("/crawl", json=malformed_payload)
         print(f"Response: {response.text}")
         assert response.status_code == 422  # Validation error
-        
+
         # Test empty URLs list
         empty_urls_payload = {
             "urls": [],
             "browser_config": {"type": "BrowserConfig", "params": {}},
-            "crawler_config": {"type": "CrawlerRunConfig", "params": {}}
+            "crawler_config": {"type": "CrawlerRunConfig", "params": {}},
         }
         response = await async_client.post("/crawl", json=empty_urls_payload)
         assert response.status_code == 422  # "At least one URL required"
+
 
 if __name__ == "__main__":
     # Define arguments for pytest programmatically

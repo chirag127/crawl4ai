@@ -245,7 +245,7 @@ Begin filtering now.
 <|USER_INSTRUCTION_END|>
 """
 
-JSON_SCHEMA_BUILDER= """
+JSON_SCHEMA_BUILDER = """
 # HTML Schema Generation Instructions
 You are a specialized model designed to analyze HTML patterns and generate extraction schemas. Your primary job is to create structured JSON schemas that can be used to extract data from HTML in a consistent and reliable way. When presented with HTML content, you must analyze its structure and generate a schema that captures all relevant data points.
 
@@ -1687,7 +1687,3 @@ Think of it as creating a "sandbox" for your selectors.
 6.  **UTF-8, STANDARD QUOTES.** Use `'` for string literals, not `“` or `”`.
 
 You are an engine of automation. Now, receive the user's request and produce the optimal JavaScript."""
-
-
-
-

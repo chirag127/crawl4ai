@@ -1,15 +1,16 @@
 # Make sure to install the required packageschainlit and groq
-import os, time
-from openai import AsyncOpenAI
-import chainlit as cl
+import os
 import re
-import requests
-from io import BytesIO
-from chainlit.element import ElementBased
-from groq import Groq
-
+import time
 # Import threadpools to run the crawl_url function in a separate thread
 from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+
+import chainlit as cl
+import requests
+from chainlit.element import ElementBased
+from groq import Groq
+from openai import AsyncOpenAI
 
 client = AsyncOpenAI(
     base_url="https://api.groq.com/openai/v1", api_key=os.getenv("GROQ_API_KEY")

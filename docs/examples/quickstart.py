@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 from crawl4ai import LLMConfig
 
@@ -7,19 +8,19 @@ sys.path.append(
 )
 
 import asyncio
-import time
 import json
 import re
+import time
 from typing import Dict
+
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
-from crawl4ai import AsyncWebCrawler, CacheMode, BrowserConfig, CrawlerRunConfig
-from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, JsonCssExtractionStrategy,
+                      LLMExtractionStrategy)
 from crawl4ai.content_filter_strategy import PruningContentFilter
-from crawl4ai import (
-    JsonCssExtractionStrategy,
-    LLMExtractionStrategy,
-)
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -211,7 +212,7 @@ async def extract_structured_data_using_llm(
         word_count_threshold=1,
         page_timeout=80000,
         extraction_strategy=LLMExtractionStrategy(
-            llm_config=LLMConfig(provider=provider,api_token=api_token),
+            llm_config=LLMConfig(provider=provider, api_token=api_token),
             schema=OpenAIModelFee.model_json_schema(),
             extraction_type="schema",
             instruction="""From the crawled content, extract all mentioned model names along with their fees for input and output tokens. 
@@ -280,7 +281,7 @@ async def extract_structured_data_using_css_extractor():
         cache_mode=CacheMode.BYPASS,
         extraction_strategy=JsonCssExtractionStrategy(schema),
         js_code=[js_click_tabs],
-        delay_before_return_html=1
+        delay_before_return_html=1,
     )
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -417,6 +418,7 @@ async def crawl_dynamic_content_pages_method_2():
 
 async def cosine_similarity_extraction():
     from crawl4ai import CosineStrategy
+
     crawl_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         extraction_strategy=CosineStrategy(
@@ -554,7 +556,7 @@ async def main():
     # Screenshot example
     await capture_and_save_screenshot(
         "https://www.example.com",
-        os.path.join(__location__, "tmp/example_screenshot.jpg")
+        os.path.join(__location__, "tmp/example_screenshot.jpg"),
     )
 
 

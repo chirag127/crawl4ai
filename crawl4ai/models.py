@@ -1,13 +1,13 @@
-from pydantic import BaseModel, HttpUrl, PrivateAttr, Field, ConfigDict, BeforeValidator
-from typing import Annotated
-from typing import List, Dict, Optional, Callable, Awaitable, Union, Any
-from typing import AsyncGenerator
-from typing import Generic, TypeVar
-from enum import Enum
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import (Annotated, Any, AsyncGenerator, Awaitable, Callable, Dict,
+                    Generic, List, Optional, TypeVar, Union)
+
+from pydantic import (BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl,
+                      PrivateAttr)
+
 from .ssl_certificate import SSLCertificate
-from datetime import datetime
-from datetime import timedelta
 
 
 ###############################
@@ -32,16 +32,18 @@ class CrawlerTaskResult:
     error_message: str = ""
     retry_count: int = 0
     wait_time: float = 0.0
-    
+
     @property
     def success(self) -> bool:
         return self.result.success
+
 
 class CrawlStatus(Enum):
     QUEUED = "QUEUED"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+
 
 @dataclass
 class CrawlStats:
@@ -61,20 +63,21 @@ class CrawlStats:
     def duration(self) -> str:
         if not self.start_time:
             return "0:00"
-            
+
         # Convert start_time to datetime if it's a float
         start = self.start_time
         if isinstance(start, float):
             start = datetime.fromtimestamp(start)
-            
+
         # Get end time or use current time
         end = self.end_time or datetime.now()
         # Convert end_time to datetime if it's a float
         if isinstance(end, float):
             end = datetime.fromtimestamp(end)
-            
+
         duration = end - start
         return str(timedelta(seconds=int(duration.total_seconds())))
+
 
 class DisplayMode(Enum):
     DETAILED = "DETAILED"
@@ -92,10 +95,10 @@ class TokenUsage:
     completion_tokens_details: Optional[dict] = None
     prompt_tokens_details: Optional[dict] = None
 
+
 class UrlModel(BaseModel):
     url: HttpUrl
     forced: bool = False
-
 
 
 @dataclass
@@ -109,6 +112,7 @@ class TraversalStats:
     total_depth_reached: int = 0
     current_depth: int = 0
 
+
 class DispatchResult(BaseModel):
     task_id: str
     memory_usage: float
@@ -116,6 +120,7 @@ class DispatchResult(BaseModel):
     start_time: Union[datetime, float]
     end_time: Union[datetime, float]
     error_message: str = ""
+
 
 class MarkdownGenerationResult(BaseModel):
     raw_markdown: str
@@ -126,7 +131,8 @@ class MarkdownGenerationResult(BaseModel):
 
     def __str__(self):
         return self.raw_markdown
-    
+
+
 class CrawlResult(BaseModel):
     url: str
     html: str
@@ -153,7 +159,9 @@ class CrawlResult(BaseModel):
     redirected_status_code: Optional[int] = None
     network_requests: Optional[List[Dict[str, Any]]] = None
     console_messages: Optional[List[Dict[str, Any]]] = None
-    tables: List[Dict] = Field(default_factory=list)  # NEW – [{headers,rows,caption,summary}]
+    tables: List[Dict] = Field(
+        default_factory=list
+    )  # NEW – [{headers,rows,caption,summary}]
     # Cache validation metadata (Smart Cache)
     head_fingerprint: Optional[str] = None
     cached_at: Optional[float] = None
@@ -163,20 +171,20 @@ class CrawlResult(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-# NOTE: The StringCompatibleMarkdown class, custom __init__ method, property getters/setters,
-# and model_dump override all exist to support a smooth transition from markdown as a string
-# to markdown as a MarkdownGenerationResult object, while maintaining backward compatibility.
-# 
-# This allows code that expects markdown to be a string to continue working, while also
-# providing access to the full MarkdownGenerationResult object's properties.
-# 
-# The markdown_v2 property is deprecated and raises an error directing users to use markdown.
-# 
-# When backward compatibility is no longer needed in future versions, this entire mechanism
-# can be simplified to a standard field with no custom accessors or serialization logic.
-    
+    # NOTE: The StringCompatibleMarkdown class, custom __init__ method, property getters/setters,
+    # and model_dump override all exist to support a smooth transition from markdown as a string
+    # to markdown as a MarkdownGenerationResult object, while maintaining backward compatibility.
+    #
+    # This allows code that expects markdown to be a string to continue working, while also
+    # providing access to the full MarkdownGenerationResult object's properties.
+    #
+    # The markdown_v2 property is deprecated and raises an error directing users to use markdown.
+    #
+    # When backward compatibility is no longer needed in future versions, this entire mechanism
+    # can be simplified to a standard field with no custom accessors or serialization logic.
+
     def __init__(self, **data):
-        markdown_result = data.pop('markdown', None)
+        markdown_result = data.pop("markdown", None)
         super().__init__(**data)
         if markdown_result is not None:
             self._markdown = (
@@ -184,27 +192,27 @@ class CrawlResult(BaseModel):
                 if isinstance(markdown_result, dict)
                 else markdown_result
             )
-    
+
     @property
     def markdown(self):
         """
         Property that returns a StringCompatibleMarkdown object that behaves like
         a string but also provides access to MarkdownGenerationResult attributes.
-        
+
         This approach allows backward compatibility with code that expects 'markdown'
         to be a string, while providing access to the full MarkdownGenerationResult.
         """
         if self._markdown is None:
             return None
         return StringCompatibleMarkdown(self._markdown)
-    
+
     @markdown.setter
     def markdown(self, value):
         """
         Setter for the markdown property.
         """
         self._markdown = value
-    
+
     @property
     def markdown_v2(self):
         """
@@ -223,7 +231,7 @@ class CrawlResult(BaseModel):
             - fit_markdown: The markdown string with fit text
             """
         )
-    
+
     @property
     def fit_markdown(self):
         """
@@ -233,7 +241,7 @@ class CrawlResult(BaseModel):
             "The 'fit_markdown' attribute is deprecated and has been removed. "
             "Please use 'markdown.fit_markdown' instead."
         )
-    
+
     @property
     def fit_html(self):
         """
@@ -247,45 +255,49 @@ class CrawlResult(BaseModel):
     def model_dump(self, *args, **kwargs):
         """
         Override model_dump to include the _markdown private attribute in serialization.
-        
+
         This override is necessary because:
         1. PrivateAttr fields are excluded from serialization by default
         2. We need to maintain backward compatibility by including the 'markdown' field
            in the serialized output
         3. We're transitioning from 'markdown_v2' to enhancing 'markdown' to hold
            the same type of data
-        
+
         Future developers: This method ensures that the markdown content is properly
         serialized despite being stored in a private attribute. If the serialization
         requirements change, this is where you would update the logic.
         """
         result = super().model_dump(*args, **kwargs)
-        
+
         # Remove any property descriptors that might have been included
         # These deprecated properties should not be in the serialized output
-        for key in ['fit_html', 'fit_markdown', 'markdown_v2']:
+        for key in ["fit_html", "fit_markdown", "markdown_v2"]:
             if key in result and isinstance(result[key], property):
                 # del result[key]
                 # Nasrin: I decided to convert it to string instead of removing it.
                 result[key] = str(result[key])
-        
+
         # Add the markdown field properly
         if self._markdown is not None:
-            result["markdown"] = self._markdown.model_dump() 
+            result["markdown"] = self._markdown.model_dump()
         return result
+
 
 class StringCompatibleMarkdown(str):
     """A string subclass that also provides access to MarkdownGenerationResult attributes"""
+
     def __new__(cls, markdown_result):
         return super().__new__(cls, markdown_result.raw_markdown)
-    
+
     def __init__(self, markdown_result):
         self._markdown_result = markdown_result
-    
+
     def __getattr__(self, name):
         return getattr(self._markdown_result, name)
 
-CrawlResultT = TypeVar('CrawlResultT', bound=CrawlResult)
+
+CrawlResultT = TypeVar("CrawlResultT", bound=CrawlResult)
+
 
 class CrawlResultContainer(Generic[CrawlResultT]):
     def __init__(self, results: Union[CrawlResultT, List[CrawlResultT]]):
@@ -312,14 +324,16 @@ class CrawlResultContainer(Generic[CrawlResultT]):
         # Delegate attribute access to the first element.
         if self._results:
             return getattr(self._results[0], attr)
-        raise AttributeError(f"{self.__class__.__name__} object has no attribute '{attr}'")
+        raise AttributeError(
+            f"{self.__class__.__name__} object has no attribute '{attr}'"
+        )
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._results!r})"
 
+
 RunManyReturn = Union[
-    CrawlResultContainer[CrawlResultT],
-    AsyncGenerator[CrawlResultT, None]
+    CrawlResultContainer[CrawlResultT], AsyncGenerator[CrawlResultT, None]
 ]
 
 
@@ -327,6 +341,7 @@ RunManyReturn = Union[
 # When removing this code in the future, make sure to:
 # 1. Replace the private attribute and property with a standard field
 # 2. Update any serialization logic that might depend on the current behavior
+
 
 class AsyncCrawlResponse(BaseModel):
     html: str
@@ -346,6 +361,7 @@ class AsyncCrawlResponse(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+
 ###############################
 # Scraping Models
 ###############################
@@ -357,6 +373,7 @@ def _coerce_int(v):
         return int(v)
     except (ValueError, TypeError):
         return None
+
 
 class MediaItem(BaseModel):
     src: Optional[str] = ""
@@ -375,22 +392,30 @@ class Link(BaseModel):
     text: Optional[str] = ""
     title: Optional[str] = ""
     base_domain: Optional[str] = ""
-    head_data: Optional[Dict[str, Any]] = None  # Head metadata extracted from link target
+    head_data: Optional[Dict[str, Any]] = (
+        None  # Head metadata extracted from link target
+    )
     head_extraction_status: Optional[str] = None  # "success", "failed", "skipped"
     head_extraction_error: Optional[str] = None  # Error message if extraction failed
-    intrinsic_score: Optional[float] = None  # Quality score based on URL structure, text, and context
-    contextual_score: Optional[float] = None  # BM25 relevance score based on query and head content
-    total_score: Optional[float] = None  # Combined score from intrinsic and contextual scores
+    intrinsic_score: Optional[float] = (
+        None  # Quality score based on URL structure, text, and context
+    )
+    contextual_score: Optional[float] = (
+        None  # BM25 relevance score based on query and head content
+    )
+    total_score: Optional[float] = (
+        None  # Combined score from intrinsic and contextual scores
+    )
 
 
 class Media(BaseModel):
     images: List[MediaItem] = []
-    videos: List[
-        MediaItem
-    ] = []  # Using MediaItem model for now, can be extended with Video model if needed
-    audios: List[
-        MediaItem
-    ] = []  # Using MediaItem model for now, can be extended with Audio model if needed
+    videos: List[MediaItem] = (
+        []
+    )  # Using MediaItem model for now, can be extended with Video model if needed
+    audios: List[MediaItem] = (
+        []
+    )  # Using MediaItem model for now, can be extended with Audio model if needed
     tables: List[Dict] = []  # Table data extracted from HTML tables
 
 

@@ -1,7 +1,10 @@
 # pip install "mcp-sdk[ws]" anyio
-import anyio, json
-from mcp.client.websocket import websocket_client
+import json
+
+import anyio
 from mcp.client.session import ClientSession
+from mcp.client.websocket import websocket_client
+
 
 async def test_list():
     async with websocket_client("ws://localhost:8020/mcp/ws") as (r, w):
@@ -9,8 +12,16 @@ async def test_list():
             await s.initialize()
 
             print("tools      :", [t.name for t in (await s.list_tools()).tools])
-            print("resources  :", [r.name for r in (await s.list_resources()).resources])
-            print("templates  :", [t.name for t in (await s.list_resource_templates()).resource_templates])
+            print(
+                "resources  :", [r.name for r in (await s.list_resources()).resources]
+            )
+            print(
+                "templates  :",
+                [
+                    t.name
+                    for t in (await s.list_resource_templates()).resource_templates
+                ],
+            )
 
 
 async def test_crawl(s: ClientSession) -> None:
@@ -32,13 +43,14 @@ async def test_md(s: ClientSession) -> None:
         "md",
         {
             "url": "https://example.com",
-            "f": "fit",   # or RAW, BM25, LLM
+            "f": "fit",  # or RAW, BM25, LLM
             "q": None,
             "c": "0",
         },
     )
     result = json.loads(res.content[0].text)
-    print("md →", result['markdown'][:100], "...")
+    print("md →", result["markdown"][:100], "...")
+
 
 async def test_screenshot(s: ClientSession):
     res = await s.call_tool(
@@ -62,6 +74,7 @@ async def test_pdf(s: ClientSession):
     pdf_b64 = json.loads(res.content[0].text)["pdf"]
     print("pdf →", pdf_b64[:60], "… (base64)")
 
+
 async def test_execute_js(s: ClientSession):
     # click the “More” link on Hacker News front page and wait 1 s
     res = await s.call_tool(
@@ -75,8 +88,14 @@ async def test_execute_js(s: ClientSession):
         },
     )
     crawl_result = json.loads(res.content[0].text)
-    print("execute_js → status", crawl_result["success"], "| html len:", len(crawl_result["html"]))
-    
+    print(
+        "execute_js → status",
+        crawl_result["success"],
+        "| html len:",
+        len(crawl_result["html"]),
+    )
+
+
 async def test_html(s: ClientSession):
     # click the “More” link on Hacker News front page and wait 1 s
     res = await s.call_tool(
@@ -86,8 +105,14 @@ async def test_html(s: ClientSession):
         },
     )
     crawl_result = json.loads(res.content[0].text)
-    print("execute_js → status", crawl_result["success"], "| html len:", len(crawl_result["html"]))    
-    
+    print(
+        "execute_js → status",
+        crawl_result["success"],
+        "| html len:",
+        len(crawl_result["html"]),
+    )
+
+
 async def test_context(s: ClientSession):
     # click the “More” link on Hacker News front page and wait 1 s
     res = await s.call_tool(
@@ -97,13 +122,18 @@ async def test_context(s: ClientSession):
         },
     )
     crawl_result = json.loads(res.content[0].text)
-    print("execute_js → status", crawl_result["success"], "| html len:", len(crawl_result["html"]))    
+    print(
+        "execute_js → status",
+        crawl_result["success"],
+        "| html len:",
+        len(crawl_result["html"]),
+    )
 
 
 async def main() -> None:
     async with websocket_client("ws://localhost:11235/mcp/ws") as (r, w):
         async with ClientSession(r, w) as s:
-            await s.initialize()                       # handshake
+            await s.initialize()  # handshake
             tools = (await s.list_tools()).tools
             print("tools:", [t.name for t in tools])
 
@@ -115,5 +145,6 @@ async def main() -> None:
             await test_execute_js(s)
             await test_html(s)
             await test_context(s)
+
 
 anyio.run(main)

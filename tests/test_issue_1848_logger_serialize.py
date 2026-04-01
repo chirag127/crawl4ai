@@ -10,22 +10,15 @@ and from_serializable_dict returns None for unknown types instead of raising.
 """
 
 import logging
-import pytest
-from crawl4ai.async_configs import (
-    to_serializable_dict,
-    from_serializable_dict,
-    ALLOWED_DESERIALIZE_TYPES,
-)
-from crawl4ai import (
-    BFSDeepCrawlStrategy,
-    DFSDeepCrawlStrategy,
-    CrawlerRunConfig,
-    BrowserConfig,
-    CacheMode,
-)
 
+
+from crawl4ai import (BFSDeepCrawlStrategy, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, DFSDeepCrawlStrategy)
+from crawl4ai.async_configs import (from_serializable_dict,
+                                    to_serializable_dict)
 
 # -- Serialization: non-allowlisted types are skipped --
+
 
 class TestSerializationSkipsNonAllowlisted:
     """to_serializable_dict should return None for types not in the allowlist."""
@@ -60,13 +53,16 @@ class TestSerializationSkipsNonAllowlisted:
 
     def test_callable_serialized_as_none(self):
         """Callables (like on_state_change) should also be skipped."""
+
         async def callback(state):
             pass
+
         result = to_serializable_dict(callback)
         assert result is None
 
 
 # -- Deserialization: unknown types return None instead of raising --
+
 
 class TestDeserializationSkipsUnknown:
     """from_serializable_dict should return None for unknown types."""
@@ -75,7 +71,7 @@ class TestDeserializationSkipsUnknown:
         """The exact payload from the bug report should not raise."""
         data = {
             "type": "Logger",
-            "params": {"name": "crawl4ai.deep_crawling.bfs_strategy"}
+            "params": {"name": "crawl4ai.deep_crawling.bfs_strategy"},
         }
         result = from_serializable_dict(data)
         assert result is None
@@ -88,7 +84,7 @@ class TestDeserializationSkipsUnknown:
     def test_known_types_still_deserialize(self):
         data = {
             "type": "BFSDeepCrawlStrategy",
-            "params": {"max_depth": 2, "max_pages": 10}
+            "params": {"max_depth": 2, "max_pages": 10},
         }
         result = from_serializable_dict(data)
         assert isinstance(result, BFSDeepCrawlStrategy)
@@ -103,6 +99,7 @@ class TestDeserializationSkipsUnknown:
 
 
 # -- Roundtrip: serialize then deserialize --
+
 
 class TestSerializationRoundtrip:
     """Full roundtrip should work for strategies with logger."""
@@ -121,6 +118,7 @@ class TestSerializationRoundtrip:
         serialized = to_serializable_dict(strategy)
         assert serialized["type"] == "DFSDeepCrawlStrategy"
         import json
+
         assert '"type": "Logger"' not in json.dumps(serialized)
 
     def test_crawler_config_with_deep_crawl_roundtrip(self):
@@ -145,6 +143,7 @@ class TestSerializationRoundtrip:
 
 # -- Reporter's exact scenario --
 
+
 class TestReporterScenario:
     """Reproduce the exact scenario from issue #1848."""
 
@@ -160,13 +159,11 @@ class TestReporterScenario:
                         "max_pages": 10,
                         "logger": {
                             "type": "Logger",
-                            "params": {
-                                "name": "crawl4ai.deep_crawling.bfs_strategy"
-                            }
-                        }
-                    }
+                            "params": {"name": "crawl4ai.deep_crawling.bfs_strategy"},
+                        },
+                    },
                 }
-            }
+            },
         }
         result = from_serializable_dict(payload)
         assert isinstance(result, CrawlerRunConfig)
@@ -179,14 +176,8 @@ class TestReporterScenario:
         crawler_config = {
             "type": "CrawlerRunConfig",
             "params": {
-                "scraping_strategy": {
-                    "type": "LXMLWebScrapingStrategy",
-                    "params": {}
-                },
-                "table_extraction": {
-                    "type": "DefaultTableExtraction",
-                    "params": {}
-                },
+                "scraping_strategy": {"type": "LXMLWebScrapingStrategy", "params": {}},
+                "table_extraction": {"type": "DefaultTableExtraction", "params": {}},
                 "verbose": False,
                 "deep_crawl_strategy": {
                     "type": "BFSDeepCrawlStrategy",
@@ -195,13 +186,11 @@ class TestReporterScenario:
                         "max_pages": 10,
                         "logger": {
                             "type": "Logger",
-                            "params": {
-                                "name": "crawl4ai.deep_crawling.bfs_strategy"
-                            }
-                        }
-                    }
-                }
-            }
+                            "params": {"name": "crawl4ai.deep_crawling.bfs_strategy"},
+                        },
+                    },
+                },
+            },
         }
         result = from_serializable_dict(crawler_config)
         assert isinstance(result, CrawlerRunConfig)
@@ -218,5 +207,6 @@ class TestReporterScenario:
 
         # Walk the serialized dict — no "Logger" type should appear
         import json
+
         serialized_str = json.dumps(serialized)
         assert '"type": "Logger"' not in serialized_str

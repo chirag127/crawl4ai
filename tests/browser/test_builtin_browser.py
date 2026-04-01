@@ -14,22 +14,18 @@ import asyncio
 import os
 import sys
 import time
-from typing import List, Dict, Any
-from colorama import Fore, Style, init
+from typing import List
+
+from colorama import Fore, init
 
 # Add the project root to the path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
-from rich.box import Box, SIMPLE
 
-from crawl4ai.browser import BrowserManager
-from crawl4ai.browser.strategies import BuiltinBrowserStrategy
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 from crawl4ai.async_logger import AsyncLogger
+from crawl4ai.browser import BrowserManager
+from crawl4ai.browser.strategies import BuiltinBrowserStrategy
 
 # Initialize colorama for cross-platform colored terminal output
 init()
@@ -384,8 +380,9 @@ async def test_performance_scaling():
     base_port = 9222
 
     # Set up a measuring mechanism for memory
-    import psutil
     import gc
+
+    import psutil
 
     # Force garbage collection before starting
     gc.collect()
@@ -401,8 +398,6 @@ async def test_performance_scaling():
     # List to track managers
     managers: List[BrowserManager] = []
     all_pages = []
-
-
 
     # Get crawl4ai home directory
     crawl4ai_home = os.path.expanduser("~/.crawl4ai")
@@ -471,7 +466,7 @@ async def test_performance_scaling():
     )
     # Step 1: Create and start multiple browser managers in parallel
     start_time = time.time()
-    
+
     if confirmation.lower() == "y":
         load_start_time = time.time()
 
@@ -565,7 +560,9 @@ async def test_performance_scaling():
     return True
 
 
-async def test_performance_scaling_lab( num_browsers: int = 10, pages_per_browser: int = 10):
+async def test_performance_scaling_lab(
+    num_browsers: int = 10, pages_per_browser: int = 10
+):
     """Test performance with multiple browsers and pages.
 
     This test creates multiple browsers on different ports,
@@ -580,8 +577,9 @@ async def test_performance_scaling_lab( num_browsers: int = 10, pages_per_browse
     base_port = 9222
 
     # Set up a measuring mechanism for memory
-    import psutil
     import gc
+
+    import psutil
 
     # Force garbage collection before starting
     gc.collect()
@@ -665,7 +663,7 @@ async def test_performance_scaling_lab( num_browsers: int = 10, pages_per_browse
     )
     # Step 1: Create and start multiple browser managers in parallel
     start_time = time.time()
-    
+
     if confirmation.lower() == "y":
         load_start_time = time.time()
 
@@ -757,7 +755,6 @@ async def test_performance_scaling_lab( num_browsers: int = 10, pages_per_browse
         shutil.rmtree(temp_dir)
 
     return True
-
 
 
 async def main():

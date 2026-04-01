@@ -1,10 +1,8 @@
 """Tests for the `source` (sibling selector) support in JSON extraction strategies."""
 
-import pytest
-from crawl4ai.extraction_strategy import (
-    JsonCssExtractionStrategy,
-    JsonXPathExtractionStrategy,
-)
+
+from crawl4ai.extraction_strategy import (JsonCssExtractionStrategy,
+                                          JsonXPathExtractionStrategy)
 
 # ---------------------------------------------------------------------------
 # Shared HTML fixture — mimics Hacker News sibling-row layout
@@ -60,9 +58,24 @@ class TestCssSourceField:
             "fields": [
                 {"name": "rank", "selector": "span.rank", "type": "text"},
                 {"name": "title", "selector": "span.titleline a", "type": "text"},
-                {"name": "url", "selector": "span.titleline a", "type": "attribute", "attribute": "href"},
-                {"name": "score", "selector": "span.score", "type": "text", "source": "+ tr"},
-                {"name": "author", "selector": "a.hnuser", "type": "text", "source": "+ tr"},
+                {
+                    "name": "url",
+                    "selector": "span.titleline a",
+                    "type": "attribute",
+                    "attribute": "href",
+                },
+                {
+                    "name": "score",
+                    "selector": "span.score",
+                    "type": "text",
+                    "source": "+ tr",
+                },
+                {
+                    "name": "author",
+                    "selector": "a.hnuser",
+                    "type": "text",
+                    "source": "+ tr",
+                },
             ],
         }
         results = self._extract(schema)
@@ -177,10 +190,29 @@ class TestXPathSourceField:
             "baseSelector": "//tr[contains(@class, 'athing') and contains(@class, 'submission')]",
             "fields": [
                 {"name": "rank", "selector": ".//span[@class='rank']", "type": "text"},
-                {"name": "title", "selector": ".//span[@class='titleline']/a", "type": "text"},
-                {"name": "url", "selector": ".//span[@class='titleline']/a", "type": "attribute", "attribute": "href"},
-                {"name": "score", "selector": ".//span[@class='score']", "type": "text", "source": "+ tr"},
-                {"name": "author", "selector": ".//a[@class='hnuser']", "type": "text", "source": "+ tr"},
+                {
+                    "name": "title",
+                    "selector": ".//span[@class='titleline']/a",
+                    "type": "text",
+                },
+                {
+                    "name": "url",
+                    "selector": ".//span[@class='titleline']/a",
+                    "type": "attribute",
+                    "attribute": "href",
+                },
+                {
+                    "name": "score",
+                    "selector": ".//span[@class='score']",
+                    "type": "text",
+                    "source": "+ tr",
+                },
+                {
+                    "name": "author",
+                    "selector": ".//a[@class='hnuser']",
+                    "type": "text",
+                    "source": "+ tr",
+                },
             ],
         }
         results = self._extract(schema)
@@ -203,7 +235,11 @@ class TestXPathSourceField:
             "name": "HN titles only",
             "baseSelector": "//tr[contains(@class, 'athing') and contains(@class, 'submission')]",
             "fields": [
-                {"name": "title", "selector": ".//span[@class='titleline']/a", "type": "text"},
+                {
+                    "name": "title",
+                    "selector": ".//span[@class='titleline']/a",
+                    "type": "text",
+                },
             ],
         }
         results = self._extract(schema)
@@ -217,7 +253,11 @@ class TestXPathSourceField:
             "name": "HN",
             "baseSelector": "//tr[contains(@class, 'athing') and contains(@class, 'submission')]",
             "fields": [
-                {"name": "title", "selector": ".//span[@class='titleline']/a", "type": "text"},
+                {
+                    "name": "title",
+                    "selector": ".//span[@class='titleline']/a",
+                    "type": "text",
+                },
                 {
                     "name": "missing",
                     "selector": ".//span",
@@ -237,7 +277,11 @@ class TestXPathSourceField:
             "name": "HN spacer",
             "baseSelector": "//tr[contains(@class, 'athing') and contains(@class, 'submission')]",
             "fields": [
-                {"name": "title", "selector": ".//span[@class='titleline']/a", "type": "text"},
+                {
+                    "name": "title",
+                    "selector": ".//span[@class='titleline']/a",
+                    "type": "text",
+                },
                 {
                     "name": "score_from_spacer",
                     "selector": ".//span[@class='score']",
@@ -315,8 +359,18 @@ class TestCssSourceNested:
             "baseSelector": "div.item",
             "fields": [
                 {"name": "name", "selector": "span.name", "type": "text"},
-                {"name": "price", "selector": "span.price", "type": "text", "source": "+ div.details"},
-                {"name": "stock", "selector": "span.stock", "type": "text", "source": "+ div.details"},
+                {
+                    "name": "price",
+                    "selector": "span.price",
+                    "type": "text",
+                    "source": "+ div.details",
+                },
+                {
+                    "name": "stock",
+                    "selector": "span.stock",
+                    "type": "text",
+                    "source": "+ div.details",
+                },
             ],
         }
         strategy = JsonCssExtractionStrategy(schema)
@@ -340,8 +394,18 @@ class TestXPathSourceNested:
             "baseSelector": "//div[@class='item']",
             "fields": [
                 {"name": "name", "selector": ".//span[@class='name']", "type": "text"},
-                {"name": "price", "selector": ".//span[@class='price']", "type": "text", "source": "+ div.details"},
-                {"name": "stock", "selector": ".//span[@class='stock']", "type": "text", "source": "+ div.details"},
+                {
+                    "name": "price",
+                    "selector": ".//span[@class='price']",
+                    "type": "text",
+                    "source": "+ div.details",
+                },
+                {
+                    "name": "stock",
+                    "selector": ".//span[@class='stock']",
+                    "type": "text",
+                    "source": "+ div.details",
+                },
             ],
         }
         strategy = JsonXPathExtractionStrategy(schema)

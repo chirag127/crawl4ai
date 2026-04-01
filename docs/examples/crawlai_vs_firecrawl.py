@@ -1,11 +1,12 @@
-import os, time
-
+import asyncio
+import os
 # append the path to the root of the project
 import sys
-import asyncio
+import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from firecrawl import FirecrawlApp
+
 from crawl4ai import AsyncWebCrawler
 
 __data__ = os.path.join(os.path.dirname(__file__), "..", "..") + "/.data"

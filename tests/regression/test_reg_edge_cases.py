@@ -8,11 +8,11 @@ All tests use real browser crawling with no mocking.
 """
 
 import asyncio
+
 import pytest
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from crawl4ai.cache_context import CacheMode
-
 
 # ---------------------------------------------------------------------------
 # Empty and minimal pages
@@ -22,7 +22,9 @@ from crawl4ai.cache_context import CacheMode
 @pytest.mark.asyncio
 async def test_empty_page(local_server):
     """Crawl an empty page and verify no crash. Anti-bot may flag it as blocked."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + "/empty")
         # An empty page may be flagged by the anti-bot detector as "near-empty content"
         # so success may be False. The key thing is no unhandled exception and
@@ -30,15 +32,15 @@ async def test_empty_page(local_server):
         assert result.html is not None, "HTML should not be None for empty page"
         # Markdown should be empty or minimal
         md = result.markdown or ""
-        assert len(md.strip()) < 50, (
-            "Empty page should produce little to no markdown"
-        )
+        assert len(md.strip()) < 50, "Empty page should produce little to no markdown"
 
 
 @pytest.mark.asyncio
 async def test_empty_raw_html():
     """Crawl raw HTML with empty body; should succeed without crash."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun("raw:<html><body></body></html>")
         assert result.success, f"Empty raw HTML crawl failed: {result.error_message}"
 
@@ -51,25 +53,31 @@ async def test_empty_raw_html():
 @pytest.mark.asyncio
 async def test_malformed_html(local_server):
     """Crawl intentionally broken HTML; should not crash, even if anti-bot flags it."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + "/malformed")
         # The malformed HTML is so broken that the browser may put content into
         # unexpected places (e.g., the title). The anti-bot detector may flag the
         # result as blocked due to empty body. The key assertion is: no unhandled
         # exception and we get a result object back with html content.
-        assert result.html is not None, "Should still return HTML even for malformed pages"
+        assert (
+            result.html is not None
+        ), "Should still return HTML even for malformed pages"
         assert len(result.html) > 0, "HTML should be non-empty for malformed page"
 
 
 @pytest.mark.asyncio
 async def test_raw_html_no_doctype():
     """Raw HTML without doctype or <html> wrapper should still parse."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun("raw:<body><p>No doctype</p></body>")
         assert result.success, f"No-doctype raw HTML failed: {result.error_message}"
-        assert "No doctype" in (result.markdown or ""), (
-            "Content should be extracted despite missing doctype"
-        )
+        assert "No doctype" in (
+            result.markdown or ""
+        ), "Content should be extracted despite missing doctype"
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +88,9 @@ async def test_raw_html_no_doctype():
 @pytest.mark.asyncio
 async def test_large_page(local_server):
     """Crawl a page with 50 sections and verify content from beginning and end."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + "/large")
         assert result.success, f"Large page crawl failed: {result.error_message}"
         md = result.markdown or ""
@@ -97,7 +107,9 @@ async def test_large_page(local_server):
 async def test_unicode_content():
     """Crawl raw HTML with unicode characters and verify they survive extraction."""
     raw = "raw:<html><body><p>Unicode: \u00e9\u00e8\u00ea \u4e16\u754c \U0001f600</p></body></html>"
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(raw)
         assert result.success, f"Unicode crawl failed: {result.error_message}"
         md = result.markdown or ""
@@ -111,7 +123,9 @@ async def test_unicode_content():
 async def test_html_entities():
     """Crawl raw HTML with entities and verify they are decoded in markdown."""
     raw = "raw:<html><body><p>&amp; &lt; &gt; &quot; &#39;</p></body></html>"
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(raw)
         assert result.success, f"HTML entities crawl failed: {result.error_message}"
         md = result.markdown or ""
@@ -134,10 +148,14 @@ async def test_sequential_crawls_no_leakage(local_server):
         (local_server + "/js-dynamic", "Static Section"),
     ]
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         for url, expected_content in pages:
             result = await crawler.arun(url, config=config)
-            assert result.success, f"Sequential crawl of {url} failed: {result.error_message}"
+            assert (
+                result.success
+            ), f"Sequential crawl of {url} failed: {result.error_message}"
             md = result.markdown or ""
             assert expected_content in md, (
                 f"Expected '{expected_content}' in markdown for {url}, "
@@ -153,17 +171,25 @@ async def test_sequential_crawls_no_leakage(local_server):
 @pytest.mark.asyncio
 async def test_raw_html_only_whitespace():
     """Raw HTML with only whitespace body should succeed with empty markdown."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun("raw:<html><body>   \n\t  </body></html>")
-        assert result.success, f"Whitespace-only raw HTML failed: {result.error_message}"
+        assert (
+            result.success
+        ), f"Whitespace-only raw HTML failed: {result.error_message}"
         md = result.markdown or ""
-        assert len(md.strip()) < 20, "Whitespace-only body should produce minimal markdown"
+        assert (
+            len(md.strip()) < 20
+        ), "Whitespace-only body should produce minimal markdown"
 
 
 @pytest.mark.asyncio
 async def test_raw_html_script_only():
     """Raw HTML with only a script tag should produce empty markdown (scripts stripped)."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(
             "raw:<html><body><script>var x = 1;</script></body></html>"
         )
@@ -188,16 +214,18 @@ async def test_concurrent_crawls(local_server):
         local_server + "/images-page",
     ]
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         tasks = [crawler.arun(url, config=config) for url in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for i, result in enumerate(results):
-            assert not isinstance(result, Exception), (
-                f"Concurrent crawl {i} raised exception: {result}"
-            )
-            assert result.success, (
-                f"Concurrent crawl {i} ({urls[i]}) failed: {result.error_message}"
-            )
+            assert not isinstance(
+                result, Exception
+            ), f"Concurrent crawl {i} raised exception: {result}"
+            assert (
+                result.success
+            ), f"Concurrent crawl {i} ({urls[i]}) failed: {result.error_message}"
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +237,9 @@ async def test_concurrent_crawls(local_server):
 async def test_long_url(local_server):
     """Crawl a URL with a very long path (200 chars); catch-all handler serves it."""
     long_path = "/" + "a" * 200
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + long_path)
         assert result.success, f"Long URL crawl failed: {result.error_message}"
 
@@ -223,7 +253,9 @@ async def test_long_url(local_server):
 async def test_url_with_query_params(local_server):
     """Crawl a URL with query parameters and verify success."""
     url = local_server + "/products?page=1&sort=name&filter=electronics"
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url)
         assert result.success, f"Query params URL crawl failed: {result.error_message}"
 
@@ -232,7 +264,9 @@ async def test_url_with_query_params(local_server):
 async def test_url_with_fragment(local_server):
     """Crawl a URL with a fragment identifier and verify success."""
     url = local_server + "/#section-5"
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url)
         assert result.success, f"Fragment URL crawl failed: {result.error_message}"
 
@@ -245,30 +279,34 @@ async def test_url_with_fragment(local_server):
 @pytest.mark.asyncio
 async def test_invalid_url_scheme():
     """Try crawling an FTP URL; should handle gracefully without crash."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun("ftp://example.com")
         # Either it fails gracefully with an error or succeeds with empty content
         # The critical thing is no unhandled exception
         if not result.success:
-            assert result.error_message is not None, (
-                "Invalid scheme should produce an error message"
-            )
+            assert (
+                result.error_message is not None
+            ), "Invalid scheme should produce an error message"
 
 
 @pytest.mark.asyncio
 @pytest.mark.network
 async def test_nonexistent_domain():
     """Try crawling a nonexistent domain; should fail gracefully."""
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(
             "https://this-domain-definitely-does-not-exist-xyz123.com",
             config=CrawlerRunConfig(page_timeout=10000),
         )
         # Should fail but not crash
         if not result.success:
-            assert result.error_message is not None, (
-                "Nonexistent domain should produce an error message"
-            )
+            assert (
+                result.error_message is not None
+            ), "Nonexistent domain should produce an error message"
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +318,9 @@ async def test_nonexistent_domain():
 async def test_idempotent_crawl(local_server):
     """Crawl same URL twice with BYPASS cache; both should succeed with similar content."""
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result1 = await crawler.arun(local_server + "/products", config=config)
         result2 = await crawler.arun(local_server + "/products", config=config)
         assert result1.success, f"First crawl failed: {result1.error_message}"
@@ -305,7 +345,9 @@ async def test_idempotent_crawl(local_server):
 async def test_pdf_capture(local_server):
     """Crawl with pdf=True and verify PDF bytes output."""
     config = CrawlerRunConfig(pdf=True, cache_mode=CacheMode.BYPASS)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + "/", config=config)
         assert result.success, f"PDF capture crawl failed: {result.error_message}"
         assert result.pdf is not None, "PDF should not be None"
@@ -328,7 +370,9 @@ async def test_scan_full_page(local_server):
         scroll_delay=0.1,
         cache_mode=CacheMode.BYPASS,
     )
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + "/large", config=config)
         assert result.success, f"Scan full page crawl failed: {result.error_message}"
         md = result.markdown or ""
@@ -347,13 +391,15 @@ async def test_console_capture(local_server):
         capture_console_messages=True,
         cache_mode=CacheMode.BYPASS,
     )
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(local_server + "/js-dynamic", config=config)
         assert result.success, f"Console capture crawl failed: {result.error_message}"
         # console_messages should be a list (possibly empty)
-        assert result.console_messages is not None, (
-            "console_messages should not be None when capture_console_messages=True"
-        )
-        assert isinstance(result.console_messages, list), (
-            "console_messages should be a list"
-        )
+        assert (
+            result.console_messages is not None
+        ), "console_messages should not be None when capture_console_messages=True"
+        assert isinstance(
+            result.console_messages, list
+        ), "console_messages should be a list"

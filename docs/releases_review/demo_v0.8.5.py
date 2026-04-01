@@ -28,9 +28,8 @@ Usage:
 import asyncio
 import json
 import sys
-import time
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from typing import Any, Dict
 
 
 # Test results tracking
@@ -57,7 +56,9 @@ def print_test(name: str, feature: str):
     print("-" * 50)
 
 
-def record_result(name: str, feature: str, passed: bool, message: str, skipped: bool = False):
+def record_result(
+    name: str, feature: str, passed: bool, message: str, skipped: bool = False
+):
     results.append(TestResult(name, feature, passed, message, skipped))
     if skipped:
         print(f"  SKIPPED: {message}")
@@ -81,18 +82,22 @@ async def test_antibot_detection():
     print_test("Anti-bot Detection", "is_blocked() + live crawl")
 
     try:
-        from crawl4ai.antibot_detector import is_blocked
         from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+        from crawl4ai.antibot_detector import is_blocked
 
         # Unit: blocked page detected
         blocked, reason = is_blocked(
             403,
-            '<html><body><h1>Please verify you are human</h1>'
-            '<p>Checking your browser...</p></body></html>',
+            "<html><body><h1>Please verify you are human</h1>"
+            "<p>Checking your browser...</p></body></html>",
         )
         if not blocked:
-            record_result("Anti-bot Detection", "is_blocked()", False,
-                         "Failed to detect challenge page")
+            record_result(
+                "Anti-bot Detection",
+                "is_blocked()",
+                False,
+                "Failed to detect challenge page",
+            )
             return
 
         # Unit: JSON response not flagged
@@ -101,8 +106,12 @@ async def test_antibot_detection():
             '<html><head></head><body><pre>{"status":"ok"}</pre></body></html>',
         )
         if blocked:
-            record_result("Anti-bot Detection", "is_blocked()", False,
-                         "False positive on JSON response")
+            record_result(
+                "Anti-bot Detection",
+                "is_blocked()",
+                False,
+                "False positive on JSON response",
+            )
             return
 
         # Live: crawl a normal site, verify no false positive
@@ -113,13 +122,21 @@ async def test_antibot_detection():
             )
 
         if not result.success:
-            record_result("Anti-bot Detection", "live crawl", False,
-                         f"Normal site crawl failed: {result.error_message}")
+            record_result(
+                "Anti-bot Detection",
+                "live crawl",
+                False,
+                f"Normal site crawl failed: {result.error_message}",
+            )
             return
 
-        record_result("Anti-bot Detection", "is_blocked() + live crawl", True,
-                     f"Detects blocks, no false positive on live crawl "
-                     f"({len(result.html)} chars)")
+        record_result(
+            "Anti-bot Detection",
+            "is_blocked() + live crawl",
+            True,
+            f"Detects blocks, no false positive on live crawl "
+            f"({len(result.html)} chars)",
+        )
 
     except Exception as e:
         record_result("Anti-bot Detection", "is_blocked()", False, f"Exception: {e}")
@@ -147,14 +164,22 @@ async def test_crawl_stats():
             )
 
         if not result.success:
-            record_result("Crawl Stats", "crawl_stats", False,
-                         f"Crawl failed: {result.error_message}")
+            record_result(
+                "Crawl Stats",
+                "crawl_stats",
+                False,
+                f"Crawl failed: {result.error_message}",
+            )
             return
 
         stats = getattr(result, "crawl_stats", None)
         if stats is None:
-            record_result("Crawl Stats", "crawl_stats", False,
-                         "crawl_stats not present on CrawlResult")
+            record_result(
+                "Crawl Stats",
+                "crawl_stats",
+                False,
+                "crawl_stats not present on CrawlResult",
+            )
             return
 
         # Check expected fields
@@ -162,13 +187,21 @@ async def test_crawl_stats():
         has_resolved = "resolved_by" in stats
 
         if not has_proxies or not has_resolved:
-            record_result("Crawl Stats", "crawl_stats", False,
-                         f"Missing fields. Keys: {list(stats.keys())}")
+            record_result(
+                "Crawl Stats",
+                "crawl_stats",
+                False,
+                f"Missing fields. Keys: {list(stats.keys())}",
+            )
             return
 
-        record_result("Crawl Stats", "crawl_stats", True,
-                     f"Stats present: resolved_by={stats.get('resolved_by')}, "
-                     f"proxies_used={len(stats.get('proxies_used', []))} entries")
+        record_result(
+            "Crawl Stats",
+            "crawl_stats",
+            True,
+            f"Stats present: resolved_by={stats.get('resolved_by')}, "
+            f"proxies_used={len(stats.get('proxies_used', []))} entries",
+        )
 
     except Exception as e:
         record_result("Crawl Stats", "crawl_stats", False, f"Exception: {e}")
@@ -196,8 +229,12 @@ async def test_proxy_escalation():
             proxy_config=[ProxyConfig.DIRECT],
         )
         if not isinstance(config.proxy_config, list):
-            record_result("Proxy Escalation", "list config", False,
-                         f"proxy_config is {type(config.proxy_config)}, expected list")
+            record_result(
+                "Proxy Escalation",
+                "list config",
+                False,
+                f"proxy_config is {type(config.proxy_config)}, expected list",
+            )
             return
 
         # Live crawl with DIRECT (no proxy)
@@ -208,13 +245,21 @@ async def test_proxy_escalation():
             )
 
         if not result.success:
-            record_result("Proxy Escalation", "DIRECT crawl", False,
-                         f"DIRECT crawl failed: {result.error_message}")
+            record_result(
+                "Proxy Escalation",
+                "DIRECT crawl",
+                False,
+                f"DIRECT crawl failed: {result.error_message}",
+            )
             return
 
-        record_result("Proxy Escalation", "list + DIRECT crawl", True,
-                     f"List config accepted, DIRECT crawl succeeded "
-                     f"({len(result.html)} chars)")
+        record_result(
+            "Proxy Escalation",
+            "list + DIRECT crawl",
+            True,
+            f"List config accepted, DIRECT crawl succeeded "
+            f"({len(result.html)} chars)",
+        )
 
     except Exception as e:
         record_result("Proxy Escalation", "proxy_config list", False, f"Exception: {e}")
@@ -245,39 +290,61 @@ async def test_config_defaults():
             # Verify it applies
             bc = BrowserConfig()
             if not bc.text_mode:
-                record_result("Config Defaults", "set_defaults", False,
-                             "text_mode default not applied")
+                record_result(
+                    "Config Defaults",
+                    "set_defaults",
+                    False,
+                    "text_mode default not applied",
+                )
                 return
 
             # Verify explicit override wins
             bc2 = BrowserConfig(text_mode=False)
             if bc2.text_mode:
-                record_result("Config Defaults", "set_defaults", False,
-                             "Explicit override didn't work")
+                record_result(
+                    "Config Defaults",
+                    "set_defaults",
+                    False,
+                    "Explicit override didn't work",
+                )
                 return
 
             # Real crawl with default text_mode
-            async with AsyncWebCrawler(config=BrowserConfig(), verbose=False) as crawler:
+            async with AsyncWebCrawler(
+                config=BrowserConfig(), verbose=False
+            ) as crawler:
                 result = await crawler.arun(
                     "https://example.com",
                     config=CrawlerRunConfig(),
                 )
 
             if not result.success:
-                record_result("Config Defaults", "crawl with defaults", False,
-                             f"Crawl failed: {result.error_message}")
+                record_result(
+                    "Config Defaults",
+                    "crawl with defaults",
+                    False,
+                    f"Crawl failed: {result.error_message}",
+                )
                 return
 
             # Verify reset works
             BrowserConfig.reset_defaults()
             if BrowserConfig.get_defaults():
-                record_result("Config Defaults", "reset_defaults", False,
-                             "Defaults not cleared after reset")
+                record_result(
+                    "Config Defaults",
+                    "reset_defaults",
+                    False,
+                    "Defaults not cleared after reset",
+                )
                 return
 
-            record_result("Config Defaults", "set/get/reset + crawl", True,
-                         f"Defaults applied to crawl, override works, reset clears "
-                         f"({len(result.markdown.raw_markdown)} chars markdown)")
+            record_result(
+                "Config Defaults",
+                "set/get/reset + crawl",
+                True,
+                f"Defaults applied to crawl, override works, reset clears "
+                f"({len(result.markdown.raw_markdown)} chars markdown)",
+            )
 
         finally:
             BrowserConfig.reset_defaults()
@@ -285,7 +352,9 @@ async def test_config_defaults():
                 BrowserConfig.set_defaults(**original)
 
     except Exception as e:
-        record_result("Config Defaults", "set/get/reset_defaults", False, f"Exception: {e}")
+        record_result(
+            "Config Defaults", "set/get/reset_defaults", False, f"Exception: {e}"
+        )
 
 
 # =============================================================================
@@ -313,17 +382,20 @@ async def test_shadow_dom_flattening():
         ) as crawler:
             # Without flattening
             result_normal = await crawler.arun(
-                url, config=CrawlerRunConfig(flatten_shadow_dom=False),
+                url,
+                config=CrawlerRunConfig(flatten_shadow_dom=False),
             )
 
             # With flattening
             result_flat = await crawler.arun(
-                url, config=CrawlerRunConfig(flatten_shadow_dom=True),
+                url,
+                config=CrawlerRunConfig(flatten_shadow_dom=True),
             )
 
         if not result_normal.success or not result_flat.success:
-            record_result("Shadow DOM", "comparison crawl", False,
-                         "One or both crawls failed")
+            record_result(
+                "Shadow DOM", "comparison crawl", False, "One or both crawls failed"
+            )
             return
 
         normal_len = len(result_normal.html or "")
@@ -331,9 +403,13 @@ async def test_shadow_dom_flattening():
 
         # Both should succeed (this page may not have shadow DOM, but
         # the flattening pipeline should run without error)
-        record_result("Shadow DOM", "flatten_shadow_dom", True,
-                     f"Both crawls succeeded. Normal: {normal_len} chars, "
-                     f"Flattened: {flat_len} chars. Pipeline runs cleanly.")
+        record_result(
+            "Shadow DOM",
+            "flatten_shadow_dom",
+            True,
+            f"Both crawls succeeded. Normal: {normal_len} chars, "
+            f"Flattened: {flat_len} chars. Pipeline runs cleanly.",
+        )
 
     except Exception as e:
         record_result("Shadow DOM", "flatten_shadow_dom", False, f"Exception: {e}")
@@ -380,14 +456,26 @@ async def test_deep_crawl_cancellation():
             await crawler.arun("https://books.toscrape.com", config=config)
 
         if strategy.cancelled:
-            record_result("Deep Crawl Cancel", "should_cancel", True,
-                         f"Cancelled after {pages_crawled} pages (limit was 2)")
+            record_result(
+                "Deep Crawl Cancel",
+                "should_cancel",
+                True,
+                f"Cancelled after {pages_crawled} pages (limit was 2)",
+            )
         elif pages_crawled <= 3:
-            record_result("Deep Crawl Cancel", "should_cancel", True,
-                         f"Stopped at {pages_crawled} pages (callback triggered)")
+            record_result(
+                "Deep Crawl Cancel",
+                "should_cancel",
+                True,
+                f"Stopped at {pages_crawled} pages (callback triggered)",
+            )
         else:
-            record_result("Deep Crawl Cancel", "should_cancel", False,
-                         f"Crawled {pages_crawled} pages — cancellation didn't work")
+            record_result(
+                "Deep Crawl Cancel",
+                "should_cancel",
+                False,
+                f"Crawled {pages_crawled} pages — cancellation didn't work",
+            )
 
     except Exception as e:
         record_result("Deep Crawl Cancel", "should_cancel", False, f"Exception: {e}")
@@ -416,22 +504,36 @@ async def test_consent_popup_removal():
             )
 
         if not result.success:
-            record_result("Consent Popup", "remove_consent_popups", False,
-                         f"Crawl failed: {result.error_message}")
+            record_result(
+                "Consent Popup",
+                "remove_consent_popups",
+                False,
+                f"Crawl failed: {result.error_message}",
+            )
             return
 
         md = result.markdown.raw_markdown if result.markdown else ""
         if len(md) < 50:
-            record_result("Consent Popup", "remove_consent_popups", False,
-                         "Content too short — JS may have broken the page")
+            record_result(
+                "Consent Popup",
+                "remove_consent_popups",
+                False,
+                "Content too short — JS may have broken the page",
+            )
             return
 
-        record_result("Consent Popup", "remove_consent_popups", True,
-                     f"Crawl succeeded with consent popup removal "
-                     f"({len(md)} chars markdown)")
+        record_result(
+            "Consent Popup",
+            "remove_consent_popups",
+            True,
+            f"Crawl succeeded with consent popup removal "
+            f"({len(md)} chars markdown)",
+        )
 
     except Exception as e:
-        record_result("Consent Popup", "remove_consent_popups", False, f"Exception: {e}")
+        record_result(
+            "Consent Popup", "remove_consent_popups", False, f"Exception: {e}"
+        )
 
 
 # =============================================================================
@@ -458,7 +560,12 @@ async def test_source_sibling_selector():
             "baseSelector": "tr.athing",
             "fields": [
                 {"name": "title", "selector": ".titleline > a", "type": "text"},
-                {"name": "score", "selector": ".score", "type": "text", "source": "+ tr"},
+                {
+                    "name": "score",
+                    "selector": ".score",
+                    "type": "text",
+                    "source": "+ tr",
+                },
             ],
         }
 
@@ -492,35 +599,59 @@ async def test_source_sibling_selector():
             )
 
         if not result.extracted_content:
-            record_result("Sibling Selector", "source field", False,
-                         "No extracted_content returned")
+            record_result(
+                "Sibling Selector",
+                "source field",
+                False,
+                "No extracted_content returned",
+            )
             return
 
         data = json.loads(result.extracted_content)
 
         if len(data) < 2:
-            record_result("Sibling Selector", "source field", False,
-                         f"Expected 2 items, got {len(data)}")
+            record_result(
+                "Sibling Selector",
+                "source field",
+                False,
+                f"Expected 2 items, got {len(data)}",
+            )
             return
 
         if data[0].get("title") != "Article One":
-            record_result("Sibling Selector", "source field", False,
-                         f"Title mismatch: {data[0].get('title')}")
+            record_result(
+                "Sibling Selector",
+                "source field",
+                False,
+                f"Title mismatch: {data[0].get('title')}",
+            )
             return
 
         if data[0].get("score") != "250 points":
-            record_result("Sibling Selector", "source field", False,
-                         f"Sibling score not extracted: {data[0].get('score')}")
+            record_result(
+                "Sibling Selector",
+                "source field",
+                False,
+                f"Sibling score not extracted: {data[0].get('score')}",
+            )
             return
 
         if data[1].get("score") != "180 points":
-            record_result("Sibling Selector", "source field", False,
-                         f"Second sibling score wrong: {data[1].get('score')}")
+            record_result(
+                "Sibling Selector",
+                "source field",
+                False,
+                f"Second sibling score wrong: {data[1].get('score')}",
+            )
             return
 
-        record_result("Sibling Selector", "source field via crawl pipeline", True,
-                     f"Extracted {len(data)} items with sibling scores through "
-                     f"full arun() pipeline")
+        record_result(
+            "Sibling Selector",
+            "source field via crawl pipeline",
+            True,
+            f"Extracted {len(data)} items with sibling scores through "
+            f"full arun() pipeline",
+        )
 
     except Exception as e:
         record_result("Sibling Selector", "source field", False, f"Exception: {e}")
@@ -561,34 +692,40 @@ async def test_gfm_tables():
             )
 
         if not result.success or not result.markdown:
-            record_result("GFM Tables", "table crawl", False,
-                         "Crawl failed or no markdown")
+            record_result(
+                "GFM Tables", "table crawl", False, "Crawl failed or no markdown"
+            )
             return
 
         md = result.markdown.raw_markdown
-        table_lines = [
-            l.strip() for l in md.split("\n")
-            if l.strip() and "|" in l
-        ]
+        table_lines = [l.strip() for l in md.split("\n") if l.strip() and "|" in l]
 
         if not table_lines:
-            record_result("GFM Tables", "pipe delimiters", False,
-                         f"No table lines found in markdown:\n{md}")
+            record_result(
+                "GFM Tables",
+                "pipe delimiters",
+                False,
+                f"No table lines found in markdown:\n{md}",
+            )
             return
 
-        all_have_pipes = all(
-            l.startswith("|") and l.endswith("|")
-            for l in table_lines
-        )
+        all_have_pipes = all(l.startswith("|") and l.endswith("|") for l in table_lines)
 
         if not all_have_pipes:
-            record_result("GFM Tables", "pipe delimiters", False,
-                         f"Missing leading/trailing pipes:\n" +
-                         "\n".join(table_lines))
+            record_result(
+                "GFM Tables",
+                "pipe delimiters",
+                False,
+                "Missing leading/trailing pipes:\n" + "\n".join(table_lines),
+            )
             return
 
-        record_result("GFM Tables", "pipe delimiters via crawl", True,
-                     f"Table has proper GFM pipes ({len(table_lines)} rows)")
+        record_result(
+            "GFM Tables",
+            "pipe delimiters via crawl",
+            True,
+            f"Table has proper GFM pipes ({len(table_lines)} rows)",
+        )
 
     except Exception as e:
         record_result("GFM Tables", "pipe delimiters", False, f"Exception: {e}")
@@ -607,7 +744,7 @@ async def test_avoid_ads():
     print_test("Resource Filtering", "crawl with avoid_ads + avoid_css")
 
     try:
-        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
         # Crawl with ad blocking enabled
         async with AsyncWebCrawler(
@@ -624,8 +761,12 @@ async def test_avoid_ads():
             )
 
         if not result.success:
-            record_result("Resource Filtering", "avoid_ads crawl", False,
-                         f"Crawl failed: {result.error_message}")
+            record_result(
+                "Resource Filtering",
+                "avoid_ads crawl",
+                False,
+                f"Crawl failed: {result.error_message}",
+            )
             return
 
         md = result.markdown.raw_markdown if result.markdown else ""
@@ -633,13 +774,20 @@ async def test_avoid_ads():
         # Verify actual content was captured (quotes should be there)
         has_quotes = "quote" in md.lower() or "albert einstein" in md.lower()
         if not has_quotes and len(md) < 100:
-            record_result("Resource Filtering", "avoid_ads crawl", False,
-                         "Content missing — filtering may have broken the page")
+            record_result(
+                "Resource Filtering",
+                "avoid_ads crawl",
+                False,
+                "Content missing — filtering may have broken the page",
+            )
             return
 
-        record_result("Resource Filtering", "avoid_ads + avoid_css crawl", True,
-                     f"Content captured with ad/CSS blocking "
-                     f"({len(md)} chars markdown)")
+        record_result(
+            "Resource Filtering",
+            "avoid_ads + avoid_css crawl",
+            True,
+            f"Content captured with ad/CSS blocking " f"({len(md)} chars markdown)",
+        )
 
     except Exception as e:
         record_result("Resource Filtering", "avoid_ads/css", False, f"Exception: {e}")
@@ -659,7 +807,7 @@ async def test_browser_recycling():
     print_test("Browser Recycling", "multi-page crawl with memory_saving_mode")
 
     try:
-        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
         urls = [
             "https://example.com",
@@ -681,15 +829,25 @@ async def test_browser_recycling():
                     succeeded += 1
 
         if succeeded == len(urls):
-            record_result("Browser Recycling", "memory_saving_mode", True,
-                         f"All {succeeded}/{len(urls)} crawls succeeded with "
-                         f"memory_saving_mode")
+            record_result(
+                "Browser Recycling",
+                "memory_saving_mode",
+                True,
+                f"All {succeeded}/{len(urls)} crawls succeeded with "
+                f"memory_saving_mode",
+            )
         else:
-            record_result("Browser Recycling", "memory_saving_mode", False,
-                         f"Only {succeeded}/{len(urls)} crawls succeeded")
+            record_result(
+                "Browser Recycling",
+                "memory_saving_mode",
+                False,
+                f"Only {succeeded}/{len(urls)} crawls succeeded",
+            )
 
     except Exception as e:
-        record_result("Browser Recycling", "memory_saving_mode", False, f"Exception: {e}")
+        record_result(
+            "Browser Recycling", "memory_saving_mode", False, f"Exception: {e}"
+        )
 
 
 # =============================================================================
@@ -708,7 +866,8 @@ async def test_bm25_dedup():
     try:
         from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
         from crawl4ai.content_filter_strategy import BM25ContentFilter
-        from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+        from crawl4ai.markdown_generation_strategy import \
+            DefaultMarkdownGenerator
 
         async with AsyncWebCrawler(verbose=False) as crawler:
             result = await crawler.arun(
@@ -723,28 +882,43 @@ async def test_bm25_dedup():
             )
 
         if not result.success:
-            record_result("BM25 Dedup", "fit_markdown", False,
-                         f"Crawl failed: {result.error_message}")
+            record_result(
+                "BM25 Dedup",
+                "fit_markdown",
+                False,
+                f"Crawl failed: {result.error_message}",
+            )
             return
 
         fit_md = result.markdown.fit_markdown if result.markdown else ""
         if not fit_md:
-            record_result("BM25 Dedup", "fit_markdown", False,
-                         "No fit_markdown produced")
+            record_result(
+                "BM25 Dedup", "fit_markdown", False, "No fit_markdown produced"
+            )
             return
 
         # Check for duplicate lines (non-empty, non-header)
-        lines = [l.strip() for l in fit_md.split("\n") if l.strip() and not l.startswith("#")]
+        lines = [
+            l.strip() for l in fit_md.split("\n") if l.strip() and not l.startswith("#")
+        ]
         unique_lines = list(dict.fromkeys(lines))  # preserves order
         dupes = len(lines) - len(unique_lines)
 
         if dupes > 0:
-            record_result("BM25 Dedup", "fit_markdown", False,
-                         f"{dupes} duplicate lines found in fit_markdown")
+            record_result(
+                "BM25 Dedup",
+                "fit_markdown",
+                False,
+                f"{dupes} duplicate lines found in fit_markdown",
+            )
             return
 
-        record_result("BM25 Dedup", "fit_markdown dedup", True,
-                     f"No duplicates in fit_markdown ({len(unique_lines)} unique lines)")
+        record_result(
+            "BM25 Dedup",
+            "fit_markdown dedup",
+            True,
+            f"No duplicates in fit_markdown ({len(unique_lines)} unique lines)",
+        )
 
     except Exception as e:
         record_result("BM25 Dedup", "fit_markdown", False, f"Exception: {e}")
@@ -781,8 +955,12 @@ async def test_cleaned_html_attrs():
             )
 
         if not result.success or not result.cleaned_html:
-            record_result("cleaned_html Attrs", "class/id", False,
-                         "Crawl failed or no cleaned_html")
+            record_result(
+                "cleaned_html Attrs",
+                "class/id",
+                False,
+                "Crawl failed or no cleaned_html",
+            )
             return
 
         cleaned = result.cleaned_html
@@ -798,13 +976,21 @@ async def test_cleaned_html_attrs():
             checks.append("id=intro")
 
         if len(checks) < 2:
-            record_result("cleaned_html Attrs", "class/id", False,
-                         f"Only found {len(checks)} attrs: {checks}. "
-                         f"cleaned_html snippet: {cleaned[:200]}")
+            record_result(
+                "cleaned_html Attrs",
+                "class/id",
+                False,
+                f"Only found {len(checks)} attrs: {checks}. "
+                f"cleaned_html snippet: {cleaned[:200]}",
+            )
             return
 
-        record_result("cleaned_html Attrs", "class/id preserved", True,
-                     f"Found {len(checks)} preserved attributes: {', '.join(checks)}")
+        record_result(
+            "cleaned_html Attrs",
+            "class/id preserved",
+            True,
+            f"Found {len(checks)} preserved attributes: {', '.join(checks)}",
+        )
 
     except Exception as e:
         record_result("cleaned_html Attrs", "class/id", False, f"Exception: {e}")
@@ -813,6 +999,7 @@ async def test_cleaned_html_attrs():
 # =============================================================================
 # MAIN
 # =============================================================================
+
 
 def print_summary():
     """Print test results summary"""
@@ -868,19 +1055,19 @@ async def main():
     print("  - 49+ bug fixes including critical RCE and CVE patches")
 
     tests = [
-        test_antibot_detection,             # Anti-bot + live crawl
-        test_crawl_stats,                   # crawl_stats tracking
-        test_proxy_escalation,              # Proxy chain + DIRECT crawl
-        test_config_defaults,               # set_defaults → real crawl
-        test_shadow_dom_flattening,         # Shadow DOM comparison crawl
-        test_deep_crawl_cancellation,       # DFS cancel at 2 pages
-        test_consent_popup_removal,         # Crawl with consent removal
-        test_source_sibling_selector,       # Sibling extraction via pipeline
-        test_gfm_tables,                    # Table crawl with pipe check
-        test_avoid_ads,                     # Crawl with ad/CSS blocking
-        test_browser_recycling,             # Multi-page memory_saving crawl
-        test_bm25_dedup,                    # BM25 fit_markdown dedup
-        test_cleaned_html_attrs,            # class/id preserved
+        test_antibot_detection,  # Anti-bot + live crawl
+        test_crawl_stats,  # crawl_stats tracking
+        test_proxy_escalation,  # Proxy chain + DIRECT crawl
+        test_config_defaults,  # set_defaults → real crawl
+        test_shadow_dom_flattening,  # Shadow DOM comparison crawl
+        test_deep_crawl_cancellation,  # DFS cancel at 2 pages
+        test_consent_popup_removal,  # Crawl with consent removal
+        test_source_sibling_selector,  # Sibling extraction via pipeline
+        test_gfm_tables,  # Table crawl with pipe check
+        test_avoid_ads,  # Crawl with ad/CSS blocking
+        test_browser_recycling,  # Multi-page memory_saving crawl
+        test_bm25_dedup,  # BM25 fit_markdown dedup
+        test_cleaned_html_attrs,  # class/id preserved
     ]
 
     for test_func in tests:
@@ -888,12 +1075,9 @@ async def main():
             await test_func()
         except Exception as e:
             print(f"\nTest {test_func.__name__} crashed: {e}")
-            results.append(TestResult(
-                test_func.__name__,
-                "Unknown",
-                False,
-                f"Crashed: {e}"
-            ))
+            results.append(
+                TestResult(test_func.__name__, "Unknown", False, f"Crashed: {e}")
+            )
 
     all_passed = print_summary()
     return 0 if all_passed else 1
@@ -909,5 +1093,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\nTest suite failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -1,16 +1,11 @@
-import pytest
 import time
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    MemoryAdaptiveDispatcher,
-    SemaphoreDispatcher,
-    RateLimiter,
-    CrawlerMonitor,
-    DisplayMode,
-    CacheMode,
-)
+
+import pytest
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerMonitor, CrawlerRunConfig, DisplayMode,
+                      MemoryAdaptiveDispatcher, RateLimiter,
+                      SemaphoreDispatcher)
 
 
 @pytest.fixture

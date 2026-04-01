@@ -10,24 +10,25 @@ Run:
     pytest tests/regression/test_reg_extraction.py -v -m "not network"
 """
 
-import pytest
 import json
 import time
 
+import pytest
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
-from crawl4ai.extraction_strategy import (
-    JsonCssExtractionStrategy,
-    JsonXPathExtractionStrategy,
-    JsonLxmlExtractionStrategy,
-    RegexExtractionStrategy,
-    NoExtractionStrategy,
-)
+from crawl4ai.extraction_strategy import (JsonCssExtractionStrategy,
+                                          JsonLxmlExtractionStrategy,
+                                          JsonXPathExtractionStrategy,
+                                          NoExtractionStrategy,
+                                          RegexExtractionStrategy)
 
 try:
-    from crawl4ai.extraction_strategy import CosineStrategy
     # CosineStrategy requires torch and sklearn at instantiation time;
     # verify they are actually available before declaring it usable.
     import torch  # noqa: F401
+
+    from crawl4ai.extraction_strategy import CosineStrategy
+
     HAS_COSINE = True
 except (ImportError, ModuleNotFoundError):
     HAS_COSINE = False
@@ -83,7 +84,9 @@ async def test_css_extract_products(local_server):
     Verify count, first product name, price, and product_id."""
     strategy = JsonCssExtractionStrategy(schema=PRODUCT_CSS_SCHEMA_WITH_ID)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/products", config=config)
         assert result.success, f"Crawl failed: {result.error_message}"
         extracted = json.loads(result.extracted_content)
@@ -114,15 +117,17 @@ async def test_css_extract_with_default(local_server):
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/products", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
         assert len(extracted) > 0
         for item in extracted:
-            assert item["sku"] == "N/A", (
-                f"Expected default 'N/A' for missing sku, got: {item.get('sku')}"
-            )
+            assert (
+                item["sku"] == "N/A"
+            ), f"Expected default 'N/A' for missing sku, got: {item.get('sku')}"
 
 
 @pytest.mark.asyncio
@@ -149,7 +154,9 @@ async def test_css_extract_nested(local_server):
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/products", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -170,7 +177,9 @@ async def test_css_extract_empty_results(local_server):
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/products", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -192,7 +201,9 @@ async def test_css_extract_table(local_server):
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/tables", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -216,16 +227,18 @@ async def test_css_real_quotes():
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
-        result = await crawler.arun(
-            url="https://quotes.toscrape.com", config=config
-        )
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
+        result = await crawler.arun(url="https://quotes.toscrape.com", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
         assert len(extracted) > 0, "Expected quotes to be extracted"
         for quote in extracted:
             assert "text" in quote and quote["text"], f"Quote missing text: {quote}"
-            assert "author" in quote and quote["author"], f"Quote missing author: {quote}"
+            assert (
+                "author" in quote and quote["author"]
+            ), f"Quote missing author: {quote}"
 
 
 @pytest.mark.asyncio
@@ -235,16 +248,21 @@ async def test_css_real_books():
     schema = {
         "baseSelector": "article.product_pod",
         "fields": [
-            {"name": "title", "selector": "h3 a", "type": "attribute", "attribute": "title"},
+            {
+                "name": "title",
+                "selector": "h3 a",
+                "type": "attribute",
+                "attribute": "title",
+            },
             {"name": "price", "selector": "p.price_color", "type": "text"},
         ],
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
-        result = await crawler.arun(
-            url="https://books.toscrape.com", config=config
-        )
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
+        result = await crawler.arun(url="https://books.toscrape.com", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
         assert len(extracted) > 0, "Expected books to be extracted"
@@ -281,11 +299,15 @@ async def test_xpath_extract_products(local_server):
     }
     strategy = JsonXPathExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/products", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
-        assert len(extracted) == 5, f"Expected 5 products via XPath, got {len(extracted)}"
+        assert (
+            len(extracted) == 5
+        ), f"Expected 5 products via XPath, got {len(extracted)}"
         assert extracted[0]["name"] == "Wireless Mouse"
         assert extracted[0]["price"] == "$29.99"
 
@@ -301,11 +323,15 @@ async def test_lxml_extract_products(local_server):
     CSS-style schema. Verify same results as JsonCss."""
     strategy = JsonLxmlExtractionStrategy(schema=PRODUCT_CSS_SCHEMA)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/products", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
-        assert len(extracted) == 5, f"Expected 5 products via lxml, got {len(extracted)}"
+        assert (
+            len(extracted) == 5
+        ), f"Expected 5 products via lxml, got {len(extracted)}"
         assert extracted[0]["name"] == "Wireless Mouse"
         assert extracted[0]["price"] == "$29.99"
 
@@ -316,7 +342,9 @@ async def test_lxml_caching_performance(local_server):
     Second extraction should be faster or equal due to caching."""
     strategy = JsonLxmlExtractionStrategy(schema=PRODUCT_CSS_SCHEMA)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         # First run
         t0 = time.perf_counter()
         result1 = await crawler.arun(url=f"{local_server}/products", config=config)
@@ -336,9 +364,9 @@ async def test_lxml_caching_performance(local_server):
 
         # Allow generous tolerance -- caching may not always be faster due to
         # browser overhead, but it should certainly not be drastically slower
-        assert second_time < first_time * 3, (
-            f"Second run ({second_time:.3f}s) significantly slower than first ({first_time:.3f}s)"
-        )
+        assert (
+            second_time < first_time * 3
+        ), f"Second run ({second_time:.3f}s) significantly slower than first ({first_time:.3f}s)"
 
 
 # ---------------------------------------------------------------------------
@@ -352,17 +380,19 @@ async def test_regex_email(local_server):
     Verify both expected addresses are found."""
     strategy = RegexExtractionStrategy(pattern=RegexExtractionStrategy.Email)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
         values = [item["value"] for item in extracted]
-        assert any("support@crawl4ai.com" in v for v in values), (
-            f"Expected support@crawl4ai.com in {values}"
-        )
-        assert any("sales@example.org" in v for v in values), (
-            f"Expected sales@example.org in {values}"
-        )
+        assert any(
+            "support@crawl4ai.com" in v for v in values
+        ), f"Expected support@crawl4ai.com in {values}"
+        assert any(
+            "sales@example.org" in v for v in values
+        ), f"Expected sales@example.org in {values}"
 
 
 @pytest.mark.asyncio
@@ -370,7 +400,9 @@ async def test_regex_phone(local_server):
     """Extract US phone numbers from /regex-test."""
     strategy = RegexExtractionStrategy(pattern=RegexExtractionStrategy.PhoneUS)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -386,7 +418,9 @@ async def test_regex_url(local_server):
     """Extract URLs from /regex-test using the Url pattern."""
     strategy = RegexExtractionStrategy(pattern=RegexExtractionStrategy.Url)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -402,7 +436,9 @@ async def test_regex_all(local_server):
     Verify it finds emails, phones, URLs, dates, and more."""
     strategy = RegexExtractionStrategy(pattern=RegexExtractionStrategy.All)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -410,9 +446,9 @@ async def test_regex_all(local_server):
         # Should find at least emails, URLs, and dates
         assert "email" in labels, f"Expected 'email' in labels: {labels}"
         assert "url" in labels, f"Expected 'url' in labels: {labels}"
-        assert "date_iso" in labels or "date_us" in labels, (
-            f"Expected date patterns in labels: {labels}"
-        )
+        assert (
+            "date_iso" in labels or "date_us" in labels
+        ), f"Expected date patterns in labels: {labels}"
 
 
 @pytest.mark.asyncio
@@ -423,7 +459,9 @@ async def test_regex_custom(local_server):
         custom={"ip_address": r"(?:\d{1,3}\.){3}\d{1,3}"}
     )
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -437,7 +475,9 @@ async def test_regex_output_format(local_server):
     url, label, value, span."""
     strategy = RegexExtractionStrategy(pattern=RegexExtractionStrategy.Email)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -458,7 +498,9 @@ async def test_regex_span_accuracy(local_server):
     This tests that span offsets are accurate relative to the input text."""
     strategy = RegexExtractionStrategy(pattern=RegexExtractionStrategy.Email)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/regex-test", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
@@ -472,9 +514,9 @@ async def test_regex_span_accuracy(local_server):
             span = item["span"]
             assert span[0] < span[1], f"Invalid span: {span}"
             assert len(item["value"]) > 0
-            assert span[1] - span[0] == len(item["value"]), (
-                f"Span length ({span[1] - span[0]}) != value length ({len(item['value'])})"
-            )
+            assert span[1] - span[0] == len(
+                item["value"]
+            ), f"Span length ({span[1] - span[0]}) != value length ({len(item['value'])})"
 
 
 # ---------------------------------------------------------------------------
@@ -490,7 +532,9 @@ async def test_no_extraction(local_server):
     as None. The actual page content is still available via markdown and html."""
     strategy = NoExtractionStrategy()
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
         result = await crawler.arun(url=f"{local_server}/", config=config)
         assert result.success
         # The framework explicitly skips extraction for NoExtractionStrategy,
@@ -570,10 +614,10 @@ async def test_extraction_real_quotes_css():
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
-        result = await crawler.arun(
-            url="https://quotes.toscrape.com", config=config
-        )
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
+        result = await crawler.arun(url="https://quotes.toscrape.com", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
         assert len(extracted) >= 5, f"Expected at least 5 quotes, got {len(extracted)}"
@@ -589,17 +633,22 @@ async def test_extraction_real_books_css():
     schema = {
         "baseSelector": "article.product_pod",
         "fields": [
-            {"name": "title", "selector": "h3 a", "type": "attribute", "attribute": "title"},
+            {
+                "name": "title",
+                "selector": "h3 a",
+                "type": "attribute",
+                "attribute": "title",
+            },
             {"name": "price", "selector": "p.price_color", "type": "text"},
             {"name": "availability", "selector": "p.availability", "type": "text"},
         ],
     }
     strategy = JsonCssExtractionStrategy(schema=schema)
     config = CrawlerRunConfig(extraction_strategy=strategy)
-    async with AsyncWebCrawler(config=BrowserConfig(headless=True, verbose=False)) as crawler:
-        result = await crawler.arun(
-            url="https://books.toscrape.com", config=config
-        )
+    async with AsyncWebCrawler(
+        config=BrowserConfig(headless=True, verbose=False)
+    ) as crawler:
+        result = await crawler.arun(url="https://books.toscrape.com", config=config)
         assert result.success
         extracted = json.loads(result.extracted_content)
         assert len(extracted) >= 10, f"Expected at least 10 books, got {len(extracted)}"

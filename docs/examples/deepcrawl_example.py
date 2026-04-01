@@ -1,20 +1,15 @@
 import asyncio
 import time
 
-from crawl4ai import CrawlerRunConfig, AsyncWebCrawler, CacheMode
+from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, BestFirstCrawlingStrategy
-from crawl4ai.deep_crawling.filters import (
-    FilterChain,
-    URLPatternFilter,
-    DomainFilter,
-    ContentTypeFilter,
-    ContentRelevanceFilter,
-    SEOFilter,
-)
-from crawl4ai.deep_crawling.scorers import (
-    KeywordRelevanceScorer,
-)
+from crawl4ai.deep_crawling import (BestFirstCrawlingStrategy,
+                                    BFSDeepCrawlStrategy)
+from crawl4ai.deep_crawling.filters import (ContentRelevanceFilter,
+                                            ContentTypeFilter, DomainFilter,
+                                            FilterChain, SEOFilter,
+                                            URLPatternFilter)
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 
 
 # 1️⃣ Basic Deep Crawl Setup
@@ -64,6 +59,7 @@ async def basic_deep_crawl():
         print(
             f"\n✅ Performance: {len(results)} pages in {time.perf_counter() - start_time:.2f} seconds"
         )
+
 
 # 2️⃣ Stream vs. Non-Stream Execution
 async def stream_vs_nonstream():
@@ -125,6 +121,7 @@ async def stream_vs_nonstream():
         print(f"  ✅ First result: {first_result_time:.2f} seconds")
         print(f"  ✅ All results: {time.perf_counter() - start_time:.2f} seconds")
         print("\n🔍 Key Takeaway: Streaming allows processing results immediately")
+
 
 # 3️⃣ Introduce Filters & Scorers
 async def filters_and_scorers():
@@ -210,11 +207,19 @@ async def filters_and_scorers():
 
         # Create a keyword relevance scorer
         keyword_scorer = KeywordRelevanceScorer(
-            keywords=["crawl", "example", "async", "configuration","javascript","css"], weight=1
+            keywords=[
+                "crawl",
+                "example",
+                "async",
+                "configuration",
+                "javascript",
+                "css",
+            ],
+            weight=1,
         )
 
         config = CrawlerRunConfig(
-            deep_crawl_strategy=BestFirstCrawlingStrategy(  
+            deep_crawl_strategy=BestFirstCrawlingStrategy(
                 max_depth=1, include_external=False, url_scorer=keyword_scorer
             ),
             scraping_strategy=LXMLWebScrapingStrategy(),
@@ -233,6 +238,7 @@ async def filters_and_scorers():
 
         print(f"  ✅ Crawler prioritized {len(results)} pages by relevance score")
         print("  🔍 Note: BestFirstCrawlingStrategy visits highest-scoring pages first")
+
 
 # 4️⃣ Advanced Filters
 async def advanced_filters():
@@ -297,104 +303,109 @@ async def advanced_filters():
             relevance_score = result.metadata.get("relevance_score", 0)
             print(f"  → Score: {relevance_score:.2f} | {result.url}")
 
+
 # 5️⃣ Max Pages and Score Thresholds
 async def max_pages_and_thresholds():
     """
     PART 5: Demonstrates using max_pages and score_threshold parameters with different strategies.
-    
+
     This function shows:
     - How to limit the number of pages crawled
     - How to set score thresholds for more targeted crawling
     - Comparing BFS, DFS, and Best-First strategies with these parameters
     """
     print("\n===== MAX PAGES AND SCORE THRESHOLDS =====")
-    
+
     from crawl4ai.deep_crawling import DFSDeepCrawlStrategy
-    
+
     async with AsyncWebCrawler() as crawler:
         # Define a common keyword scorer for all examples
         keyword_scorer = KeywordRelevanceScorer(
-            keywords=["browser", "crawler", "web", "automation"], 
-            weight=1.0
+            keywords=["browser", "crawler", "web", "automation"], weight=1.0
         )
-        
+
         # EXAMPLE 1: BFS WITH MAX PAGES
         print("\n📊 EXAMPLE 1: BFS STRATEGY WITH MAX PAGES LIMIT")
         print("  Limit the crawler to a maximum of 5 pages")
-        
+
         bfs_config = CrawlerRunConfig(
             deep_crawl_strategy=BFSDeepCrawlStrategy(
-                max_depth=2, 
+                max_depth=2,
                 include_external=False,
                 url_scorer=keyword_scorer,
-                max_pages=5  # Only crawl 5 pages
+                max_pages=5,  # Only crawl 5 pages
             ),
             scraping_strategy=LXMLWebScrapingStrategy(),
             verbose=True,
             cache_mode=CacheMode.BYPASS,
         )
-        
+
         results = await crawler.arun(url="https://docs.crawl4ai.com", config=bfs_config)
-        
+
         print(f"  ✅ Crawled exactly {len(results)} pages as specified by max_pages")
         for result in results:
             depth = result.metadata.get("depth", 0)
             print(f"  → Depth: {depth} | {result.url}")
-            
+
         # EXAMPLE 2: DFS WITH SCORE THRESHOLD
         print("\n📊 EXAMPLE 2: DFS STRATEGY WITH SCORE THRESHOLD")
         print("  Only crawl pages with a relevance score above 0.5")
-        
+
         dfs_config = CrawlerRunConfig(
             deep_crawl_strategy=DFSDeepCrawlStrategy(
                 max_depth=2,
-                include_external=False, 
+                include_external=False,
                 url_scorer=keyword_scorer,
                 score_threshold=0.7,  # Only process URLs with scores above 0.5
-                max_pages=10
+                max_pages=10,
             ),
             scraping_strategy=LXMLWebScrapingStrategy(),
             verbose=True,
             cache_mode=CacheMode.BYPASS,
         )
-        
+
         results = await crawler.arun(url="https://docs.crawl4ai.com", config=dfs_config)
-        
+
         print(f"  ✅ Crawled {len(results)} pages with scores above threshold")
         for result in results:
             score = result.metadata.get("score", 0)
             depth = result.metadata.get("depth", 0)
             print(f"  → Depth: {depth} | Score: {score:.2f} | {result.url}")
-            
+
         # EXAMPLE 3: BEST-FIRST WITH BOTH CONSTRAINTS
         print("\n📊 EXAMPLE 3: BEST-FIRST STRATEGY WITH BOTH CONSTRAINTS")
         print("  Limit to 7 pages with scores above 0.3, prioritizing highest scores")
-        
+
         bf_config = CrawlerRunConfig(
             deep_crawl_strategy=BestFirstCrawlingStrategy(
                 max_depth=2,
                 include_external=False,
                 url_scorer=keyword_scorer,
-                max_pages=7,          # Limit to 7 pages total
+                max_pages=7,  # Limit to 7 pages total
             ),
             scraping_strategy=LXMLWebScrapingStrategy(),
             verbose=True,
             cache_mode=CacheMode.BYPASS,
             stream=True,
         )
-        
+
         results = []
-        async for result in await crawler.arun(url="https://docs.crawl4ai.com", config=bf_config):
+        async for result in await crawler.arun(
+            url="https://docs.crawl4ai.com", config=bf_config
+        ):
             results.append(result)
             score = result.metadata.get("score", 0)
             depth = result.metadata.get("depth", 0)
             print(f"  → Depth: {depth} | Score: {score:.2f} | {result.url}")
-            
+
         print(f"  ✅ Crawled {len(results)} high-value pages with scores above 0.3")
         if results:
-            avg_score = sum(r.metadata.get('score', 0) for r in results) / len(results)
+            avg_score = sum(r.metadata.get("score", 0) for r in results) / len(results)
             print(f"  ✅ Average score: {avg_score:.2f}")
-            print("  🔍 Note: BestFirstCrawlingStrategy visited highest-scoring pages first")
+            print(
+                "  🔍 Note: BestFirstCrawlingStrategy visited highest-scoring pages first"
+            )
+
 
 # 6️⃣ Wrap-Up and Key Takeaways
 async def wrap_up():
@@ -481,7 +492,7 @@ async def run_tutorial():
         basic_deep_crawl,
         stream_vs_nonstream,
         filters_and_scorers,
-        max_pages_and_thresholds, 
+        max_pages_and_thresholds,
         advanced_filters,
         wrap_up,
     ]
@@ -492,6 +503,7 @@ async def run_tutorial():
     print("\n🎉 TUTORIAL COMPLETE! 🎉")
     print("You now have a comprehensive understanding of deep crawling with Crawl4AI.")
     print("For more information, check out https://docs.crawl4ai.com")
+
 
 # Execute the tutorial when run directly
 if __name__ == "__main__":

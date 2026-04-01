@@ -1,9 +1,9 @@
-import os
-import sys
 import asyncio
+import os
 import shutil
-from typing import List
+import sys
 import tempfile
+from typing import List
 
 # Add the parent directory to the Python path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,9 +50,11 @@ class TestDownloads:
                 self.log_result(
                     "Basic Download",
                     success,
-                    f"Downloaded {len(result.downloaded_files or [])} files"
-                    if success
-                    else "No files downloaded",
+                    (
+                        f"Downloaded {len(result.downloaded_files or [])} files"
+                        if success
+                        else "No files downloaded"
+                    ),
                 )
         except Exception as e:
             self.log_result("Basic Download", False, str(e))
@@ -85,9 +87,11 @@ class TestDownloads:
                 self.log_result(
                     "Persistent Context Download",
                     success,
-                    f"Downloaded {len(result.downloaded_files or [])} files"
-                    if success
-                    else "No files downloaded",
+                    (
+                        f"Downloaded {len(result.downloaded_files or [])} files"
+                        if success
+                        else "No files downloaded"
+                    ),
                 )
         except Exception as e:
             self.log_result("Persistent Context Download", False, str(e))
@@ -114,9 +118,11 @@ class TestDownloads:
                 self.log_result(
                     "Multiple Downloads",
                     success,
-                    f"Downloaded {len(result.downloaded_files or [])} files"
-                    if success
-                    else "Not enough files downloaded",
+                    (
+                        f"Downloaded {len(result.downloaded_files or [])} files"
+                        if success
+                        else "Not enough files downloaded"
+                    ),
                 )
         except Exception as e:
             self.log_result("Multiple Downloads", False, str(e))
@@ -148,9 +154,11 @@ class TestDownloads:
                     self.log_result(
                         f"{browser_type.title()} Download",
                         success,
-                        f"Downloaded {len(result.downloaded_files or [])} files"
-                        if success
-                        else "No files downloaded",
+                        (
+                            f"Downloaded {len(result.downloaded_files or [])} files"
+                            if success
+                            else "No files downloaded"
+                        ),
                     )
             except Exception as e:
                 self.log_result(f"{browser_type.title()} Download", False, str(e))
@@ -203,9 +211,11 @@ class TestDownloads:
                 self.log_result(
                     "Disabled Downloads",
                     success,
-                    "Correctly ignored downloads"
-                    if success
-                    else "Unexpectedly downloaded files",
+                    (
+                        "Correctly ignored downloads"
+                        if success
+                        else "Unexpectedly downloaded files"
+                    ),
                 )
         except Exception as e:
             self.log_result("Disabled Downloads", False, str(e))

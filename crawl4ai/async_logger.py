@@ -1,11 +1,13 @@
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Optional, Dict, Any, List
 import os
+from abc import ABC, abstractmethod
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
+
 from rich.console import Console
 from rich.text import Text
+
 from .utils import create_box_message
 
 
@@ -21,10 +23,10 @@ class LogLevel(Enum):
     NOTICE = 8
     EXCEPTION = 9
     FATAL = 10
-    
 
     def __str__(self):
         return self.name.lower()
+
 
 class LogColor(str, Enum):
     """Enum for log colors."""
@@ -68,11 +70,20 @@ class AsyncLoggerBase(ABC):
         pass
 
     @abstractmethod
-    def url_status(self, url: str, success: bool, timing: float, tag: str = "FETCH", url_length: int = 100):
+    def url_status(
+        self,
+        url: str,
+        success: bool,
+        timing: float,
+        tag: str = "FETCH",
+        url_length: int = 100,
+    ):
         pass
 
     @abstractmethod
-    def error_status(self, url: str, error: str, tag: str = "ERROR", url_length: int = 100):
+    def error_status(
+        self, url: str, error: str, tag: str = "ERROR", url_length: int = 100
+    ):
         pass
 
 
@@ -149,7 +160,7 @@ class AsyncLogger(AsyncLoggerBase):
     def _get_icon(self, tag: str) -> str:
         """Get the icon for a tag, defaulting to info icon if not found."""
         return self.icons.get(tag, self.icons["INFO"])
-    
+
     def _shorten(self, text, length, placeholder="..."):
         """Truncate text in the middle if longer than length, or pad if shorter."""
         if len(text) <= length:
@@ -196,13 +207,13 @@ class AsyncLogger(AsyncLoggerBase):
         # avoid conflict with rich formatting
         parsed_message = message.replace("[", "[[").replace("]", "]]")
         if params:
-            # FIXME: If there are formatting strings in floating point format, 
+            # FIXME: If there are formatting strings in floating point format,
             # this may result in colors and boxes not being applied properly.
             # such as {value:.2f}, the value is 0.23333 format it to 0.23,
             # but we replace("0.23333", "[color]0.23333[/color]")
             formatted_message = parsed_message.format(**params)
             for key, value in params.items():
-                # value_str may discard `[` and `]`, so we need to replace it. 
+                # value_str may discard `[` and `]`, so we need to replace it.
                 value_str = str(value).replace("[", "[[").replace("]", "]]")
                 # check is need apply color
                 if colors and key in colors:
@@ -212,8 +223,9 @@ class AsyncLogger(AsyncLoggerBase):
 
                 # check is need apply box
                 if boxes and key in boxes:
-                    formatted_message = formatted_message.replace(value_str,
-                        create_box_message(value_str, type=str(level)))
+                    formatted_message = formatted_message.replace(
+                        value_str, create_box_message(value_str, type=str(level))
+                    )
 
         else:
             formatted_message = parsed_message
@@ -244,19 +256,23 @@ class AsyncLogger(AsyncLoggerBase):
     def warning(self, message: str, tag: str = "WARNING", **kwargs):
         """Log a warning message."""
         self._log(LogLevel.WARNING, message, tag, **kwargs)
-        
+
     def critical(self, message: str, tag: str = "CRITICAL", **kwargs):
         """Log a critical message."""
         self._log(LogLevel.ERROR, message, tag, **kwargs)
+
     def exception(self, message: str, tag: str = "EXCEPTION", **kwargs):
         """Log an exception message."""
         self._log(LogLevel.ERROR, message, tag, **kwargs)
+
     def fatal(self, message: str, tag: str = "FATAL", **kwargs):
         """Log a fatal message."""
         self._log(LogLevel.ERROR, message, tag, **kwargs)
+
     def alert(self, message: str, tag: str = "ALERT", **kwargs):
         """Log an alert message."""
         self._log(LogLevel.ERROR, message, tag, **kwargs)
+
     def notice(self, message: str, tag: str = "NOTICE", **kwargs):
         """Log a notice message."""
         self._log(LogLevel.INFO, message, tag, **kwargs)
@@ -321,6 +337,7 @@ class AsyncLogger(AsyncLoggerBase):
             params={"url": readable_url, "error": error},
         )
 
+
 class AsyncFileLogger(AsyncLoggerBase):
     """
     File-only asynchronous logger that writes logs to a specified file.
@@ -362,13 +379,22 @@ class AsyncFileLogger(AsyncLoggerBase):
         """Log an error message to file."""
         self._write_to_file("ERROR", message, tag)
 
-    def url_status(self, url: str, success: bool, timing: float, tag: str = "FETCH", url_length: int = 100):
+    def url_status(
+        self,
+        url: str,
+        success: bool,
+        timing: float,
+        tag: str = "FETCH",
+        url_length: int = 100,
+    ):
         """Log URL fetch status to file."""
         status = "SUCCESS" if success else "FAILED"
         message = f"{url[:url_length]}... | Status: {status} | Time: {timing:.2f}s"
         self._write_to_file("URL_STATUS", message, tag)
 
-    def error_status(self, url: str, error: str, tag: str = "ERROR", url_length: int = 100):
+    def error_status(
+        self, url: str, error: str, tag: str = "ERROR", url_length: int = 100
+    ):
         """Log error status to file."""
         message = f"{url[:url_length]}... | Error: {error}"
         self._write_to_file("ERROR", message, tag)

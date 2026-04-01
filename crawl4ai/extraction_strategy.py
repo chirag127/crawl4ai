@@ -1,51 +1,36 @@
-from abc import ABC, abstractmethod
 import ast
 import inspect
-from typing import Any, List, Dict, Optional, Tuple, Pattern, Union
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
-import time
-from enum import IntFlag, auto
-
-from .prompts import PROMPT_EXTRACT_BLOCKS, PROMPT_EXTRACT_BLOCKS_WITH_INSTRUCTION, PROMPT_EXTRACT_SCHEMA_WITH_INSTRUCTION, JSON_SCHEMA_BUILDER_XPATH, PROMPT_EXTRACT_INFERRED_SCHEMA
-from .config import (
-    DEFAULT_PROVIDER,
-    DEFAULT_PROVIDER_API_KEY,
-    CHUNK_TOKEN_THRESHOLD,
-    OVERLAP_RATE,
-    WORD_TOKEN_RATE,
-    HTML_EXAMPLE_DELIMITER,
-)
-from .utils import *  # noqa: F403
-
-from .utils import (
-    sanitize_html,
-    escape_json_string,
-    perform_completion_with_backoff,
-    extract_xml_data,
-    split_and_parse_json_objects,
-    sanitize_input_encode,
-    merge_chunks,
-)
-from .models import * # noqa: F403
-
-from .models import TokenUsage
-
-from .model_loader import * # noqa: F403
-from .model_loader import (
-    get_device,
-    load_HF_embedding_model,
-    load_text_multilabel_classifier,
-    calculate_batch_size
-)
-
-from .types import LLMConfig, create_llm_config
-
-from functools import partial
-import numpy as np
 import re
+import time
+from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from enum import IntFlag, auto
+from functools import partial
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
+
+import numpy as np
 from bs4 import BeautifulSoup
-from lxml import html, etree
+from lxml import etree, html
+
+from .config import (CHUNK_TOKEN_THRESHOLD, DEFAULT_PROVIDER,
+                     DEFAULT_PROVIDER_API_KEY, HTML_EXAMPLE_DELIMITER,
+                     OVERLAP_RATE, WORD_TOKEN_RATE)
+from .model_loader import *  # noqa: F403
+from .model_loader import (calculate_batch_size, get_device,
+                           load_HF_embedding_model,
+                           load_text_multilabel_classifier)
+from .models import *  # noqa: F403
+from .models import TokenUsage
+from .prompts import (JSON_SCHEMA_BUILDER_XPATH, PROMPT_EXTRACT_BLOCKS,
+                      PROMPT_EXTRACT_BLOCKS_WITH_INSTRUCTION,
+                      PROMPT_EXTRACT_INFERRED_SCHEMA,
+                      PROMPT_EXTRACT_SCHEMA_WITH_INSTRUCTION)
+from .types import LLMConfig, create_llm_config
+from .utils import *  # noqa: F403
+from .utils import (escape_json_string, extract_xml_data, merge_chunks,
+                    perform_completion_with_backoff, sanitize_html,
+                    sanitize_input_encode, split_and_parse_json_objects)
 
 
 def _strip_markdown_fences(text: str) -> str:
@@ -132,7 +117,9 @@ class ExtractionStrategy(ABC):
                 extracted_content.extend(future.result())
         return extracted_content
 
-    async def arun(self, url: str, sections: List[str], *q, **kwargs) -> List[Dict[str, Any]]:
+    async def arun(
+        self, url: str, sections: List[str], *q, **kwargs
+    ) -> List[Dict[str, Any]]:
         """
         Async version: Process sections of text in parallel using asyncio.
 
@@ -144,6 +131,7 @@ class ExtractionStrategy(ABC):
         :return: A list of processed JSON blocks.
         """
         import asyncio
+
         return await asyncio.to_thread(self.run, url, sections, *q, **kwargs)
 
 
@@ -399,7 +387,7 @@ class CosineStrategy(ExtractionStrategy):
             NumPy array of cluster labels.
         """
         # Get embeddings
-        from scipy.cluster.hierarchy import linkage, fcluster
+        from scipy.cluster.hierarchy import fcluster, linkage
         from scipy.spatial.distance import pdist
 
         self.timer = time.time()
@@ -454,7 +442,9 @@ class CosineStrategy(ExtractionStrategy):
         # Split by delimiter; fall back to double-newline splitting for raw text
         text_chunks = html.split(self.DEL)
         if len(text_chunks) == 1:
-            text_chunks = [chunk.strip() for chunk in html.split("\n\n") if chunk.strip()]
+            text_chunks = [
+                chunk.strip() for chunk in html.split("\n\n") if chunk.strip()
+            ]
 
         # Pre-filter documents using embeddings and semantic_filter
         text_chunks = self.filter_documents_embeddings(
@@ -548,15 +538,17 @@ class LLMExtractionStrategy(ExtractionStrategy):
         usages: List of individual token usages.
         total_usage: Accumulated token usage.
     """
+
     _UNWANTED_PROPS = {
-            'provider' : 'Instead, use llm_config=LLMConfig(provider="...")',
-            'api_token' : 'Instead, use llm_config=LlMConfig(api_token="...")',
-            'base_url' : 'Instead, use llm_config=LLMConfig(base_url="...")',
-            'api_base' : 'Instead, use llm_config=LLMConfig(base_url="...")',
-        }
+        "provider": 'Instead, use llm_config=LLMConfig(provider="...")',
+        "api_token": 'Instead, use llm_config=LlMConfig(api_token="...")',
+        "base_url": 'Instead, use llm_config=LLMConfig(base_url="...")',
+        "api_base": 'Instead, use llm_config=LLMConfig(base_url="...")',
+    }
+
     def __init__(
         self,
-        llm_config: 'LLMConfig' = None,
+        llm_config: "LLMConfig" = None,
         instruction: str = None,
         schema: Dict = None,
         extraction_type="block",
@@ -598,7 +590,7 @@ class LLMExtractionStrategy(ExtractionStrategy):
             api_base: The base URL for the API request.
             extra_args: Additional arguments for the API request, such as temperature, max_tokens, etc.
         """
-        super().__init__( input_format=input_format, **kwargs)
+        super().__init__(input_format=input_format, **kwargs)
         self.llm_config = llm_config
         if not self.llm_config:
             self.llm_config = create_llm_config(
@@ -627,7 +619,6 @@ class LLMExtractionStrategy(ExtractionStrategy):
         self.base_url = base_url
         self.api_base = api_base
 
-    
     def __setattr__(self, name, value):
         """Handle attribute setting."""
         # TODO: Planning to set properties dynamically based on the __init__ signature
@@ -635,10 +626,12 @@ class LLMExtractionStrategy(ExtractionStrategy):
         all_params = sig.parameters  # Dictionary of parameter names and their details
 
         if name in self._UNWANTED_PROPS and value is not all_params[name].default:
-            raise AttributeError(f"Setting '{name}' is deprecated. {self._UNWANTED_PROPS[name]}")
-        
-        super().__setattr__(name, value)  
-        
+            raise AttributeError(
+                f"Setting '{name}' is deprecated. {self._UNWANTED_PROPS[name]}"
+            )
+
+        super().__setattr__(name, value)
+
     def extract(self, url: str, ix: int, html: str) -> List[Dict[str, Any]]:
         """
         Extract meaningful blocks or chunks from the given HTML using an LLM.
@@ -671,7 +664,9 @@ class LLMExtractionStrategy(ExtractionStrategy):
             prompt_with_variables = PROMPT_EXTRACT_BLOCKS_WITH_INSTRUCTION
 
         if self.extract_type == "schema" and self.schema:
-            variable_values["SCHEMA"] = json.dumps(self.schema, indent=2) # if type of self.schema is dict else self.schema
+            variable_values["SCHEMA"] = json.dumps(
+                self.schema, indent=2
+            )  # if type of self.schema is dict else self.schema
             prompt_with_variables = PROMPT_EXTRACT_SCHEMA_WITH_INSTRUCTION
 
         if self.extract_type == "schema" and not self.schema:
@@ -692,19 +687,23 @@ class LLMExtractionStrategy(ExtractionStrategy):
                 extra_args=self.extra_args,
                 base_delay=self.llm_config.backoff_base_delay,
                 max_attempts=self.llm_config.backoff_max_attempts,
-                exponential_factor=self.llm_config.backoff_exponential_factor
+                exponential_factor=self.llm_config.backoff_exponential_factor,
             )  # , json_response=self.extract_type == "schema")
             # Track usage
             usage = TokenUsage(
                 completion_tokens=response.usage.completion_tokens,
                 prompt_tokens=response.usage.prompt_tokens,
                 total_tokens=response.usage.total_tokens,
-                completion_tokens_details=response.usage.completion_tokens_details.__dict__
-                if response.usage.completion_tokens_details
-                else {},
-                prompt_tokens_details=response.usage.prompt_tokens_details.__dict__
-                if response.usage.prompt_tokens_details
-                else {},
+                completion_tokens_details=(
+                    response.usage.completion_tokens_details.__dict__
+                    if response.usage.completion_tokens_details
+                    else {}
+                ),
+                prompt_tokens_details=(
+                    response.usage.prompt_tokens_details.__dict__
+                    if response.usage.prompt_tokens_details
+                    else {}
+                ),
             )
             self.usages.append(usage)
 
@@ -718,14 +717,24 @@ class LLMExtractionStrategy(ExtractionStrategy):
                 blocks = None
 
                 if not content:
-                    finish_reason = getattr(response.choices[0], "finish_reason", "unknown")
-                    blocks = [{"index": 0, "error": True, "tags": ["error"],
-                               "content": f"LLM returned no content (finish_reason: {finish_reason})"}]
+                    finish_reason = getattr(
+                        response.choices[0], "finish_reason", "unknown"
+                    )
+                    blocks = [
+                        {
+                            "index": 0,
+                            "error": True,
+                            "tags": ["error"],
+                            "content": f"LLM returned no content (finish_reason: {finish_reason})",
+                        }
+                    ]
                 elif self.force_json_response:
                     blocks = json.loads(_strip_markdown_fences(content))
                     if isinstance(blocks, dict):
                         # If it has only one key which calue is list then assign that to blocks, exampled: {"news": [..]}
-                        if len(blocks) == 1 and isinstance(list(blocks.values())[0], list):
+                        if len(blocks) == 1 and isinstance(
+                            list(blocks.values())[0], list
+                        ):
                             blocks = list(blocks.values())[0]
                         else:
                             # If it has only one key which value is not list then assign that to blocks, exampled: { "article_id": "1234", ... }
@@ -733,7 +742,7 @@ class LLMExtractionStrategy(ExtractionStrategy):
                     elif isinstance(blocks, list):
                         # If it is a list then assign that to blocks
                         blocks = blocks
-                else: 
+                else:
                     # blocks = extract_xml_data(["blocks"], response.choices[0].message.content)["blocks"]
                     blocks = extract_xml_data(["blocks"], content)["blocks"]
                     blocks = json.loads(blocks)
@@ -746,7 +755,12 @@ class LLMExtractionStrategy(ExtractionStrategy):
                 blocks = parsed
                 if unparsed:
                     blocks.append(
-                        {"index": 0, "error": True, "tags": ["error"], "content": unparsed}
+                        {
+                            "index": 0,
+                            "error": True,
+                            "tags": ["error"],
+                            "content": unparsed,
+                        }
                     )
 
             if self.verbose:
@@ -776,11 +790,11 @@ class LLMExtractionStrategy(ExtractionStrategy):
         """
         Merge documents into sections based on chunk_token_threshold and overlap.
         """
-        sections =  merge_chunks(
-            docs = documents,
-            target_size= chunk_token_threshold,
+        sections = merge_chunks(
+            docs=documents,
+            target_size=chunk_token_threshold,
             overlap=overlap,
-            word_token_ratio=self.word_token_rate
+            word_token_ratio=self.word_token_rate,
         )
         return sections
 
@@ -895,19 +909,23 @@ class LLMExtractionStrategy(ExtractionStrategy):
                 extra_args=self.extra_args,
                 base_delay=self.llm_config.backoff_base_delay,
                 max_attempts=self.llm_config.backoff_max_attempts,
-                exponential_factor=self.llm_config.backoff_exponential_factor
+                exponential_factor=self.llm_config.backoff_exponential_factor,
             )
             # Track usage
             usage = TokenUsage(
                 completion_tokens=response.usage.completion_tokens,
                 prompt_tokens=response.usage.prompt_tokens,
                 total_tokens=response.usage.total_tokens,
-                completion_tokens_details=response.usage.completion_tokens_details.__dict__
-                if response.usage.completion_tokens_details
-                else {},
-                prompt_tokens_details=response.usage.prompt_tokens_details.__dict__
-                if response.usage.prompt_tokens_details
-                else {},
+                completion_tokens_details=(
+                    response.usage.completion_tokens_details.__dict__
+                    if response.usage.completion_tokens_details
+                    else {}
+                ),
+                prompt_tokens_details=(
+                    response.usage.prompt_tokens_details.__dict__
+                    if response.usage.prompt_tokens_details
+                    else {}
+                ),
             )
             self.usages.append(usage)
 
@@ -921,13 +939,23 @@ class LLMExtractionStrategy(ExtractionStrategy):
                 blocks = None
 
                 if not content:
-                    finish_reason = getattr(response.choices[0], "finish_reason", "unknown")
-                    blocks = [{"index": 0, "error": True, "tags": ["error"],
-                               "content": f"LLM returned no content (finish_reason: {finish_reason})"}]
+                    finish_reason = getattr(
+                        response.choices[0], "finish_reason", "unknown"
+                    )
+                    blocks = [
+                        {
+                            "index": 0,
+                            "error": True,
+                            "tags": ["error"],
+                            "content": f"LLM returned no content (finish_reason: {finish_reason})",
+                        }
+                    ]
                 elif self.force_json_response:
                     blocks = json.loads(_strip_markdown_fences(content))
                     if isinstance(blocks, dict):
-                        if len(blocks) == 1 and isinstance(list(blocks.values())[0], list):
+                        if len(blocks) == 1 and isinstance(
+                            list(blocks.values())[0], list
+                        ):
                             blocks = list(blocks.values())[0]
                         else:
                             blocks = [blocks]
@@ -945,7 +973,12 @@ class LLMExtractionStrategy(ExtractionStrategy):
                 blocks = parsed
                 if unparsed:
                     blocks.append(
-                        {"index": 0, "error": True, "tags": ["error"], "content": unparsed}
+                        {
+                            "index": 0,
+                            "error": True,
+                            "tags": ["error"],
+                            "content": unparsed,
+                        }
                     )
 
             if self.verbose:
@@ -1042,14 +1075,34 @@ class LLMExtractionStrategy(ExtractionStrategy):
 
 # Safe builtins allowed in computed field expressions
 _SAFE_EVAL_BUILTINS = {
-    "str": str, "int": int, "float": float, "bool": bool,
-    "len": len, "round": round, "abs": abs, "min": min, "max": max,
-    "sum": sum, "sorted": sorted, "reversed": reversed,
-    "list": list, "dict": dict, "tuple": tuple, "set": set,
-    "enumerate": enumerate, "zip": zip, "map": map, "filter": filter,
-    "any": any, "all": all, "range": range,
-    "True": True, "False": False, "None": None,
-    "isinstance": isinstance, "type": type,
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "len": len,
+    "round": round,
+    "abs": abs,
+    "min": min,
+    "max": max,
+    "sum": sum,
+    "sorted": sorted,
+    "reversed": reversed,
+    "list": list,
+    "dict": dict,
+    "tuple": tuple,
+    "set": set,
+    "enumerate": enumerate,
+    "zip": zip,
+    "map": map,
+    "filter": filter,
+    "any": any,
+    "all": all,
+    "range": range,
+    "True": True,
+    "False": False,
+    "None": None,
+    "isinstance": isinstance,
+    "type": type,
 }
 
 
@@ -1090,13 +1143,9 @@ def _safe_eval_expression(expression: str, local_vars: dict) -> Any:
         if isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Name) and func.id.startswith("_"):
-                raise ValueError(
-                    f"Calling '{func.id}' is not allowed in expressions"
-                )
+                raise ValueError(f"Calling '{func.id}' is not allowed in expressions")
             if isinstance(func, ast.Attribute) and func.attr.startswith("_"):
-                raise ValueError(
-                    f"Calling '{func.attr}' is not allowed in expressions"
-                )
+                raise ValueError(f"Calling '{func.attr}' is not allowed in expressions")
 
     safe_globals = {"__builtins__": _SAFE_EVAL_BUILTINS}
     return eval(compile(tree, "<expression>", "eval"), safe_globals, local_vars)
@@ -1494,18 +1543,22 @@ class JsonElementExtractionStrategy(ExtractionStrategy):
             sample_val = next((v for v in values if v is not None and v != ""), None)
             if sample_val is not None:
                 sample_val = str(sample_val)[:120]
-            result["field_details"].append({
-                "name": fname,
-                "populated_count": populated_count,
-                "total_count": len(items),
-                "sample_value": sample_val,
-            })
+            result["field_details"].append(
+                {
+                    "name": fname,
+                    "populated_count": populated_count,
+                    "total_count": len(items),
+                    "sample_value": sample_val,
+                }
+            )
 
         result["populated_fields"] = sum(
             1 for fd in result["field_details"] if fd["populated_count"] > 0
         )
         if result["total_fields"] > 0:
-            result["field_coverage"] = result["populated_fields"] / result["total_fields"]
+            result["field_coverage"] = (
+                result["populated_fields"] / result["total_fields"]
+            )
 
         # Build issues
         if result["populated_fields"] == 0:
@@ -1537,11 +1590,12 @@ class JsonElementExtractionStrategy(ExtractionStrategy):
             # Strict: all expected fields must exist in schema AND be populated
             schema_field_names = {f["name"] for f in schema.get("fields", [])}
             populated_names = {
-                fd["name"] for fd in result["field_details"] if fd["populated_count"] > 0
+                fd["name"]
+                for fd in result["field_details"]
+                if fd["populated_count"] > 0
             }
-            result["success"] = (
-                result["base_elements_found"] > 0
-                and all(f in populated_names for f in expected_fields)
+            result["success"] = result["base_elements_found"] > 0 and all(
+                f in populated_names for f in expected_fields
             )
         else:
             # Fuzzy: at least something extracted
@@ -1621,7 +1675,13 @@ class JsonElementExtractionStrategy(ExtractionStrategy):
         return "\n".join(parts)
 
     @staticmethod
-    async def _infer_target_json(query: str, html_snippet: str, llm_config, url: str = None, usage: 'TokenUsage' = None) -> Optional[dict]:
+    async def _infer_target_json(
+        query: str,
+        html_snippet: str,
+        llm_config,
+        url: str = None,
+        usage: "TokenUsage" = None,
+    ) -> Optional[dict]:
         """Infer a target JSON example from a query and HTML snippet via a quick LLM call.
 
         Args:
@@ -1676,12 +1736,14 @@ class JsonElementExtractionStrategy(ExtractionStrategy):
         return list(target_json.keys())
 
     _GENERATE_SCHEMA_UNWANTED_PROPS = {
-        'provider': 'Instead, use llm_config=LLMConfig(provider="...")',
-        'api_token': 'Instead, use llm_config=LlMConfig(api_token="...")',
+        "provider": 'Instead, use llm_config=LLMConfig(provider="...")',
+        "api_token": 'Instead, use llm_config=LlMConfig(api_token="...")',
     }
 
     @staticmethod
-    def _build_schema_prompt(html: str, schema_type: str, query: str = None, target_json_example: str = None) -> str:
+    def _build_schema_prompt(
+        html: str, schema_type: str, query: str = None, target_json_example: str = None
+    ) -> str:
         """
         Build the prompt for schema generation. Shared by sync and async methods.
 
@@ -1690,7 +1752,9 @@ class JsonElementExtractionStrategy(ExtractionStrategy):
         """
         from .prompts import JSON_SCHEMA_BUILDER
 
-        prompt_template = JSON_SCHEMA_BUILDER if schema_type == "CSS" else JSON_SCHEMA_BUILDER_XPATH
+        prompt_template = (
+            JSON_SCHEMA_BUILDER if schema_type == "CSS" else JSON_SCHEMA_BUILDER_XPATH
+        )
 
         system_content = f"""You specialize in generating special JSON schemas for web scraping. This schema uses CSS or XPATH selectors to present a repetitive pattern in crawled HTML, such as a product in a product list or a search result item in a list of search results. We use this JSON schema to pass to a language model along with the HTML content to extract structured data from the HTML. The language model uses the JSON schema to extract data from the HTML and retrieve values for fields in the JSON schema, following the schema.
 
@@ -1722,7 +1786,9 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                 """
 
         if query:
-            user_content += f"\n\n## Query or explanation of target/goal data item:\n{query}"
+            user_content += (
+                f"\n\n## Query or explanation of target/goal data item:\n{query}"
+            )
         if target_json_example:
             user_content += f"\n\n## Example of target JSON object:\n```json\n{target_json_example}\n```"
 
@@ -1750,14 +1816,14 @@ In this scenario, use your best judgment to generate the schema. You need to exa
         schema_type: str = "CSS",
         query: str = None,
         target_json_example: str = None,
-        llm_config: 'LLMConfig' = create_llm_config(),
+        llm_config: "LLMConfig" = create_llm_config(),
         provider: str = None,
         api_token: str = None,
         url: Union[str, List[str]] = None,
         validate: bool = True,
         max_refinements: int = 3,
-        usage: 'TokenUsage' = None,
-        **kwargs
+        usage: "TokenUsage" = None,
+        **kwargs,
     ) -> dict:
         """
         Generate extraction schema from HTML content or URL(s) (sync version).
@@ -1805,13 +1871,14 @@ In this scenario, use your best judgment to generate the schema. You need to exa
             validate=validate,
             max_refinements=max_refinements,
             usage=usage,
-            **kwargs
+            **kwargs,
         )
 
         if loop is None:
             return asyncio.run(coro)
         else:
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(asyncio.run, coro)
                 return future.result()
@@ -1822,14 +1889,14 @@ In this scenario, use your best judgment to generate the schema. You need to exa
         schema_type: str = "CSS",
         query: str = None,
         target_json_example: str = None,
-        llm_config: 'LLMConfig' = None,
+        llm_config: "LLMConfig" = None,
         provider: str = None,
         api_token: str = None,
         url: Union[str, List[str]] = None,
         validate: bool = True,
         max_refinements: int = 3,
-        usage: 'TokenUsage' = None,
-        **kwargs
+        usage: "TokenUsage" = None,
+        **kwargs,
     ) -> dict:
         """
         Generate extraction schema from HTML content or URL(s) (async version).
@@ -1862,14 +1929,18 @@ In this scenario, use your best judgment to generate the schema. You need to exa
         Raises:
             ValueError: If neither html nor url is provided.
         """
-        from .utils import aperform_completion_with_backoff, preprocess_html_for_schema
+        from .utils import (aperform_completion_with_backoff,
+                            preprocess_html_for_schema)
 
         # Validate inputs
         if html is None and (url is None or (isinstance(url, list) and len(url) == 0)):
             raise ValueError("Either 'html' or 'url' must be provided")
 
         # Check deprecated parameters
-        for name, message in JsonElementExtractionStrategy._GENERATE_SCHEMA_UNWANTED_PROPS.items():
+        for (
+            name,
+            message,
+        ) in JsonElementExtractionStrategy._GENERATE_SCHEMA_UNWANTED_PROPS.items():
             if locals()[name] is not None:
                 raise AttributeError(f"Setting '{name}' is deprecated. {message}")
 
@@ -1881,8 +1952,9 @@ In this scenario, use your best judgment to generate the schema. You need to exa
 
         # Fetch HTML from URL(s) if provided
         if url is not None:
+            from .async_configs import (BrowserConfig, CacheMode,
+                                        CrawlerRunConfig)
             from .async_webcrawler import AsyncWebCrawler
-            from .async_configs import BrowserConfig, CrawlerRunConfig, CacheMode
 
             browser_config = BrowserConfig(
                 headless=True,
@@ -1898,9 +1970,13 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                 if len(urls) == 1:
                     result = await crawler.arun(url=urls[0], config=crawler_config)
                     if not result.success:
-                        raise Exception(f"Failed to fetch URL '{urls[0]}': {result.error_message}")
+                        raise Exception(
+                            f"Failed to fetch URL '{urls[0]}': {result.error_message}"
+                        )
                     if result.status_code >= 400:
-                        raise Exception(f"HTTP {result.status_code} error for URL '{urls[0]}'")
+                        raise Exception(
+                            f"HTTP {result.status_code} error for URL '{urls[0]}'"
+                        )
                     html = result.html
                     original_htmls = [result.html]
                 else:
@@ -1908,15 +1984,19 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                     html_parts = []
                     for i, result in enumerate(results, 1):
                         if not result.success:
-                            raise Exception(f"Failed to fetch URL '{result.url}': {result.error_message}")
+                            raise Exception(
+                                f"Failed to fetch URL '{result.url}': {result.error_message}"
+                            )
                         if result.status_code >= 400:
-                            raise Exception(f"HTTP {result.status_code} error for URL '{result.url}'")
+                            raise Exception(
+                                f"HTTP {result.status_code} error for URL '{result.url}'"
+                            )
                         original_htmls.append(result.html)
                         cleaned = preprocess_html_for_schema(
                             html_content=result.html,
                             text_threshold=2000,
                             attr_value_threshold=500,
-                            max_size=500_000
+                            max_size=500_000,
                         )
                         header = HTML_EXAMPLE_DELIMITER.format(index=i)
                         html_parts.append(f"{header}\n{cleaned}")
@@ -1930,7 +2010,7 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                 html_content=html,
                 text_threshold=2000,
                 attr_value_threshold=500,
-                max_size=500_000
+                max_size=500_000,
             )
 
         # --- Resolve expected fields for strict validation ---
@@ -1943,7 +2023,11 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                         target_obj = json.loads(target_json_example)
                     else:
                         target_obj = target_json_example
-                    expected_fields = JsonElementExtractionStrategy._extract_expected_fields(target_obj)
+                    expected_fields = (
+                        JsonElementExtractionStrategy._extract_expected_fields(
+                            target_obj
+                        )
+                    )
                 except (json.JSONDecodeError, TypeError):
                     pass
             elif query:
@@ -1952,15 +2036,23 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                 if url is not None:
                     first_url = url if isinstance(url, str) else url[0]
                 inferred = await JsonElementExtractionStrategy._infer_target_json(
-                    query=query, html_snippet=html, llm_config=llm_config, url=first_url, usage=usage
+                    query=query,
+                    html_snippet=html,
+                    llm_config=llm_config,
+                    url=first_url,
+                    usage=usage,
                 )
                 if inferred:
-                    expected_fields = JsonElementExtractionStrategy._extract_expected_fields(inferred)
+                    expected_fields = (
+                        JsonElementExtractionStrategy._extract_expected_fields(inferred)
+                    )
                     # Also inject as target_json_example for the schema prompt
                     if not target_json_example:
                         target_json_example = json.dumps(inferred, indent=2)
 
-        prompt = JsonElementExtractionStrategy._build_schema_prompt(html, schema_type, query, target_json_example)
+        prompt = JsonElementExtractionStrategy._build_schema_prompt(
+            html, schema_type, query, target_json_example
+        )
         messages = [{"role": "user", "content": prompt}]
 
         prev_schema_json = None
@@ -1993,10 +2085,15 @@ In this scenario, use your best judgment to generate the schema. You need to exa
                 if not validate or attempt >= max_attempts - 1:
                     raise Exception(f"Failed to parse schema JSON: {str(e)}")
                 messages.append({"role": "assistant", "content": raw})
-                messages.append({"role": "user", "content": (
-                    f"Your response was not valid JSON. Parse error: {e}\n"
-                    "Please return ONLY valid JSON, nothing else."
-                )})
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Your response was not valid JSON. Parse error: {e}\n"
+                            "Please return ONLY valid JSON, nothing else."
+                        ),
+                    }
+                )
                 continue
             except Exception as e:
                 raise Exception(f"Failed to generate schema: {str(e)}")
@@ -2010,10 +2107,15 @@ In this scenario, use your best judgment to generate the schema. You need to exa
             best_result = None
             for orig_html in original_htmls:
                 vr = JsonElementExtractionStrategy._validate_schema(
-                    schema, orig_html, schema_type,
+                    schema,
+                    orig_html,
+                    schema_type,
                     expected_fields=expected_fields,
                 )
-                if best_result is None or vr["populated_fields"] > best_result["populated_fields"]:
+                if (
+                    best_result is None
+                    or vr["populated_fields"] > best_result["populated_fields"]
+                ):
                     best_result = vr
                 if vr["success"]:
                     break
@@ -2041,6 +2143,7 @@ In this scenario, use your best judgment to generate the schema. You need to exa
         if last_schema is not None:
             return last_schema
         raise Exception("Failed to generate schema: no attempts succeeded")
+
 
 class JsonCssExtractionStrategy(JsonElementExtractionStrategy):
     """
@@ -2099,10 +2202,9 @@ class JsonCssExtractionStrategy(JsonElementExtractionStrategy):
         classes = [p.strip() for p in parts[1:] if p.strip()]
         kwargs = {}
         if classes:
-            kwargs["class_"] = lambda c, _cls=classes: c and all(
-                cl in c for cl in _cls
-            )
+            kwargs["class_"] = lambda c, _cls=classes: c and all(cl in c for cl in _cls)
         return element.find_next_sibling(tag, **kwargs)
+
 
 class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
     def __init__(self, schema: Dict[str, Any], **kwargs):
@@ -2111,18 +2213,19 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
         self._selector_cache = {}
         self._xpath_cache = {}
         self._result_cache = {}
-        
+
         # Control selector optimization strategy
         self.use_caching = kwargs.get("use_caching", True)
         self.optimize_common_patterns = kwargs.get("optimize_common_patterns", True)
-        
+
         # Load lxml dependencies once
         from lxml import etree, html
         from lxml.cssselect import CSSSelector
+
         self.etree = etree
         self.html_parser = html
         self.CSSSelector = CSSSelector
-    
+
     def _parse_html(self, html_content: str):
         """Parse HTML content with error recovery"""
         try:
@@ -2138,122 +2241,133 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
                     print(f"Critical error parsing HTML: {e2}")
                 # Create minimal document as fallback
                 return self.etree.Element("html")
-    
+
     def _optimize_selector(self, selector_str):
         """Optimize common selector patterns for better performance"""
         if not self.optimize_common_patterns:
             return selector_str
-            
+
         # Handle td:nth-child(N) pattern which is very common in table scraping
         import re
-        if re.search(r'td:nth-child\(\d+\)', selector_str):
+
+        if re.search(r"td:nth-child\(\d+\)", selector_str):
             return selector_str  # Already handled specially in _apply_selector
-            
+
         # Split complex selectors into parts for optimization
         parts = selector_str.split()
         if len(parts) <= 1:
             return selector_str
-            
+
         # For very long selectors, consider using just the last specific part
-        if len(parts) > 3 and any(p.startswith('.') or p.startswith('#') for p in parts):
-            specific_parts = [p for p in parts if p.startswith('.') or p.startswith('#')]
+        if len(parts) > 3 and any(
+            p.startswith(".") or p.startswith("#") for p in parts
+        ):
+            specific_parts = [
+                p for p in parts if p.startswith(".") or p.startswith("#")
+            ]
             if specific_parts:
                 return specific_parts[-1]  # Use most specific class/id selector
-                
+
         return selector_str
-    
+
     def _create_selector_function(self, selector_str):
         """Create a selector function that handles all edge cases"""
         original_selector = selector_str
-        
+
         # Try to optimize the selector if appropriate
         if self.optimize_common_patterns:
             selector_str = self._optimize_selector(selector_str)
-        
+
         try:
             # Attempt to compile the CSS selector
             compiled = self.CSSSelector(selector_str)
             xpath = compiled.path
-            
+
             # Store XPath for later use
             self._xpath_cache[selector_str] = xpath
-            
+
             # Create the wrapper function that implements the selection strategy
             def selector_func(element, context_sensitive=True):
                 cache_key = None
-                
+
                 # Use result caching if enabled
                 if self.use_caching:
                     # Create a cache key based on element and selector
-                    element_id = element.get('id', '') or str(hash(element))
+                    element_id = element.get("id", "") or str(hash(element))
                     cache_key = f"{element_id}::{selector_str}"
-                    
+
                     if cache_key in self._result_cache:
                         return self._result_cache[cache_key]
-                
+
                 results = []
                 try:
                     # Strategy 1: Direct CSS selector application (fastest)
                     results = compiled(element)
-                    
+
                     # If that fails and we need context sensitivity
                     if not results and context_sensitive:
                         # Strategy 2: Try XPath with context adjustment
-                        context_xpath = self._make_context_sensitive_xpath(xpath, element)
+                        context_xpath = self._make_context_sensitive_xpath(
+                            xpath, element
+                        )
                         if context_xpath:
                             results = element.xpath(context_xpath)
-                        
+
                         # Strategy 3: Handle special case - nth-child
-                        if not results and 'nth-child' in original_selector:
-                            results = self._handle_nth_child_selector(element, original_selector)
-                        
+                        if not results and "nth-child" in original_selector:
+                            results = self._handle_nth_child_selector(
+                                element, original_selector
+                            )
+
                         # Strategy 4: Direct descendant search for class/ID selectors
                         if not results:
-                            results = self._fallback_class_id_search(element, original_selector)
-                            
+                            results = self._fallback_class_id_search(
+                                element, original_selector
+                            )
+
                         # Strategy 5: Last resort - tag name search for the final part
                         if not results:
                             parts = original_selector.split()
                             if parts:
                                 last_part = parts[-1]
                                 # Extract tag name from the selector
-                                tag_match = re.match(r'^(\w+)', last_part)
+                                tag_match = re.match(r"^(\w+)", last_part)
                                 if tag_match:
                                     tag_name = tag_match.group(1)
                                     results = element.xpath(f".//{tag_name}")
-                    
+
                     # Cache results if caching is enabled
                     if self.use_caching and cache_key:
                         self._result_cache[cache_key] = results
-                        
+
                 except Exception as e:
                     if self.verbose:
                         print(f"Error applying selector '{selector_str}': {e}")
-                
+
                 return results
-                
+
             return selector_func
-            
+
         except Exception as e:
             if self.verbose:
                 print(f"Error compiling selector '{selector_str}': {e}")
-            
+
             # Fallback function for invalid selectors
             return lambda element, context_sensitive=True: []
-    
+
     def _make_context_sensitive_xpath(self, xpath, element):
         """Convert absolute XPath to context-sensitive XPath"""
         try:
             # If starts with descendant-or-self, it's already context-sensitive
-            if xpath.startswith('descendant-or-self::'):
+            if xpath.startswith("descendant-or-self::"):
                 return xpath
-                
+
             # Remove leading slash if present
-            if xpath.startswith('/'):
+            if xpath.startswith("/"):
                 context_xpath = f".{xpath}"
             else:
                 context_xpath = f".//{xpath}"
-                
+
             # Validate the XPath by trying it
             try:
                 element.xpath(context_xpath)
@@ -2263,26 +2377,29 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
                 return f".//{xpath.split('/')[-1]}"
         except:
             return None
-    
+
     def _handle_nth_child_selector(self, element, selector_str):
         """Special handling for nth-child selectors in tables"""
         import re
+
         results = []
-        
+
         try:
             # Extract the column number from td:nth-child(N)
-            match = re.search(r'td:nth-child\((\d+)\)', selector_str)
+            match = re.search(r"td:nth-child\((\d+)\)", selector_str)
             if match:
                 col_num = match.group(1)
-                
+
                 # Check if there's content after the nth-child part
-                remaining_selector = selector_str.split(f"td:nth-child({col_num})", 1)[-1].strip()
-                
+                remaining_selector = selector_str.split(f"td:nth-child({col_num})", 1)[
+                    -1
+                ].strip()
+
                 if remaining_selector:
                     # If there's a specific element we're looking for after the column
                     # Extract any tag names from the remaining selector
-                    tag_match = re.search(r'(\w+)', remaining_selector)
-                    tag_name = tag_match.group(1) if tag_match else '*'
+                    tag_match = re.search(r"(\w+)", remaining_selector)
+                    tag_name = tag_match.group(1) if tag_match else "*"
                     results = element.xpath(f".//td[{col_num}]//{tag_name}")
                 else:
                     # Just get the column cell
@@ -2290,26 +2407,27 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
         except Exception as e:
             if self.verbose:
                 print(f"Error handling nth-child selector: {e}")
-                
+
         return results
-    
+
     def _fallback_class_id_search(self, element, selector_str):
         """Fallback to search by class or ID"""
         results = []
-        
+
         try:
             # Extract class selectors (.classname)
             import re
-            class_matches = re.findall(r'\.([a-zA-Z0-9_-]+)', selector_str)
-            
+
+            class_matches = re.findall(r"\.([a-zA-Z0-9_-]+)", selector_str)
+
             # Extract ID selectors (#idname)
-            id_matches = re.findall(r'#([a-zA-Z0-9_-]+)', selector_str)
-            
+            id_matches = re.findall(r"#([a-zA-Z0-9_-]+)", selector_str)
+
             # Try each class
             for class_name in class_matches:
                 class_results = element.xpath(f".//*[contains(@class, '{class_name}')]")
                 results.extend(class_results)
-                
+
             # Try each ID (usually more specific)
             for id_name in id_matches:
                 id_results = element.xpath(f".//*[@id='{id_name}']")
@@ -2317,26 +2435,28 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
         except Exception as e:
             if self.verbose:
                 print(f"Error in fallback class/id search: {e}")
-                
+
         return results
-    
+
     def _get_selector(self, selector_str):
         """Get or create a selector function with caching"""
         if selector_str not in self._selector_cache:
-            self._selector_cache[selector_str] = self._create_selector_function(selector_str)
+            self._selector_cache[selector_str] = self._create_selector_function(
+                selector_str
+            )
         return self._selector_cache[selector_str]
-    
+
     def _get_base_elements(self, parsed_html, selector: str):
         """Get all base elements using the selector"""
         selector_func = self._get_selector(selector)
         # For base elements, we don't need context sensitivity
         return selector_func(parsed_html, context_sensitive=False)
-    
+
     def _get_elements(self, element, selector: str):
         """Get child elements using the selector with context sensitivity"""
         selector_func = self._get_selector(selector)
         return selector_func(element, context_sensitive=True)
-    
+
     def _get_element_text(self, element) -> str:
         """Extract normalized text from element"""
         try:
@@ -2351,16 +2471,16 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
                 return element.text_content().strip()
             except:
                 return ""
-    
+
     def _get_element_html(self, element) -> str:
         """Get HTML string representation of element"""
         try:
-            return self.etree.tostring(element, encoding='unicode', method='html')
+            return self.etree.tostring(element, encoding="unicode", method="html")
         except Exception as e:
             if self.verbose:
                 print(f"Error serializing HTML: {e}")
             return ""
-    
+
     def _get_element_attribute(self, element, attribute: str):
         """Get attribute value safely"""
         try:
@@ -2390,25 +2510,28 @@ class JsonLxmlExtractionStrategy(JsonElementExtractionStrategy):
         if self.use_caching:
             self._result_cache.clear()
 
+
 class JsonLxmlExtractionStrategy_naive(JsonElementExtractionStrategy):
     def __init__(self, schema: Dict[str, Any], **kwargs):
         kwargs["input_format"] = "html"  # Force HTML input
         super().__init__(schema, **kwargs)
         self._selector_cache = {}
-    
+
     def _parse_html(self, html_content: str):
         from lxml import etree
+
         parser = etree.HTMLParser(recover=True)
         return etree.fromstring(html_content, parser)
-    
+
     def _get_selector(self, selector_str):
         """Get a selector function that works within the context of an element"""
         if selector_str not in self._selector_cache:
             from lxml.cssselect import CSSSelector
+
             try:
                 # Store both the compiled selector and its xpath translation
                 compiled = CSSSelector(selector_str)
-                
+
                 # Create a function that will apply this selector appropriately
                 def select_func(element):
                     try:
@@ -2416,74 +2539,78 @@ class JsonLxmlExtractionStrategy_naive(JsonElementExtractionStrategy):
                         results = compiled(element)
                         if results:
                             return results
-                        
+
                         # Second attempt: contextual XPath selection
                         # Convert the root-based XPath to a context-based XPath
                         xpath = compiled.path
-                        
+
                         # If the XPath already starts with descendant-or-self, handle it specially
-                        if xpath.startswith('descendant-or-self::'):
+                        if xpath.startswith("descendant-or-self::"):
                             context_xpath = xpath
                         else:
                             # For normal XPath expressions, make them relative to current context
                             context_xpath = f"./{xpath.lstrip('/')}"
-                        
+
                         results = element.xpath(context_xpath)
                         if results:
                             return results
-                        
+
                         # Final fallback: simple descendant search for common patterns
-                        if 'nth-child' in selector_str:
+                        if "nth-child" in selector_str:
                             # Handle td:nth-child(N) pattern
                             import re
-                            match = re.search(r'td:nth-child\((\d+)\)', selector_str)
+
+                            match = re.search(r"td:nth-child\((\d+)\)", selector_str)
                             if match:
                                 col_num = match.group(1)
-                                sub_selector = selector_str.split(')', 1)[-1].strip()
+                                sub_selector = selector_str.split(")", 1)[-1].strip()
                                 if sub_selector:
-                                    return element.xpath(f".//td[{col_num}]//{sub_selector}")
+                                    return element.xpath(
+                                        f".//td[{col_num}]//{sub_selector}"
+                                    )
                                 else:
                                     return element.xpath(f".//td[{col_num}]")
-                        
+
                         # Last resort: try each part of the selector separately
                         parts = selector_str.split()
                         if len(parts) > 1 and parts[-1]:
                             return element.xpath(f".//{parts[-1]}")
-                            
+
                         return []
                     except Exception as e:
                         if self.verbose:
                             print(f"Error applying selector '{selector_str}': {e}")
                         return []
-                
+
                 self._selector_cache[selector_str] = select_func
             except Exception as e:
                 if self.verbose:
                     print(f"Error compiling selector '{selector_str}': {e}")
-                
+
                 # Fallback function for invalid selectors
                 def fallback_func(element):
                     return []
-                
+
                 self._selector_cache[selector_str] = fallback_func
-                
+
         return self._selector_cache[selector_str]
-    
+
     def _get_base_elements(self, parsed_html, selector: str):
         selector_func = self._get_selector(selector)
         return selector_func(parsed_html)
-    
+
     def _get_elements(self, element, selector: str):
         selector_func = self._get_selector(selector)
         return selector_func(element)
-    
+
     def _get_element_text(self, element) -> str:
         return "".join(element.xpath(".//text()")).strip()
-    
+
     def _get_element_html(self, element) -> str:
         from lxml import etree
-        return etree.tostring(element, encoding='unicode')
-    
+
+        return etree.tostring(element, encoding="unicode")
+
     def _get_element_attribute(self, element, attribute: str):
         return element.get(attribute)
 
@@ -2501,6 +2628,7 @@ class JsonLxmlExtractionStrategy_naive(JsonElementExtractionStrategy):
         xpath += "[1]"
         results = element.xpath(xpath)
         return results[0] if results else None
+
 
 class JsonXPathExtractionStrategy(JsonElementExtractionStrategy):
     """
@@ -2581,6 +2709,7 @@ class JsonXPathExtractionStrategy(JsonElementExtractionStrategy):
         results = element.xpath(xpath)
         return results[0] if results else None
 
+
 """
 RegexExtractionStrategy
 Fast, zero-LLM extraction of common entities via regular expressions.
@@ -2588,8 +2717,9 @@ Fast, zero-LLM extraction of common entities via regular expressions.
 
 _CTRL = {c: rf"\x{ord(c):02x}" for c in map(chr, range(32)) if c not in "\t\n\r"}
 
-_WB_FIX = re.compile(r"\x08")               # stray back-space   →   word-boundary
-_NEEDS_ESCAPE = re.compile(r"(?<!\\)\\(?![\\u])")   # lone backslash
+_WB_FIX = re.compile(r"\x08")  # stray back-space   →   word-boundary
+_NEEDS_ESCAPE = re.compile(r"(?<!\\)\\(?![\\u])")  # lone backslash
+
 
 def _sanitize_schema(schema: Dict[str, str]) -> Dict[str, str]:
     """Fix common JSON-escape goofs coming from LLMs or manual edits."""
@@ -2605,7 +2735,9 @@ def _sanitize_schema(schema: Dict[str, str]) -> Dict[str, str]:
         try:
             re.compile(pat)
         except re.error as e:
-            raise ValueError(f"Regex for '{label}' won’t compile after fix: {e}") from None
+            raise ValueError(
+                f"Regex for '{label}' won’t compile after fix: {e}"
+            ) from None
 
         safe[label] = pat
     return safe
@@ -2632,91 +2764,108 @@ class RegexExtractionStrategy(ExtractionStrategy):
     # Built-in patterns exposed as IntFlag so callers can bit-OR them
     # -------------------------------------------------------------- #
     class _B(IntFlag):
-        EMAIL           = auto()
-        PHONE_INTL      = auto()
-        PHONE_US        = auto()
-        URL             = auto()
-        IPV4            = auto()
-        IPV6            = auto()
-        UUID            = auto()
-        CURRENCY        = auto()
-        PERCENTAGE      = auto()
-        NUMBER          = auto()
-        DATE_ISO        = auto()
-        DATE_US         = auto()
-        TIME_24H        = auto()
-        POSTAL_US       = auto()
-        POSTAL_UK       = auto()
-        HTML_COLOR_HEX  = auto()
-        TWITTER_HANDLE  = auto()
-        HASHTAG         = auto()
-        MAC_ADDR        = auto()
-        IBAN            = auto()
-        CREDIT_CARD     = auto()
-        NOTHING         = auto()
-        ALL             = (
-            EMAIL | PHONE_INTL | PHONE_US | URL | IPV4 | IPV6 | UUID
-            | CURRENCY | PERCENTAGE | NUMBER | DATE_ISO | DATE_US | TIME_24H
-            | POSTAL_US | POSTAL_UK | HTML_COLOR_HEX | TWITTER_HANDLE
-            | HASHTAG | MAC_ADDR | IBAN | CREDIT_CARD
+        EMAIL = auto()
+        PHONE_INTL = auto()
+        PHONE_US = auto()
+        URL = auto()
+        IPV4 = auto()
+        IPV6 = auto()
+        UUID = auto()
+        CURRENCY = auto()
+        PERCENTAGE = auto()
+        NUMBER = auto()
+        DATE_ISO = auto()
+        DATE_US = auto()
+        TIME_24H = auto()
+        POSTAL_US = auto()
+        POSTAL_UK = auto()
+        HTML_COLOR_HEX = auto()
+        TWITTER_HANDLE = auto()
+        HASHTAG = auto()
+        MAC_ADDR = auto()
+        IBAN = auto()
+        CREDIT_CARD = auto()
+        NOTHING = auto()
+        ALL = (
+            EMAIL
+            | PHONE_INTL
+            | PHONE_US
+            | URL
+            | IPV4
+            | IPV6
+            | UUID
+            | CURRENCY
+            | PERCENTAGE
+            | NUMBER
+            | DATE_ISO
+            | DATE_US
+            | TIME_24H
+            | POSTAL_US
+            | POSTAL_UK
+            | HTML_COLOR_HEX
+            | TWITTER_HANDLE
+            | HASHTAG
+            | MAC_ADDR
+            | IBAN
+            | CREDIT_CARD
         )
 
     # user-friendly aliases  (RegexExtractionStrategy.Email, .IPv4, …)
-    Email          = _B.EMAIL
-    PhoneIntl      = _B.PHONE_INTL
-    PhoneUS        = _B.PHONE_US
-    Url            = _B.URL
-    IPv4           = _B.IPV4
-    IPv6           = _B.IPV6
-    Uuid           = _B.UUID
-    Currency       = _B.CURRENCY
-    Percentage     = _B.PERCENTAGE
-    Number         = _B.NUMBER
-    DateIso        = _B.DATE_ISO
-    DateUS         = _B.DATE_US
-    Time24h        = _B.TIME_24H
-    PostalUS       = _B.POSTAL_US
-    PostalUK       = _B.POSTAL_UK
-    HexColor       = _B.HTML_COLOR_HEX
-    TwitterHandle  = _B.TWITTER_HANDLE
-    Hashtag        = _B.HASHTAG
-    MacAddr        = _B.MAC_ADDR
-    Iban           = _B.IBAN
-    CreditCard     = _B.CREDIT_CARD
-    All            = _B.ALL
-    Nothing        = _B(0)  # no patterns
+    Email = _B.EMAIL
+    PhoneIntl = _B.PHONE_INTL
+    PhoneUS = _B.PHONE_US
+    Url = _B.URL
+    IPv4 = _B.IPV4
+    IPv6 = _B.IPV6
+    Uuid = _B.UUID
+    Currency = _B.CURRENCY
+    Percentage = _B.PERCENTAGE
+    Number = _B.NUMBER
+    DateIso = _B.DATE_ISO
+    DateUS = _B.DATE_US
+    Time24h = _B.TIME_24H
+    PostalUS = _B.POSTAL_US
+    PostalUK = _B.POSTAL_UK
+    HexColor = _B.HTML_COLOR_HEX
+    TwitterHandle = _B.TWITTER_HANDLE
+    Hashtag = _B.HASHTAG
+    MacAddr = _B.MAC_ADDR
+    Iban = _B.IBAN
+    CreditCard = _B.CREDIT_CARD
+    All = _B.ALL
+    Nothing = _B(0)  # no patterns
 
     # ------------------------------------------------------------------ #
     # Built-in pattern catalog
     # ------------------------------------------------------------------ #
     DEFAULT_PATTERNS: Dict[str, str] = {
         # Communication
-        "email":           r"[\w.+-]+@[\w-]+\.[\w.-]+",
-        "phone_intl":      r"\+?\d[\d .()-]{7,}\d",
-        "phone_us":        r"\(?\d{3}\)?[ -. ]?\d{3}[ -. ]?\d{4}",
+        "email": r"[\w.+-]+@[\w-]+\.[\w.-]+",
+        "phone_intl": r"\+?\d[\d .()-]{7,}\d",
+        "phone_us": r"\(?\d{3}\)?[ -. ]?\d{3}[ -. ]?\d{4}",
         # Web
-        "url":             r"https?://[^\s\"'<>]+",
-        "ipv4":            r"(?:\d{1,3}\.){3}\d{1,3}",
-        "ipv6":            r"[A-F0-9]{1,4}(?::[A-F0-9]{1,4}){7}",
+        "url": r"https?://[^\s\"'<>]+",
+        "ipv4": r"(?:\d{1,3}\.){3}\d{1,3}",
+        "ipv6": r"[A-F0-9]{1,4}(?::[A-F0-9]{1,4}){7}",
         # IDs
-        "uuid":            r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+        "uuid": r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
         # Money / numbers
-        "currency":        r"(?:USD|EUR|RM|\$|€|£)\s?\d+(?:[.,]\d{2})?",
-        "percentage":      r"\d+(?:\.\d+)?%",
-        "number":          r"\b\d{1,3}(?:[,.\s]\d{3})*(?:\.\d+)?\b",
+        "currency": r"(?:USD|EUR|RM|\$|€|£)\s?\d+(?:[.,]\d{2})?",
+        "percentage": r"\d+(?:\.\d+)?%",
+        "number": r"\b\d{1,3}(?:[,.\s]\d{3})*(?:\.\d+)?\b",
         # Dates / Times
-        "date_iso":        r"\d{4}-\d{2}-\d{2}",
-        "date_us":         r"\d{1,2}/\d{1,2}/\d{2,4}",
-        "time_24h":        r"\b(?:[01]?\d|2[0-3]):[0-5]\d(?:[:.][0-5]\d)?\b",
+        "date_iso": r"\d{4}-\d{2}-\d{2}",
+        "date_us": r"\d{1,2}/\d{1,2}/\d{2,4}",
+        "time_24h": r"\b(?:[01]?\d|2[0-3]):[0-5]\d(?:[:.][0-5]\d)?\b",
         # Misc
-        "postal_us":       r"\b\d{5}(?:-\d{4})?\b",
-        "postal_uk":       r"\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b",
-        "html_color_hex":  r"#[0-9A-Fa-f]{6}\b",
-        "twitter_handle":  r"@[\w]{1,15}",
-        "hashtag":         r"#[\w-]+",
-        "mac_addr":        r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}",
-        "iban":            r"[A-Z]{2}\d{2}[A-Z0-9]{11,30}",
-        "credit_card":     r"\b(?:4\d{12}(?:\d{3})?|5[1-5]\d{14}|3[47]\d{13}|6(?:011|5\d{2})\d{12})\b",
+        "postal_us": r"\b\d{5}(?:-\d{4})?\b",
+        "postal_uk": r"\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b",
+        "html_color_hex": r"#[0-9A-Fa-f]{6}\b",
+        "twitter_handle": r"@[\w]{1,15}",
+        "hashtag": r"#[\w-]+",
+        "mac_addr": r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}",
+        "iban": r"[A-Z]{2}\d{2}[A-Z0-9]{11,30}",
+        "credit_card": r"\b(?:4\d{12}(?:\d{3})?|5[1-5]\d{14}|3[47]\d{13}|6(?:011|5\d{2})\d{12})\b",
     }
 
     _FLAGS = re.IGNORECASE | re.MULTILINE
@@ -2825,7 +2974,7 @@ class RegexExtractionStrategy(ExtractionStrategy):
         # ── system prompt – hardened
         system_msg = (
             "You are an expert Python-regex engineer.\n"
-            f"Return **one** JSON object whose single key is exactly \"{label}\", "
+            f'Return **one** JSON object whose single key is exactly "{label}", '
             "and whose value is a raw-string regex pattern that works with "
             "the standard `re` module in Python.\n\n"
             "Strict rules (obey every bullet):\n"
@@ -2842,7 +2991,7 @@ class RegexExtractionStrategy(ExtractionStrategy):
             "• The regex value must be a Python string literal: **double every backslash** "
             "(e.g. `\\\\b`, `\\\\d`, `\\\\\\\\`).\n\n"
             "Example valid output:\n"
-            f"{{\"{label}\": \"(?:RM|rm)\\\\s?\\\\d{{1,3}}(?:,\\\\d{{3}})*(?:\\\\.\\\\d{{2}})?\"}}"
+            f'{{"{label}": "(?:RM|rm)\\\\s?\\\\d{{1,3}}(?:,\\\\d{{3}})*(?:\\\\.\\\\d{{2}})?"}}'
         )
 
         # ── user message: cropped HTML + optional hints
@@ -2865,8 +3014,8 @@ class RegexExtractionStrategy(ExtractionStrategy):
 
         # ── clean & load JSON (fix common escape mistakes *before* json.loads)
         raw = resp.choices[0].message.content
-        raw = raw.replace("\x08", "\\b")                     # stray back-space → \b
-        raw = re.sub(r'(?<!\\)\\(?![\\u"])', r"\\\\", raw)   # lone \ → \\
+        raw = raw.replace("\x08", "\\b")  # stray back-space → \b
+        raw = re.sub(r'(?<!\\)\\(?![\\u"])', r"\\\\", raw)  # lone \ → \\
 
         try:
             pattern_dict = json.loads(raw)

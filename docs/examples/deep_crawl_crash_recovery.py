@@ -20,13 +20,11 @@ BestFirstCrawlingStrategy
 
 import asyncio
 import json
-import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
-
 
 # File to store crawl state (in production, use Redis/database)
 STATE_FILE = Path("crawl_state.json")
@@ -43,7 +41,9 @@ async def save_state_to_file(state: Dict[str, Any]) -> None:
     """
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
-    print(f"  [State saved] Pages: {state['pages_crawled']}, Pending: {len(state['pending'])}")
+    print(
+        f"  [State saved] Pages: {state['pages_crawled']}, Pending: {len(state['pending'])}"
+    )
 
 
 def load_state_from_file() -> Dict[str, Any] | None:
@@ -159,7 +159,9 @@ async def example_crash_and_resume():
         print("  ERROR: No saved state found!")
         return
 
-    print(f"  Loaded state: {saved_state['pages_crawled']} pages, {len(saved_state['pending'])} pending")
+    print(
+        f"  Loaded state: {saved_state['pages_crawled']} pages, {len(saved_state['pending'])} pending"
+    )
 
     crawled_urls_phase2: List[str] = []
 
@@ -190,7 +192,7 @@ async def example_crash_and_resume():
     already_crawled = set(saved_state["visited"])
     duplicates = set(crawled_urls_phase2) & already_crawled
 
-    print(f"\n--- Results ---")
+    print("\n--- Results ---")
     print(f"  Phase 1 URLs: {len(crawled_urls_phase1)}")
     print(f"  Phase 2 new URLs: {len(crawled_urls_phase2)}")
     print(f"  Duplicate crawls: {len(duplicates)} (should be 0)")
@@ -273,7 +275,7 @@ async def example_state_structure():
         print(f"  strategy_type: '{captured_state['strategy_type']}'")
         print(f"  visited: List of {len(captured_state['visited'])} URLs")
         print(f"  pending: List of {len(captured_state['pending'])} queued items")
-        print(f"  depths: Dict mapping URL -> depth level")
+        print("  depths: Dict mapping URL -> depth level")
         print(f"  pages_crawled: {captured_state['pages_crawled']}")
 
 

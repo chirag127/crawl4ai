@@ -3,12 +3,14 @@
 Monitor Dashboard Demo Script
 Generates varied activity to showcase all monitoring features for video recording.
 """
-import httpx
+
 import asyncio
 import time
-from datetime import datetime
+
+import httpx
 
 BASE_URL = "http://localhost:11235"
+
 
 async def demo_dashboard():
     print("🎬 Monitor Dashboard Demo - Starting...\n")
@@ -25,9 +27,14 @@ async def demo_dashboard():
             try:
                 r = await client.post(
                     f"{BASE_URL}/crawl",
-                    json={"urls": [f"https://httpbin.org/html?req={i}"], "crawler_config": {}}
+                    json={
+                        "urls": [f"https://httpbin.org/html?req={i}"],
+                        "crawler_config": {},
+                    },
                 )
-                print(f"     ✅ Status: {r.status_code}, Time: {r.elapsed.total_seconds():.2f}s")
+                print(
+                    f"     ✅ Status: {r.status_code}, Time: {r.elapsed.total_seconds():.2f}s"
+                )
             except Exception as e:
                 print(f"     ❌ Error: {e}")
             await asyncio.sleep(1)  # Small delay between requests
@@ -38,7 +45,7 @@ async def demo_dashboard():
         viewports = [
             {"width": 1920, "height": 1080},
             {"width": 1280, "height": 720},
-            {"width": 800, "height": 600}
+            {"width": 800, "height": 600},
         ]
 
         for idx, viewport in enumerate(viewports):
@@ -50,10 +57,12 @@ async def demo_dashboard():
                         json={
                             "urls": [f"https://httpbin.org/json?v={idx}&r={i}"],
                             "browser_config": {"viewport": viewport},
-                            "crawler_config": {}
-                        }
+                            "crawler_config": {},
+                        },
                     )
-                    print(f"    {i+1}/4 ✅ {r.status_code} - Should see cold→hot after 3 uses")
+                    print(
+                        f"    {i+1}/4 ✅ {r.status_code} - Should see cold→hot after 3 uses"
+                    )
                 except Exception as e:
                     print(f"    {i+1}/4 ❌ {e}")
                 await asyncio.sleep(0.5)
@@ -66,7 +75,10 @@ async def demo_dashboard():
             tasks.append(
                 client.post(
                     f"{BASE_URL}/crawl",
-                    json={"urls": [f"https://httpbin.org/delay/2?burst={i}"], "crawler_config": {}}
+                    json={
+                        "urls": [f"https://httpbin.org/delay/2?burst={i}"],
+                        "crawler_config": {},
+                    },
                 )
             )
 
@@ -75,7 +87,9 @@ async def demo_dashboard():
         results = await asyncio.gather(*tasks, return_exceptions=True)
         elapsed = time.time() - start
 
-        successes = sum(1 for r in results if not isinstance(r, Exception) and r.status_code == 200)
+        successes = sum(
+            1 for r in results if not isinstance(r, Exception) and r.status_code == 200
+        )
         print(f"  ✅ {successes}/10 succeeded in {elapsed:.2f}s")
 
         # Phase 4: Multi-endpoint coverage
@@ -106,7 +120,7 @@ async def demo_dashboard():
         try:
             r = await client.post(
                 f"{BASE_URL}/crawl",
-                json={"urls": ["invalid://bad-url"], "crawler_config": {}}
+                json={"urls": ["invalid://bad-url"], "crawler_config": {}},
             )
             print(f"    Response: {r.status_code}")
         except Exception as e:
@@ -127,20 +141,24 @@ async def demo_dashboard():
         r = await client.get(f"{BASE_URL}/monitor/health")
         health = r.json()
         print(f"  Memory: {health['container']['memory_percent']:.1f}%")
-        print(f"  Browsers: Perm={health['pool']['permanent']['active']}, "
-              f"Hot={health['pool']['hot']['count']}, Cold={health['pool']['cold']['count']}")
+        print(
+            f"  Browsers: Perm={health['pool']['permanent']['active']}, "
+            f"Hot={health['pool']['hot']['count']}, Cold={health['pool']['cold']['count']}"
+        )
 
         r = await client.get(f"{BASE_URL}/monitor/endpoints/stats")
         stats = r.json()
-        print(f"\n  Endpoint Stats:")
+        print("\n  Endpoint Stats:")
         for endpoint, data in stats.items():
-            print(f"    {endpoint}: {data['count']} req, "
-                  f"{data['avg_latency_ms']:.0f}ms avg, "
-                  f"{data['success_rate_percent']:.1f}% success")
+            print(
+                f"    {endpoint}: {data['count']} req, "
+                f"{data['avg_latency_ms']:.0f}ms avg, "
+                f"{data['success_rate_percent']:.1f}% success"
+            )
 
         r = await client.get(f"{BASE_URL}/monitor/browsers")
         browsers = r.json()
-        print(f"\n  Pool Efficiency:")
+        print("\n  Pool Efficiency:")
         print(f"    Total browsers: {browsers['summary']['total_count']}")
         print(f"    Memory usage: {browsers['summary']['total_memory_mb']} MB")
         print(f"    Reuse rate: {browsers['summary']['reuse_rate_percent']:.1f}%")
@@ -154,6 +172,7 @@ async def demo_dashboard():
     print("   • Janitor cleanup events")
     print("   • Endpoint analytics")
     print("   • Memory timeline")
+
 
 if __name__ == "__main__":
     try:

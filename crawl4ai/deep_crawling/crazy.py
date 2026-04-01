@@ -1,40 +1,34 @@
 from __future__ import annotations
-# I just got crazy, trying to wrute K&R C but in Python. Right now I feel like I'm in a quantum state.
-# I probably won't use this; I just want to leave it here. A century later, the future human race will be like, "WTF?"
 
-# ------ Imports That Will Make You Question Reality ------ #
-from functools import wraps
-from contextvars import ContextVar
+import asyncio
 import inspect
+import logging
+import time
+from abc import ABC, abstractmethod
+from collections import deque
+from contextvars import ContextVar
+# ------ Imports That Will Make You Question Reality ------ #
+from functools import lru_cache, wraps
+from heapq import heappop, heappush
+from typing import (AsyncGenerator, Awaitable, Callable, Dict, Generic, List,
+                    Tuple, TypeVar, Union)
+from urllib.parse import urlparse
+
+import mmh3
+import numpy as np
+from bitarray import bitarray
 
 from crawl4ai import CacheMode
 from crawl4ai.async_configs import CrawlerRunConfig
-from crawl4ai.models import CrawlResult, TraversalStats
-from crawl4ai.deep_crawling.filters import FilterChain
 from crawl4ai.async_webcrawler import AsyncWebCrawler
-import time
-import logging
-from urllib.parse import urlparse
+from crawl4ai.deep_crawling.filters import FilterChain
+from crawl4ai.models import CrawlResult, TraversalStats
 
-from abc import ABC, abstractmethod
-from collections import deque
-import asyncio
-from typing import (
-    AsyncGenerator,
-    Dict,
-    List,
-    TypeVar,
-    Generic,
-    Tuple,
-    Callable,
-    Awaitable,
-    Union,
-)
-from functools import lru_cache
-import mmh3
-from bitarray import bitarray
-import numpy as np
-from heapq import heappush, heappop
+# I just got crazy, trying to wrute K&R C but in Python. Right now I feel like I'm in a quantum state.
+# I probably won't use this; I just want to leave it here. A century later, the future human race will be like, "WTF?"
+
+
+
 
 # ------ Type Algebra Mastery ------ #
 CrawlResultT = TypeVar("CrawlResultT", bound="CrawlResult")
@@ -44,12 +38,12 @@ P = TypeVar("P")
 # ------ Hyperscalar Context Management ------ #
 deep_crawl_ctx = ContextVar("deep_crawl_stack", default=deque())
 
+
 # ------ Algebraic Crawler Monoid ------ #
 class TraversalContext:
-    __slots__ = ('visited', 'frontier', 'depths', 'priority_fn', 'current_depth')
-    
-    def __init__(self,
-                 priority_fn: Callable[[str], Awaitable[float]] = lambda _: 1.0):
+    __slots__ = ("visited", "frontier", "depths", "priority_fn", "current_depth")
+
+    def __init__(self, priority_fn: Callable[[str], Awaitable[float]] = lambda _: 1.0):
         self.visited: BloomFilter = BloomFilter(10**6, 0.01)  # 1M items, 1% FP
         self.frontier: PriorityQueue = PriorityQueue()
         self.depths: Dict[str, int] = {}
@@ -64,9 +58,11 @@ class TraversalContext:
         new_ctx.current_depth = self.current_depth
         return new_ctx
 
+
 class PriorityQueue(Generic[PriorityT]):
     """Fibonacci heap-inspired priority queue with O(1) amortized operations"""
-    __slots__ = ('_heap', '_index')
+
+    __slots__ = ("_heap", "_index")
 
     def __init__(self):
         self._heap: List[Tuple[PriorityT, float, P]] = []
@@ -77,7 +73,7 @@ class PriorityQueue(Generic[PriorityT]):
         heappush(self._heap, (priority, tiebreaker, item))
         self._index[item] = len(self._heap) - 1
 
-    def extract(self, top_n = 1) -> P:
+    def extract(self, top_n=1) -> P:
         items = []
         for _ in range(top_n):
             if not self._heap:
@@ -95,13 +91,14 @@ class PriorityQueue(Generic[PriorityT]):
         #         return item
         raise IndexError("Priority queue empty")
 
-
     def is_empty(self) -> bool:
         return not bool(self._heap)
 
+
 class BloomFilter:
     """Optimal Bloom filter using murmur3 hash avalanche"""
-    __slots__ = ('size', 'hashes', 'bits')
+
+    __slots__ = ("size", "hashes", "bits")
 
     def __init__(self, capacity: int, error_rate: float):
         self.size = self._optimal_size(capacity, error_rate)
@@ -111,7 +108,7 @@ class BloomFilter:
 
     @staticmethod
     def _optimal_size(n: int, p: float) -> int:
-        m = - (n * np.log(p)) / (np.log(2) ** 2)
+        m = -(n * np.log(p)) / (np.log(2) ** 2)
         return int(np.ceil(m))
 
     @staticmethod
@@ -126,8 +123,7 @@ class BloomFilter:
 
     def __contains__(self, item: str) -> bool:
         return all(
-            self.bits[mmh3.hash(item, seed) % self.size]
-            for seed in range(self.hashes)
+            self.bits[mmh3.hash(item, seed) % self.size] for seed in range(self.hashes)
         )
 
     def copy(self) -> BloomFilter:
@@ -136,10 +132,10 @@ class BloomFilter:
         new.hashes = self.hashes
         new.bits = self.bits.copy()
         return new
-    
+
     def __len__(self) -> int:
         """
-        Estimates the number of items in the filter using the 
+        Estimates the number of items in the filter using the
         count of set bits and the formula:
         n = -m/k * ln(1 - X/m)
         where:
@@ -150,23 +146,24 @@ class BloomFilter:
         set_bits = self.bits.count(True)
         if set_bits == 0:
             return 0
-            
+
         # Use the inverse bloom filter formula to estimate cardinality
-        return int(
-            -(self.size / self.hashes) * 
-            np.log(1 - set_bits / self.size)
-        )
-    
+        return int(-(self.size / self.hashes) * np.log(1 - set_bits / self.size))
+
     def bit_count(self) -> int:
         """Returns the raw count of set bits in the filter"""
         return self.bits.count(True)
-        
+
     def __repr__(self) -> str:
-        return f"BloomFilter(est_items={len(self)}, bits={self.bit_count()}/{self.size})"
+        return (
+            f"BloomFilter(est_items={len(self)}, bits={self.bit_count()}/{self.size})"
+        )
+
 
 # ------ Hyper-Optimal Deep Crawl Core ------ #
 class DeepCrawlDecorator:
     """Metaprogramming marvel: Zero-cost deep crawl abstraction"""
+
     def __init__(self, crawler: AsyncWebCrawler):
         self.crawler = crawler
 
@@ -179,9 +176,7 @@ class DeepCrawlDecorator:
                 try:
                     deep_crawl_ctx.set(stack)
                     async for result in config.deep_crawl_strategy.traverse(
-                        start_url=url,
-                        crawler=self.crawler,
-                        config=config
+                        start_url=url, crawler=self.crawler, config=config
                     ):
                         yield result
                 finally:
@@ -190,6 +185,7 @@ class DeepCrawlDecorator:
             else:
                 result = await original_arun(url, config=config, **kwargs)
                 yield result
+
         return quantum_arun
 
 
@@ -204,6 +200,7 @@ async def collect_results(url, crawler, config):
     # Otherwise, await the coroutine and normalize to a list
     result = await ret
     return result if isinstance(result, list) else [result]
+
 
 async def collect_many_results(url, crawler, config):
     # Replace back arun to its original implementation
@@ -221,16 +218,18 @@ async def collect_many_results(url, crawler, config):
 # ------ Deep Crawl Strategy Interface ------ #
 CrawlResultT = TypeVar("CrawlResultT", bound=CrawlResult)
 # In batch mode we return List[CrawlResult] and in stream mode an AsyncGenerator.
-RunManyReturn = Union[CrawlResultT, List[CrawlResultT], AsyncGenerator[CrawlResultT, None]]
+RunManyReturn = Union[
+    CrawlResultT, List[CrawlResultT], AsyncGenerator[CrawlResultT, None]
+]
 
 
 class DeepCrawlStrategy(ABC):
     """Abstract base class that will make Dijkstra smile"""
+
     @abstractmethod
-    async def traverse(self,
-                      start_url: str,
-                      crawler: AsyncWebCrawler,
-                      config: CrawlerRunConfig) -> RunManyReturn:
+    async def traverse(
+        self, start_url: str, crawler: AsyncWebCrawler, config: CrawlerRunConfig
+    ) -> RunManyReturn:
         """Traverse with O(1) memory complexity via generator fusion"""
         ...
 
@@ -244,24 +243,23 @@ class DeepCrawlStrategy(ABC):
         """Hilbert-curve optimized link generation"""
         pass
 
+
 # ------ BFS That Would Make Knuth Proud ------ #
 
+
 def calculate_quantum_batch_size(
-    depth: int,
-    max_depth: int,
-    frontier_size: int,
-    visited_size: int
+    depth: int, max_depth: int, frontier_size: int, visited_size: int
 ) -> int:
     """
     Calculates optimal batch size for URL processing using quantum-inspired mathematical principles.
-    
+
     This function implements a sophisticated batch size calculation using:
     1. Golden Ratio (φ) based scaling for optimal irrationality
     2. Depth-aware amplitude modulation
     3. Harmonic series dampening
     4. Logarithmic growth control
     5. Dynamic frontier adaptation
-    
+
     The formula follows the quantum harmonic oscillator principle:
         N = ⌈φ^(2d) * log₂(|V|) * H(d)⁻¹ * min(20, |F|/10)⌉
     where:
@@ -270,16 +268,16 @@ def calculate_quantum_batch_size(
         |V| = size of visited set
         H(d) = d-th harmonic number
         |F| = frontier size
-    
+
     Args:
         depth (int): Current traversal depth
         max_depth (int): Maximum allowed depth
         frontier_size (int): Current size of frontier queue
         visited_size (int): Number of URLs visited so far
-    
+
     Returns:
         int: Optimal batch size bounded between 1 and 100
-        
+
     Mathematical Properties:
         - Maintains O(log n) growth with respect to visited size
         - Provides φ-optimal distribution of resources
@@ -287,35 +285,40 @@ def calculate_quantum_batch_size(
         - Harmonically dampened to prevent exponential explosion
     """
     # Golden ratio φ = (1 + √5) / 2
-    φ = (1 + 5 ** 0.5) / 2
-    
+    φ = (1 + 5**0.5) / 2
+
     # Calculate normalized depth factor [0, 1]
     depth_factor = (max_depth - depth) / max_depth if depth < max_depth else 0
-    
+
     # Compute harmonic number for current depth
-    harmonic = sum(1/k for k in range(1, depth + 2))
-    
+    harmonic = sum(1 / k for k in range(1, depth + 2))
+
     # Calculate quantum batch size
-    batch_size = int(np.ceil(
-        (φ ** (depth_factor * 2)) *          # Golden ratio scaling
-        np.log2(visited_size + 2) *          # Logarithmic growth factor
-        (1 / harmonic) *                     # Harmonic dampening
-        max(1, min(20, frontier_size / 10))  # Frontier-aware scaling
-    ))
-    
+    batch_size = int(
+        np.ceil(
+            (φ ** (depth_factor * 2))  # Golden ratio scaling
+            * np.log2(visited_size + 2)  # Logarithmic growth factor
+            * (1 / harmonic)  # Harmonic dampening
+            * max(1, min(20, frontier_size / 10))  # Frontier-aware scaling
+        )
+    )
+
     # Enforce practical bounds
     return max(1, min(100, batch_size))
 
 
 class BFSDeepCrawlStrategy(DeepCrawlStrategy):
     """Breadth-First Search with Einstein-Rosen bridge optimization"""
-    __slots__ = ('max_depth', 'filter_chain', 'priority_fn', 'stats', '_cancel')
 
-    def __init__(self,
-                 max_depth: int,
-                 filter_chain: FilterChain = FilterChain(),
-                 priority_fn: Callable[[str], Awaitable[float]] = lambda url: 1.0,
-                 logger: logging.Logger = None):
+    __slots__ = ("max_depth", "filter_chain", "priority_fn", "stats", "_cancel")
+
+    def __init__(
+        self,
+        max_depth: int,
+        filter_chain: FilterChain = FilterChain(),
+        priority_fn: Callable[[str], Awaitable[float]] = lambda url: 1.0,
+        logger: logging.Logger = None,
+    ):
         self.max_depth = max_depth
         self.filter_chain = filter_chain
         self.priority_fn = priority_fn
@@ -323,10 +326,9 @@ class BFSDeepCrawlStrategy(DeepCrawlStrategy):
         self._cancel = asyncio.Event()
         self.semaphore = asyncio.Semaphore(1000)
 
-    async def traverse(self,
-                      start_url: str,
-                      crawler: AsyncWebCrawler,
-                      config: CrawlerRunConfig) -> RunManyReturn:
+    async def traverse(
+        self, start_url: str, crawler: AsyncWebCrawler, config: CrawlerRunConfig
+    ) -> RunManyReturn:
         """Non-blocking BFS with O(b^d) time complexity awareness"""
         ctx = TraversalContext(self.priority_fn)
         ctx.frontier.insert(self.priority_fn(start_url), (start_url, None, 0))
@@ -339,7 +341,7 @@ class BFSDeepCrawlStrategy(DeepCrawlStrategy):
                 depth=ctx.current_depth,
                 max_depth=self.max_depth,
                 frontier_size=len(ctx.frontier._heap),
-                visited_size=len(ctx.visited)
+                visited_size=len(ctx.visited),
             )
 
             urls = ctx.frontier.extract(top_n=top_n)
@@ -348,15 +350,17 @@ class BFSDeepCrawlStrategy(DeepCrawlStrategy):
                 ctx.current_depth = urls[0][2]
 
             async with self.semaphore:
-                results = await collect_many_results([url for (url, parent, depth) in urls], crawler, config)
+                results = await collect_many_results(
+                    [url for (url, parent, depth) in urls], crawler, config
+                )
                 # results = await asyncio.gather(*[
                 #     collect_results(url, crawler, config) for (url, parent, depth) in urls
                 # ])
                 # result = _result[0]
                 for ix, result in enumerate(results):
                     url, parent, depth = result.url, urls[ix][1], urls[ix][2]
-                    result.metadata['depth'] = depth
-                    result.metadata['parent'] = parent
+                    result.metadata["depth"] = depth
+                    result.metadata["parent"] = parent
                     yield result
 
                     if depth < self.max_depth:
@@ -372,15 +376,17 @@ class BFSDeepCrawlStrategy(DeepCrawlStrategy):
         """Memoized URL validation with λ-calculus purity"""
         try:
             parsed = urlparse(url)
-            return (parsed.scheme in {'http', 'https'}
-                    and '.' in parsed.netloc
-                    and await self.filter_chain.apply(url))
+            return (
+                parsed.scheme in {"http", "https"}
+                and "." in parsed.netloc
+                and await self.filter_chain.apply(url)
+            )
         except Exception:
             return False
 
     async def link_hypercube(self, result: CrawlResult) -> AsyncGenerator[str, None]:
         """Hilbert-ordered link generation with O(1) yield latency"""
-        links = (link['href'] for link in result.links.get('internal', []))
+        links = (link["href"] for link in result.links.get("internal", []))
         validated = filter(self.validate_url, links)
         for link in sorted(validated, key=lambda x: -self.priority_fn(x)):
             yield link
@@ -402,6 +408,7 @@ class BFSDeepCrawlStrategy(DeepCrawlStrategy):
     async def shutdown(self):
         self._cancel.set()
 
+
 # ------ Usage That Will Drop Jaws ------ #
 async def main():
     """Quantum crawl example"""
@@ -415,7 +422,7 @@ async def main():
         deep_crawl_strategy=strategy,
         stream=False,
         verbose=True,
-        cache_mode=CacheMode.BYPASS
+        cache_mode=CacheMode.BYPASS,
     )
 
     async with AsyncWebCrawler() as crawler:

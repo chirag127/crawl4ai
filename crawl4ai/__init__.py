@@ -1,114 +1,64 @@
 # __init__.py
 import warnings
 
-from .async_webcrawler import AsyncWebCrawler, CacheMode
+# Adaptive Crawler
+from .adaptive_crawler import (AdaptiveConfig, AdaptiveCrawler, CrawlState,
+                               CrawlStrategy, StatisticalStrategy)
 # MODIFIED: Add SeedingConfig and VirtualScrollConfig here
-from .async_configs import BrowserConfig, CrawlerRunConfig, HTTPCrawlerConfig, LLMConfig, ProxyConfig, GeolocationConfig, SeedingConfig, VirtualScrollConfig, LinkPreviewConfig, MatchMode
-
-from .content_scraping_strategy import (
-    ContentScrapingStrategy,
-    LXMLWebScrapingStrategy,
-    WebScrapingStrategy,  # Backward compatibility alias
-)
-from .processors.pdf import PDFContentScrapingStrategy
-from .async_logger import (
-    AsyncLoggerBase,
-    AsyncLogger,
-)
-from .proxy_strategy import (
-    ProxyRotationStrategy,
-    RoundRobinProxyStrategy,
-)
-from .extraction_strategy import (
-    ExtractionStrategy,
-    LLMExtractionStrategy,
-    CosineStrategy,
-    JsonCssExtractionStrategy,
-    JsonXPathExtractionStrategy,
-    JsonLxmlExtractionStrategy,
-    RegexExtractionStrategy
-)
-from .chunking_strategy import ChunkingStrategy, RegexChunking
-from .markdown_generation_strategy import DefaultMarkdownGenerator
-from .table_extraction import (
-    TableExtractionStrategy,
-    DefaultTableExtraction,
-    NoTableExtraction,
-    LLMTableExtraction,
-)
-from .content_filter_strategy import (
-    PruningContentFilter,
-    BM25ContentFilter,
-    LLMContentFilter,
-    RelevantContentFilter,
-)
-from .models import CrawlResult, MarkdownGenerationResult, DisplayMode
-from .components.crawler_monitor import CrawlerMonitor
-from .link_preview import LinkPreview
-from .async_dispatcher import (
-    MemoryAdaptiveDispatcher,
-    SemaphoreDispatcher,
-    RateLimiter,
-    BaseDispatcher,
-)
-from .docker_client import Crawl4aiDockerClient
-from .hub import CrawlerHub
-from .browser_profiler import BrowserProfiler
-from .deep_crawling import (
-    DeepCrawlStrategy,
-    BFSDeepCrawlStrategy,
-    FilterChain,
-    URLPatternFilter,
-    DomainFilter,
-    ContentTypeFilter,
-    URLFilter,
-    FilterStats,
-    SEOFilter,
-    KeywordRelevanceScorer,
-    URLScorer,
-    CompositeScorer,
-    DomainAuthorityScorer,
-    FreshnessScorer,
-    PathDepthScorer,
-    BestFirstCrawlingStrategy,
-    DFSDeepCrawlStrategy,
-    DeepCrawlDecorator,
-    ContentRelevanceFilter,
-    ContentTypeScorer,
-)
+from .async_configs import (BrowserConfig, CrawlerRunConfig, GeolocationConfig,
+                            HTTPCrawlerConfig, LinkPreviewConfig, LLMConfig,
+                            MatchMode, ProxyConfig, SeedingConfig,
+                            VirtualScrollConfig)
+from .async_dispatcher import (BaseDispatcher, MemoryAdaptiveDispatcher,
+                               RateLimiter, SemaphoreDispatcher)
+from .async_logger import AsyncLogger, AsyncLoggerBase
 # NEW: Import AsyncUrlSeeder
 from .async_url_seeder import AsyncUrlSeeder
-# Adaptive Crawler
-from .adaptive_crawler import (
-    AdaptiveCrawler,
-    AdaptiveConfig,
-    CrawlState,
-    CrawlStrategy,
-    StatisticalStrategy
-)
-
-# C4A Script Language Support
-from .script import (
-    compile as c4a_compile,
-    validate as c4a_validate,
-    compile_file as c4a_compile_file,
-    CompilationResult,
-    ValidationResult,
-    ErrorDetail
-)
-
+from .async_webcrawler import AsyncWebCrawler, CacheMode
 # Browser Adapters
-from .browser_adapter import (
-    BrowserAdapter,
-    PlaywrightAdapter,
-    UndetectedAdapter
-)
-
-from .utils import (
-    start_colab_display_server,
-    setup_colab_environment,
-    hooks_to_string
-)
+from .browser_adapter import (BrowserAdapter, PlaywrightAdapter,
+                              UndetectedAdapter)
+from .browser_profiler import BrowserProfiler
+from .chunking_strategy import ChunkingStrategy, RegexChunking
+from .components.crawler_monitor import CrawlerMonitor
+from .content_filter_strategy import (BM25ContentFilter, LLMContentFilter,
+                                      PruningContentFilter,
+                                      RelevantContentFilter)
+from .content_scraping_strategy import \
+    WebScrapingStrategy  # Backward compatibility alias
+from .content_scraping_strategy import (ContentScrapingStrategy,
+                                        LXMLWebScrapingStrategy)
+from .deep_crawling import (BestFirstCrawlingStrategy, BFSDeepCrawlStrategy,
+                            CompositeScorer, ContentRelevanceFilter,
+                            ContentTypeFilter, ContentTypeScorer,
+                            DeepCrawlDecorator, DeepCrawlStrategy,
+                            DFSDeepCrawlStrategy, DomainAuthorityScorer,
+                            DomainFilter, FilterChain, FilterStats,
+                            FreshnessScorer, KeywordRelevanceScorer,
+                            PathDepthScorer, SEOFilter, URLFilter,
+                            URLPatternFilter, URLScorer)
+from .docker_client import Crawl4aiDockerClient
+from .extraction_strategy import (CosineStrategy, ExtractionStrategy,
+                                  JsonCssExtractionStrategy,
+                                  JsonLxmlExtractionStrategy,
+                                  JsonXPathExtractionStrategy,
+                                  LLMExtractionStrategy,
+                                  RegexExtractionStrategy)
+from .hub import CrawlerHub
+from .link_preview import LinkPreview
+from .markdown_generation_strategy import DefaultMarkdownGenerator
+from .models import CrawlResult, DisplayMode, MarkdownGenerationResult
+from .processors.pdf import PDFContentScrapingStrategy
+from .proxy_strategy import ProxyRotationStrategy, RoundRobinProxyStrategy
+# C4A Script Language Support
+from .script import CompilationResult, ErrorDetail, ValidationResult
+from .script import compile as c4a_compile
+from .script import compile_file as c4a_compile_file
+from .script import validate as c4a_validate
+from .table_extraction import (DefaultTableExtraction, LLMTableExtraction,
+                               NoTableExtraction, TableExtractionStrategy)
+from .utils import (hooks_to_string, setup_colab_environment,
+                    start_colab_display_server)
 
 __all__ = [
     "AsyncLoggerBase",
@@ -124,7 +74,7 @@ __all__ = [
     "AsyncUrlSeeder",
     # Adaptive Crawler
     "AdaptiveCrawler",
-    "AdaptiveConfig", 
+    "AdaptiveConfig",
     "CrawlState",
     "CrawlStrategy",
     "StatisticalStrategy",
@@ -190,16 +140,16 @@ __all__ = [
     "hooks_to_string",
     # C4A Script additions
     "c4a_compile",
-    "c4a_validate", 
+    "c4a_validate",
     "c4a_compile_file",
     "CompilationResult",
     "ValidationResult",
     "ErrorDetail",
     # Browser Adapters
     "BrowserAdapter",
-    "PlaywrightAdapter", 
+    "PlaywrightAdapter",
     "UndetectedAdapter",
-    "LinkPreviewConfig"
+    "LinkPreviewConfig",
 ]
 
 

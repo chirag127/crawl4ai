@@ -4,8 +4,8 @@ Unit tests for security fixes.
 These tests verify the security fixes at the code level without needing a running server.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +24,9 @@ class TestURLValidation(unittest.TestCase):
 
     def validate_url_scheme(self, url: str, allow_raw: bool = False) -> bool:
         """Local version of validate_url_scheme for testing."""
-        allowed = self.ALLOWED_URL_SCHEMES_WITH_RAW if allow_raw else self.ALLOWED_URL_SCHEMES
+        allowed = (
+            self.ALLOWED_URL_SCHEMES_WITH_RAW if allow_raw else self.ALLOWED_URL_SCHEMES
+        )
         return url.startswith(allowed)
 
     # === SECURITY TESTS: These URLs must be BLOCKED ===
@@ -36,7 +38,9 @@ class TestURLValidation(unittest.TestCase):
 
     def test_file_url_blocked_windows(self):
         """file:// URLs with Windows paths must be blocked."""
-        self.assertFalse(self.validate_url_scheme("file:///C:/Windows/System32/config/sam"))
+        self.assertFalse(
+            self.validate_url_scheme("file:///C:/Windows/System32/config/sam")
+        )
 
     def test_javascript_url_blocked(self):
         """javascript: URLs must be blocked (XSS)."""
@@ -44,7 +48,9 @@ class TestURLValidation(unittest.TestCase):
 
     def test_data_url_blocked(self):
         """data: URLs must be blocked."""
-        self.assertFalse(self.validate_url_scheme("data:text/html,<script>alert(1)</script>"))
+        self.assertFalse(
+            self.validate_url_scheme("data:text/html,<script>alert(1)</script>")
+        )
 
     def test_ftp_url_blocked(self):
         """ftp: URLs must be blocked."""
@@ -79,7 +85,9 @@ class TestURLValidation(unittest.TestCase):
     def test_raw_url_blocked_when_disabled(self):
         """raw: URLs must be blocked when allow_raw=False."""
         self.assertFalse(self.validate_url_scheme("raw:<html></html>", allow_raw=False))
-        self.assertFalse(self.validate_url_scheme("raw://<html></html>", allow_raw=False))
+        self.assertFalse(
+            self.validate_url_scheme("raw://<html></html>", allow_raw=False)
+        )
 
 
 class TestHookBuiltins(unittest.TestCase):
@@ -88,32 +96,86 @@ class TestHookBuiltins(unittest.TestCase):
     def test_import_not_in_allowed_builtins(self):
         """__import__ must NOT be in allowed_builtins."""
         allowed_builtins = [
-            'print', 'len', 'str', 'int', 'float', 'bool',
-            'list', 'dict', 'set', 'tuple', 'range', 'enumerate',
-            'zip', 'map', 'filter', 'any', 'all', 'sum', 'min', 'max',
-            'sorted', 'reversed', 'abs', 'round', 'isinstance', 'type',
-            'getattr', 'hasattr', 'setattr', 'callable', 'iter', 'next',
-            '__build_class__'  # Required for class definitions in exec
+            "print",
+            "len",
+            "str",
+            "int",
+            "float",
+            "bool",
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "range",
+            "enumerate",
+            "zip",
+            "map",
+            "filter",
+            "any",
+            "all",
+            "sum",
+            "min",
+            "max",
+            "sorted",
+            "reversed",
+            "abs",
+            "round",
+            "isinstance",
+            "type",
+            "getattr",
+            "hasattr",
+            "setattr",
+            "callable",
+            "iter",
+            "next",
+            "__build_class__",  # Required for class definitions in exec
         ]
 
-        self.assertNotIn('__import__', allowed_builtins)
-        self.assertNotIn('eval', allowed_builtins)
-        self.assertNotIn('exec', allowed_builtins)
-        self.assertNotIn('compile', allowed_builtins)
-        self.assertNotIn('open', allowed_builtins)
+        self.assertNotIn("__import__", allowed_builtins)
+        self.assertNotIn("eval", allowed_builtins)
+        self.assertNotIn("exec", allowed_builtins)
+        self.assertNotIn("compile", allowed_builtins)
+        self.assertNotIn("open", allowed_builtins)
 
     def test_build_class_in_allowed_builtins(self):
         """__build_class__ must be in allowed_builtins (needed for class definitions)."""
         allowed_builtins = [
-            'print', 'len', 'str', 'int', 'float', 'bool',
-            'list', 'dict', 'set', 'tuple', 'range', 'enumerate',
-            'zip', 'map', 'filter', 'any', 'all', 'sum', 'min', 'max',
-            'sorted', 'reversed', 'abs', 'round', 'isinstance', 'type',
-            'getattr', 'hasattr', 'setattr', 'callable', 'iter', 'next',
-            '__build_class__'
+            "print",
+            "len",
+            "str",
+            "int",
+            "float",
+            "bool",
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "range",
+            "enumerate",
+            "zip",
+            "map",
+            "filter",
+            "any",
+            "all",
+            "sum",
+            "min",
+            "max",
+            "sorted",
+            "reversed",
+            "abs",
+            "round",
+            "isinstance",
+            "type",
+            "getattr",
+            "hasattr",
+            "setattr",
+            "callable",
+            "iter",
+            "next",
+            "__build_class__",
         ]
 
-        self.assertIn('__build_class__', allowed_builtins)
+        self.assertIn("__build_class__", allowed_builtins)
 
 
 class TestHooksEnabled(unittest.TestCase):
@@ -122,12 +184,16 @@ class TestHooksEnabled(unittest.TestCase):
     def test_hooks_disabled_by_default(self):
         """Hooks must be disabled by default."""
         # Simulate the default behavior
-        hooks_enabled = os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+        hooks_enabled = (
+            os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+        )
 
         # Clear any existing env var to test default
         original = os.environ.pop("CRAWL4AI_HOOKS_ENABLED", None)
         try:
-            hooks_enabled = os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+            hooks_enabled = (
+                os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+            )
             self.assertFalse(hooks_enabled)
         finally:
             if original is not None:
@@ -138,7 +204,9 @@ class TestHooksEnabled(unittest.TestCase):
         original = os.environ.get("CRAWL4AI_HOOKS_ENABLED")
         try:
             os.environ["CRAWL4AI_HOOKS_ENABLED"] = "true"
-            hooks_enabled = os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+            hooks_enabled = (
+                os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+            )
             self.assertTrue(hooks_enabled)
         finally:
             if original is not None:
@@ -151,7 +219,9 @@ class TestHooksEnabled(unittest.TestCase):
         original = os.environ.get("CRAWL4AI_HOOKS_ENABLED")
         try:
             os.environ["CRAWL4AI_HOOKS_ENABLED"] = "false"
-            hooks_enabled = os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+            hooks_enabled = (
+                os.environ.get("CRAWL4AI_HOOKS_ENABLED", "false").lower() == "true"
+            )
             self.assertFalse(hooks_enabled)
         finally:
             if original is not None:
@@ -172,14 +242,34 @@ class TestComputedFieldSafety(unittest.TestCase):
         import ast
 
         SAFE_BUILTINS = {
-            "str": str, "int": int, "float": float, "bool": bool,
-            "len": len, "round": round, "abs": abs, "min": min, "max": max,
-            "sum": sum, "sorted": sorted, "reversed": reversed,
-            "list": list, "dict": dict, "tuple": tuple, "set": set,
-            "enumerate": enumerate, "zip": zip, "map": map, "filter": filter,
-            "any": any, "all": all, "range": range,
-            "True": True, "False": False, "None": None,
-            "isinstance": isinstance, "type": type,
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "len": len,
+            "round": round,
+            "abs": abs,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "sorted": sorted,
+            "reversed": reversed,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "enumerate": enumerate,
+            "zip": zip,
+            "map": map,
+            "filter": filter,
+            "any": any,
+            "all": all,
+            "range": range,
+            "True": True,
+            "False": False,
+            "None": None,
+            "isinstance": isinstance,
+            "type": type,
         }
 
         def safe_eval(expression, local_vars):
@@ -264,24 +354,50 @@ class TestDeserializationAllowlist(unittest.TestCase):
     def setUp(self):
         """Set up the allowlist (local copy of the constant)."""
         self.allowed_types = {
-            "BrowserConfig", "CrawlerRunConfig", "HTTPCrawlerConfig",
-            "LLMConfig", "ProxyConfig", "GeolocationConfig",
-            "SeedingConfig", "VirtualScrollConfig", "LinkPreviewConfig",
-            "JsonCssExtractionStrategy", "JsonXPathExtractionStrategy",
-            "JsonLxmlExtractionStrategy", "LLMExtractionStrategy",
-            "CosineStrategy", "RegexExtractionStrategy",
+            "BrowserConfig",
+            "CrawlerRunConfig",
+            "HTTPCrawlerConfig",
+            "LLMConfig",
+            "ProxyConfig",
+            "GeolocationConfig",
+            "SeedingConfig",
+            "VirtualScrollConfig",
+            "LinkPreviewConfig",
+            "JsonCssExtractionStrategy",
+            "JsonXPathExtractionStrategy",
+            "JsonLxmlExtractionStrategy",
+            "LLMExtractionStrategy",
+            "CosineStrategy",
+            "RegexExtractionStrategy",
             "DefaultMarkdownGenerator",
-            "PruningContentFilter", "BM25ContentFilter", "LLMContentFilter",
+            "PruningContentFilter",
+            "BM25ContentFilter",
+            "LLMContentFilter",
             "LXMLWebScrapingStrategy",
             "RegexChunking",
-            "BFSDeepCrawlStrategy", "DFSDeepCrawlStrategy", "BestFirstCrawlingStrategy",
-            "FilterChain", "URLPatternFilter", "DomainFilter",
-            "ContentTypeFilter", "URLFilter", "SEOFilter", "ContentRelevanceFilter",
-            "KeywordRelevanceScorer", "URLScorer", "CompositeScorer",
-            "DomainAuthorityScorer", "FreshnessScorer", "PathDepthScorer",
-            "CacheMode", "MatchMode", "DisplayMode",
-            "MemoryAdaptiveDispatcher", "SemaphoreDispatcher",
-            "DefaultTableExtraction", "NoTableExtraction",
+            "BFSDeepCrawlStrategy",
+            "DFSDeepCrawlStrategy",
+            "BestFirstCrawlingStrategy",
+            "FilterChain",
+            "URLPatternFilter",
+            "DomainFilter",
+            "ContentTypeFilter",
+            "URLFilter",
+            "SEOFilter",
+            "ContentRelevanceFilter",
+            "KeywordRelevanceScorer",
+            "URLScorer",
+            "CompositeScorer",
+            "DomainAuthorityScorer",
+            "FreshnessScorer",
+            "PathDepthScorer",
+            "CacheMode",
+            "MatchMode",
+            "DisplayMode",
+            "MemoryAdaptiveDispatcher",
+            "SemaphoreDispatcher",
+            "DefaultTableExtraction",
+            "NoTableExtraction",
             "RoundRobinProxyStrategy",
         }
 
@@ -313,7 +429,8 @@ class TestDeserializationAllowlist(unittest.TestCase):
     def test_allowlist_has_extraction_strategies(self):
         """Extraction strategy types must be in the allowlist."""
         required = {
-            "JsonCssExtractionStrategy", "LLMExtractionStrategy",
+            "JsonCssExtractionStrategy",
+            "LLMExtractionStrategy",
             "RegexExtractionStrategy",
         }
         self.assertTrue(required.issubset(self.allowed_types))
@@ -324,7 +441,7 @@ class TestDeserializationAllowlist(unittest.TestCase):
         self.assertTrue(required.issubset(self.allowed_types))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 60)
     print("Crawl4AI Security Fixes - Unit Tests")
     print("=" * 60)

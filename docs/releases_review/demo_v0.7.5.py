@@ -15,15 +15,15 @@ Requirements:
 """
 
 import asyncio
-import requests
-import time
 import sys
+import time
 
-from crawl4ai import (AsyncWebCrawler, CrawlerRunConfig, BrowserConfig,
-                      CacheMode, FilterChain, URLPatternFilter, BFSDeepCrawlStrategy,
-                      hooks_to_string)
+import requests
+
+from crawl4ai import (AsyncWebCrawler, BFSDeepCrawlStrategy, CrawlerRunConfig, FilterChain,
+                      URLPatternFilter, hooks_to_string)
 from crawl4ai.docker_client import Crawl4aiDockerClient
-    
+
 
 def print_section(title: str, description: str = ""):
     """Print a section header"""
@@ -38,7 +38,7 @@ async def demo_1_docker_hooks_system():
     """Demo 1: Docker Hooks System - Real API calls with custom hooks"""
     print_section(
         "Demo 1: Docker Hooks System",
-        "Testing both string-based and function-based hooks (NEW in v0.7.5!)"
+        "Testing both string-based and function-based hooks (NEW in v0.7.5!)",
     )
 
     # Check Docker service availability
@@ -82,28 +82,27 @@ async def hook(page, context, **kwargs):
     await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
     await page.wait_for_timeout(1000)
     return page
-"""
+""",
     }
 
     payload = {
         "urls": ["https://httpbin.org/html"],
-        "hooks": {
-            "code": hooks_config_string,
-            "timeout": 30
-        }
+        "hooks": {"code": hooks_config_string, "timeout": 30},
     }
 
     print("🔧 Using string-based hooks for REST API...")
     try:
         start_time = time.time()
-        response = requests.post("http://localhost:11235/crawl", json=payload, timeout=60)
+        response = requests.post(
+            "http://localhost:11235/crawl", json=payload, timeout=60
+        )
         execution_time = time.time() - start_time
 
         if response.status_code == 200:
             result = response.json()
             print(f"✅ String-based hooks executed in {execution_time:.2f}s")
-            if result.get('results') and result['results'][0].get('success'):
-                html_length = len(result['results'][0].get('html', ''))
+            if result.get("results") and result["results"][0].get("success"):
+                html_length = len(result["results"][0].get("html", ""))
                 print(f"   📄 HTML length: {html_length} characters")
         else:
             print(f"❌ Request failed: {response.status_code}")
@@ -128,10 +127,9 @@ async def hook(page, context, **kwargs):
     async def before_goto_func(page, context, url, **kwargs):
         """Add custom headers before navigation"""
         print(f"[Function Hook] About to navigate to {url}")
-        await page.set_extra_http_headers({
-            'X-Crawl4AI': 'v0.7.5-function-hooks',
-            'X-Test-Header': 'demo'
-        })
+        await page.set_extra_http_headers(
+            {"X-Crawl4AI": "v0.7.5-function-hooks", "X-Test-Header": "demo"}
+        )
         return page
 
     async def before_retrieve_html_func(page, context, **kwargs):
@@ -144,11 +142,13 @@ async def hook(page, context, **kwargs):
 
     # Use the hooks_to_string utility (can be used standalone)
     print("\n📦 Converting functions to strings with hooks_to_string()...")
-    hooks_as_strings = hooks_to_string({
-        "on_page_context_created": on_page_context_created_func,
-        "before_goto": before_goto_func,
-        "before_retrieve_html": before_retrieve_html_func
-    })
+    hooks_as_strings = hooks_to_string(
+        {
+            "on_page_context_created": on_page_context_created_func,
+            "before_goto": before_goto_func,
+            "before_retrieve_html": before_retrieve_html_func,
+        }
+    )
     print(f"   ✓ Converted {len(hooks_as_strings)} hooks to string format")
 
     # OR use Docker Client which does conversion automatically!
@@ -162,13 +162,13 @@ async def hook(page, context, **kwargs):
             hooks={
                 "on_page_context_created": on_page_context_created_func,
                 "before_goto": before_goto_func,
-                "before_retrieve_html": before_retrieve_html_func
+                "before_retrieve_html": before_retrieve_html_func,
             },
-            hooks_timeout=30
+            hooks_timeout=30,
         )
 
         if results and results.success:
-            print(f"✅ Function-based hooks executed successfully!")
+            print("✅ Function-based hooks executed successfully!")
             print(f"   📄 HTML length: {len(results.html)} characters")
             print(f"   🎯 URL: {results.url}")
         else:
@@ -193,7 +193,7 @@ async def demo_2_enhanced_llm_integration():
     """Demo 2: Enhanced LLM Integration - Working LLM configurations"""
     print_section(
         "Demo 2: Enhanced LLM Integration",
-        "Testing custom LLM providers and configurations"
+        "Testing custom LLM providers and configurations",
     )
 
     print("🤖 Testing Enhanced LLM Integration Features")
@@ -204,24 +204,20 @@ async def demo_2_enhanced_llm_integration():
         "f": "llm",
         "q": "Summarize this page in one sentence.",
         "provider": provider,  # Explicitly set provider
-        "temperature": 0.7
+        "temperature": 0.7,
     }
     try:
-        response = requests.post(
-            "http://localhost:11235/md",
-            json=payload,
-            timeout=60
-        )
+        response = requests.post("http://localhost:11235/md", json=payload, timeout=60)
         if response.status_code == 200:
             result = response.json()
             print(f"✓ Request successful with provider: {provider}")
             print(f"  - Response keys: {list(result.keys())}")
             print(f"  - Content length: {len(result.get('markdown', ''))} characters")
-            print(f"  - Note: Actual LLM call may fail without valid API key")
+            print("  - Note: Actual LLM call may fail without valid API key")
         else:
             print(f"❌ Request failed: {response.status_code}")
             print(f"  - Response: {response.text[:500]}")
-            
+
     except Exception as e:
         print(f"[red]Error: {e}[/]")
 
@@ -229,8 +225,7 @@ async def demo_2_enhanced_llm_integration():
 async def demo_3_https_preservation():
     """Demo 3: HTTPS Preservation - Live crawling with HTTPS maintenance"""
     print_section(
-        "Demo 3: HTTPS Preservation",
-        "Testing HTTPS preservation for internal links"
+        "Demo 3: HTTPS Preservation", "Testing HTTPS preservation for internal links"
     )
 
     print("🔒 Testing HTTPS Preservation Feature")
@@ -242,15 +237,13 @@ async def demo_3_https_preservation():
         patterns=["^(https:\/\/)?quotes\.toscrape\.com(\/.*)?$"]
     )
     config = CrawlerRunConfig(
-        exclude_external_links=True, 
-        stream=True, 
+        exclude_external_links=True,
+        stream=True,
         verbose=False,
         preserve_https_for_internal_links=True,
         deep_crawl_strategy=BFSDeepCrawlStrategy(
-            max_depth=2, 
-            max_pages=5,
-            filter_chain=FilterChain([url_filter])
-        )
+            max_depth=2, max_pages=5, filter_chain=FilterChain([url_filter])
+        ),
     )
 
     test_url = "https://quotes.toscrape.com"
@@ -259,7 +252,7 @@ async def demo_3_https_preservation():
     async with AsyncWebCrawler() as crawler:
         async for result in await crawler.arun(url=test_url, config=config):
             print("✓ HTTPS Preservation Test Completed")
-            internal_links = [i['href'] for i in result.links['internal']]
+            internal_links = [i["href"] for i in result.links["internal"]]
             for link in internal_links:
                 print(f"  → {link}")
 
@@ -272,13 +265,16 @@ async def main():
 
     # Check system requirements
     print("🔍 System Requirements Check:")
-    print(f"  - Python version: {sys.version.split()[0]} {'✓' if sys.version_info >= (3, 10) else '❌ (3.10+ required)'}")
+    print(
+        f"  - Python version: {sys.version.split()[0]} {'✓' if sys.version_info >= (3, 10) else '❌ (3.10+ required)'}"
+    )
 
     try:
         import requests
-        print(f"  - Requests library: ✓")
+
+        print("  - Requests library: ✓")
     except ImportError:
-        print(f"  - Requests library: ❌")
+        print("  - Requests library: ❌")
 
     print()
 
@@ -298,7 +294,7 @@ async def main():
                 input()
 
         except KeyboardInterrupt:
-            print(f"\n⏹️  Demo interrupted by user")
+            print("\n⏹️  Demo interrupted by user")
             break
         except Exception as e:
             print(f"❌ Demo {i} error: {str(e)}")

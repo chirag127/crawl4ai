@@ -1,25 +1,23 @@
+import base64
 import logging
 import re
+import tempfile
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from time import time
-from dataclasses import dataclass, asdict, field
-from typing import Dict, List, Optional, Any, Union
-import base64
-import tempfile
+from typing import Dict, List, Optional
+
 from .utils import *
-from .utils import (
-    apply_png_predictor,
-    clean_pdf_text,
-    clean_pdf_text_to_html,
-)
+from .utils import apply_png_predictor, clean_pdf_text, clean_pdf_text_to_html
 
 # Remove direct pypdf imports from the top
 # import pypdf
 # from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PDFMetadata:
@@ -32,6 +30,7 @@ class PDFMetadata:
     encrypted: bool = False
     file_size: Optional[int] = None
 
+
 @dataclass
 class PDFPage:
     page_number: int
@@ -42,6 +41,7 @@ class PDFPage:
     links: List[str] = field(default_factory=list)
     layout: List[Dict] = field(default_factory=list)
 
+
 @dataclass
 class PDFProcessResult:
     metadata: PDFMetadata
@@ -49,20 +49,31 @@ class PDFProcessResult:
     processing_time: float = 0.0
     version: str = "1.0"
 
+
 class PDFProcessorStrategy(ABC):
     @abstractmethod
     def process(self, pdf_path: Path) -> PDFProcessResult:
         pass
 
+
 class NaivePDFProcessorStrategy(PDFProcessorStrategy):
-    def __init__(self, image_dpi: int = 144, image_quality: int = 85, extract_images: bool = True, 
-                 save_images_locally: bool = False, image_save_dir: Optional[Path] = None, batch_size: int = 4):
+    def __init__(
+        self,
+        image_dpi: int = 144,
+        image_quality: int = 85,
+        extract_images: bool = True,
+        save_images_locally: bool = False,
+        image_save_dir: Optional[Path] = None,
+        batch_size: int = 4,
+    ):
         # Import check at initialization time
         try:
             import pypdf
         except ImportError:
-            raise ImportError("pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'")
-            
+            raise ImportError(
+                "pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'"
+            )
+
         self.image_dpi = image_dpi
         self.image_quality = image_quality
         self.current_page_number = 0
@@ -77,20 +88,18 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
         try:
             from pypdf import PdfReader
         except ImportError:
-            raise ImportError("pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'")
-            
+            raise ImportError(
+                "pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'"
+            )
+
         start_time = time()
-        result = PDFProcessResult(
-            metadata=PDFMetadata(),
-            pages=[],
-            version="1.1"
-        )
+        result = PDFProcessResult(metadata=PDFMetadata(), pages=[], version="1.1")
 
         try:
-            with pdf_path.open('rb') as file:
+            with pdf_path.open("rb") as file:
                 reader = PdfReader(file)
                 result.metadata = self._extract_metadata(pdf_path, reader)
-                
+
                 # Handle image directory
                 image_dir = None
                 if self.extract_images and self.save_images_locally:
@@ -98,7 +107,7 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
                         image_dir = Path(self.image_save_dir)
                         image_dir.mkdir(exist_ok=True, parents=True)
                     else:
-                        self._temp_dir = tempfile.mkdtemp(prefix='pdf_images_')
+                        self._temp_dir = tempfile.mkdtemp(prefix="pdf_images_")
                         image_dir = Path(self._temp_dir)
 
                 for page_num, page in enumerate(reader.pages):
@@ -113,6 +122,7 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
             # Cleanup temp directory if it was created
             if self._temp_dir and not self.image_save_dir:
                 import shutil
+
                 try:
                     shutil.rmtree(self._temp_dir)
                 except Exception as e:
@@ -125,28 +135,26 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
         """Like process() but processes PDF pages in parallel batches"""
         # Import inside method to allow dependency to be optional
         try:
-            from pypdf import PdfReader
             import pypdf  # For type checking
+            from pypdf import PdfReader
         except ImportError:
-            raise ImportError("pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'")
-            
+            raise ImportError(
+                "pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'"
+            )
+
         import concurrent.futures
         import threading
-        
+
         # Initialize pypdf thread support
-        if not hasattr(threading.current_thread(), "_children"): 
+        if not hasattr(threading.current_thread(), "_children"):
             threading.current_thread()._children = set()
-        
+
         start_time = time()
-        result = PDFProcessResult(
-            metadata=PDFMetadata(),
-            pages=[],
-            version="1.1" 
-        )
+        result = PDFProcessResult(metadata=PDFMetadata(), pages=[], version="1.1")
 
         try:
             # Get metadata and page count from main thread
-            with pdf_path.open('rb') as file:
+            with pdf_path.open("rb") as file:
                 reader = PdfReader(file)
                 result.metadata = self._extract_metadata(pdf_path, reader)
                 total_pages = len(reader.pages)
@@ -158,19 +166,21 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
                     image_dir = Path(self.image_save_dir)
                     image_dir.mkdir(exist_ok=True, parents=True)
                 else:
-                    self._temp_dir = tempfile.mkdtemp(prefix='pdf_images_')
+                    self._temp_dir = tempfile.mkdtemp(prefix="pdf_images_")
                     image_dir = Path(self._temp_dir)
 
             def process_page_safely(page_num: int):
                 # Each thread opens its own file handle
-                with pdf_path.open('rb') as file:
+                with pdf_path.open("rb") as file:
                     thread_reader = PdfReader(file)
                     page = thread_reader.pages[page_num]
                     self.current_page_number = page_num + 1
                     return self._process_page(page, image_dir)
 
             # Process pages in parallel batches
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.batch_size) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.batch_size
+            ) as executor:
                 futures = []
                 for page_num in range(total_pages):
                     future = executor.submit(process_page_safely, page_num)
@@ -193,6 +203,7 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
             # Cleanup temp directory if it was created
             if self._temp_dir and not self.image_save_dir:
                 import shutil
+
                 try:
                     shutil.rmtree(self._temp_dir)
                 except Exception as e:
@@ -209,13 +220,15 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
         # Text and font extraction
         def visitor_text(text, cm, tm, font_dict, font_size):
             pdf_page.raw_text += text
-            pdf_page.layout.append({
-                "type": "text",
-                "text": text,
-                "x": tm[4],
-                "y": tm[5],
-            })
-        
+            pdf_page.layout.append(
+                {
+                    "type": "text",
+                    "text": text,
+                    "x": tm[4],
+                    "y": tm[5],
+                }
+            )
+
         page.extract_text(visitor_text=visitor_text)
 
         # Image extraction
@@ -224,10 +237,12 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
 
         # Link extraction
         pdf_page.links = self._extract_links(page)
-        
+
         # Add markdown content
         pdf_page.markdown = clean_pdf_text(self.current_page_number, pdf_page.raw_text)
-        pdf_page.html = clean_pdf_text_to_html(self.current_page_number, pdf_page.raw_text)
+        pdf_page.html = clean_pdf_text_to_html(
+            self.current_page_number, pdf_page.raw_text
+        )
 
         return pdf_page
 
@@ -236,8 +251,10 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
         try:
             from pypdf.generic import IndirectObject
         except ImportError:
-            raise ImportError("pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'")
-            
+            raise ImportError(
+                "pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'"
+            )
+
         if not self.extract_images:
             return []
 
@@ -246,119 +263,153 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
             resources = page.get("/Resources")
             if resources:  # Check if resources exist
                 resources = resources.get_object()  # Resolve IndirectObject
-                if '/XObject' in resources:
-                    xobjects = resources['/XObject'].get_object()
+                if "/XObject" in resources:
+                    xobjects = resources["/XObject"].get_object()
                     img_count = 0
                     for obj_name in xobjects:
                         xobj = xobjects[obj_name]
-                        if hasattr(xobj, 'get_object') and callable(xobj.get_object):
+                        if hasattr(xobj, "get_object") and callable(xobj.get_object):
                             xobj = xobj.get_object()
-                            if xobj.get('/Subtype') == '/Image':
+                            if xobj.get("/Subtype") == "/Image":
                                 try:
                                     img_count += 1
                                     img_filename = f"page_{self.current_page_number}_img_{img_count}"
                                     data = xobj.get_data()
-                                    filters = xobj.get('/Filter', [])
+                                    filters = xobj.get("/Filter", [])
                                     if not isinstance(filters, list):
                                         filters = [filters]
 
                                     # Resolve IndirectObjects in properties
-                                    width = xobj.get('/Width', 0)
-                                    height = xobj.get('/Height', 0)
-                                    color_space = xobj.get('/ColorSpace', '/DeviceRGB')
+                                    width = xobj.get("/Width", 0)
+                                    height = xobj.get("/Height", 0)
+                                    color_space = xobj.get("/ColorSpace", "/DeviceRGB")
                                     if isinstance(color_space, IndirectObject):
                                         color_space = color_space.get_object()
 
                                     # Handle different image encodings
                                     success = False
-                                    image_format = 'bin'
+                                    image_format = "bin"
                                     image_data = None
-                                    
-                                    if '/FlateDecode' in filters:
+
+                                    if "/FlateDecode" in filters:
                                         try:
-                                            decode_parms = xobj.get('/DecodeParms', {})
+                                            decode_parms = xobj.get("/DecodeParms", {})
                                             if isinstance(decode_parms, IndirectObject):
                                                 decode_parms = decode_parms.get_object()
-                                            
-                                            predictor = decode_parms.get('/Predictor', 1)
-                                            bits = xobj.get('/BitsPerComponent', 8)
-                                            colors = 3 if color_space == '/DeviceRGB' else 1
+
+                                            predictor = decode_parms.get(
+                                                "/Predictor", 1
+                                            )
+                                            bits = xobj.get("/BitsPerComponent", 8)
+                                            colors = (
+                                                3 if color_space == "/DeviceRGB" else 1
+                                            )
 
                                             if predictor >= 10:
-                                                data = apply_png_predictor(data, width, bits, colors)
+                                                data = apply_png_predictor(
+                                                    data, width, bits, colors
+                                                )
 
                                             # Create PIL Image
                                             from PIL import Image
-                                            mode = 'RGB' if color_space == '/DeviceRGB' else 'L'
-                                            img = Image.frombytes(mode, (width, height), data)
-                                            
+
+                                            mode = (
+                                                "RGB"
+                                                if color_space == "/DeviceRGB"
+                                                else "L"
+                                            )
+                                            img = Image.frombytes(
+                                                mode, (width, height), data
+                                            )
+
                                             if self.save_images_locally:
-                                                final_path = (image_dir / img_filename).with_suffix('.png')
+                                                final_path = (
+                                                    image_dir / img_filename
+                                                ).with_suffix(".png")
                                                 img.save(final_path)
                                                 image_data = str(final_path)
                                             else:
                                                 import io
+
                                                 img_byte_arr = io.BytesIO()
-                                                img.save(img_byte_arr, format='PNG')
-                                                image_data = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
-                                            
+                                                img.save(img_byte_arr, format="PNG")
+                                                image_data = base64.b64encode(
+                                                    img_byte_arr.getvalue()
+                                                ).decode("utf-8")
+
                                             success = True
-                                            image_format = 'png'
+                                            image_format = "png"
                                         except Exception as e:
                                             logger.error(f"FlateDecode error: {str(e)}")
 
-                                    elif '/DCTDecode' in filters:
+                                    elif "/DCTDecode" in filters:
                                         # JPEG image
                                         try:
                                             if self.save_images_locally:
-                                                final_path = (image_dir / img_filename).with_suffix('.jpg')
-                                                with open(final_path, 'wb') as f:
+                                                final_path = (
+                                                    image_dir / img_filename
+                                                ).with_suffix(".jpg")
+                                                with open(final_path, "wb") as f:
                                                     f.write(data)
                                                 image_data = str(final_path)
                                             else:
-                                                image_data = base64.b64encode(data).decode('utf-8')
+                                                image_data = base64.b64encode(
+                                                    data
+                                                ).decode("utf-8")
                                             success = True
-                                            image_format = 'jpeg'
+                                            image_format = "jpeg"
                                         except Exception as e:
                                             logger.error(f"JPEG save error: {str(e)}")
 
-                                    elif '/CCITTFaxDecode' in filters:
+                                    elif "/CCITTFaxDecode" in filters:
                                         try:
-                                            if data[:4] != b'II*\x00':
+                                            if data[:4] != b"II*\x00":
                                                 # Add TIFF header if missing
-                                                tiff_header = b'II*\x00\x08\x00\x00\x00\x0e\x00\x00\x01\x03\x00\x01\x00\x00\x00' + \
-                                                            width.to_bytes(4, 'little') + \
-                                                            b'\x01\x03\x00\x01\x00\x00\x00' + \
-                                                            height.to_bytes(4, 'little') + \
-                                                            b'\x01\x12\x00\x03\x00\x00\x00\x01\x00\x01\x00\x00\x01\x17\x00\x04\x00\x00\x00\x01\x00\x00\x00J\x01\x1B\x00\x05\x00\x00\x00\x01\x00\x00\x00R\x01\x28\x00\x03\x00\x00\x00\x01\x00\x02\x00\x00'
+                                                tiff_header = (
+                                                    b"II*\x00\x08\x00\x00\x00\x0e\x00\x00\x01\x03\x00\x01\x00\x00\x00"
+                                                    + width.to_bytes(4, "little")
+                                                    + b"\x01\x03\x00\x01\x00\x00\x00"
+                                                    + height.to_bytes(4, "little")
+                                                    + b"\x01\x12\x00\x03\x00\x00\x00\x01\x00\x01\x00\x00\x01\x17\x00\x04\x00\x00\x00\x01\x00\x00\x00J\x01\x1b\x00\x05\x00\x00\x00\x01\x00\x00\x00R\x01\x28\x00\x03\x00\x00\x00\x01\x00\x02\x00\x00"
+                                                )
                                                 data = tiff_header + data
-                                            
+
                                             if self.save_images_locally:
-                                                final_path = (image_dir / img_filename).with_suffix('.tiff')
-                                                with open(final_path, 'wb') as f:
+                                                final_path = (
+                                                    image_dir / img_filename
+                                                ).with_suffix(".tiff")
+                                                with open(final_path, "wb") as f:
                                                     f.write(data)
                                                 image_data = str(final_path)
                                             else:
-                                                image_data = base64.b64encode(data).decode('utf-8')
+                                                image_data = base64.b64encode(
+                                                    data
+                                                ).decode("utf-8")
                                             success = True
-                                            image_format = 'tiff'
+                                            image_format = "tiff"
                                         except Exception as e:
                                             logger.error(f"CCITT save error: {str(e)}")
 
-                                    elif '/JPXDecode' in filters:
+                                    elif "/JPXDecode" in filters:
                                         # JPEG 2000
                                         try:
                                             if self.save_images_locally:
-                                                final_path = (image_dir / img_filename).with_suffix('.jp2')
-                                                with open(final_path, 'wb') as f:
+                                                final_path = (
+                                                    image_dir / img_filename
+                                                ).with_suffix(".jp2")
+                                                with open(final_path, "wb") as f:
                                                     f.write(data)
                                                 image_data = str(final_path)
                                             else:
-                                                image_data = base64.b64encode(data).decode('utf-8')
+                                                image_data = base64.b64encode(
+                                                    data
+                                                ).decode("utf-8")
                                             success = True
-                                            image_format = 'jpeg2000'
+                                            image_format = "jpeg2000"
                                         except Exception as e:
-                                            logger.error(f"JPEG2000 save error: {str(e)}")
+                                            logger.error(
+                                                f"JPEG2000 save error: {str(e)}"
+                                            )
 
                                     if success and image_data:
                                         image_info = {
@@ -366,122 +417,140 @@ class NaivePDFProcessorStrategy(PDFProcessorStrategy):
                                             "width": width,
                                             "height": height,
                                             "color_space": str(color_space),
-                                            "bits_per_component": xobj.get('/BitsPerComponent', 1)
+                                            "bits_per_component": xobj.get(
+                                                "/BitsPerComponent", 1
+                                            ),
                                         }
-                                        
+
                                         if self.save_images_locally:
                                             image_info["path"] = image_data
                                         else:
                                             image_info["data"] = image_data
-                                            
+
                                         images.append(image_info)
                                     else:
                                         # Fallback: Save raw data
                                         if self.save_images_locally:
-                                            final_path = (image_dir / img_filename).with_suffix('.bin')
-                                            with open(final_path, 'wb') as f:
+                                            final_path = (
+                                                image_dir / img_filename
+                                            ).with_suffix(".bin")
+                                            with open(final_path, "wb") as f:
                                                 f.write(data)
-                                            logger.warning(f"Saved raw image data to {final_path}")
+                                            logger.warning(
+                                                f"Saved raw image data to {final_path}"
+                                            )
                                         else:
-                                            image_data = base64.b64encode(data).decode('utf-8')
-                                            images.append({
-                                                "format": "bin",
-                                                "width": width,
-                                                "height": height,
-                                                "color_space": str(color_space),
-                                                "bits_per_component": xobj.get('/BitsPerComponent', 1),
-                                                "data": image_data
-                                            })
+                                            image_data = base64.b64encode(data).decode(
+                                                "utf-8"
+                                            )
+                                            images.append(
+                                                {
+                                                    "format": "bin",
+                                                    "width": width,
+                                                    "height": height,
+                                                    "color_space": str(color_space),
+                                                    "bits_per_component": xobj.get(
+                                                        "/BitsPerComponent", 1
+                                                    ),
+                                                    "data": image_data,
+                                                }
+                                            )
 
                                 except Exception as e:
                                     logger.error(f"Error processing image: {str(e)}")
         except Exception as e:
             logger.error(f"Image extraction error: {str(e)}")
-        
+
         return images
 
     def _extract_links(self, page) -> List[str]:
         links = []
-        if '/Annots' in page:
+        if "/Annots" in page:
             try:
-                for annot in page['/Annots']:
+                for annot in page["/Annots"]:
                     a = annot.get_object()
-                    if '/A' in a and '/URI' in a['/A']:
-                        links.append(a['/A']['/URI'])
+                    if "/A" in a and "/URI" in a["/A"]:
+                        links.append(a["/A"]["/URI"])
             except Exception as e:
                 print(f"Link error: {str(e)}")
         return links
 
-    def _extract_metadata(self, pdf_path: Path, reader = None) -> PDFMetadata:
-        # Import inside method to allow dependency to be optional 
+    def _extract_metadata(self, pdf_path: Path, reader=None) -> PDFMetadata:
+        # Import inside method to allow dependency to be optional
         if reader is None:
             try:
                 from pypdf import PdfReader
+
                 reader = PdfReader(pdf_path)
             except ImportError:
-                raise ImportError("pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'")
+                raise ImportError(
+                    "pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'"
+                )
 
         meta = reader.metadata or {}
-        created = self._parse_pdf_date(meta.get('/CreationDate', ''))
-        modified = self._parse_pdf_date(meta.get('/ModDate', ''))
-        
+        created = self._parse_pdf_date(meta.get("/CreationDate", ""))
+        modified = self._parse_pdf_date(meta.get("/ModDate", ""))
+
         return PDFMetadata(
-            title=meta.get('/Title'),
-            author=meta.get('/Author'),
-            producer=meta.get('/Producer'),
+            title=meta.get("/Title"),
+            author=meta.get("/Author"),
+            producer=meta.get("/Producer"),
             created=created,
             modified=modified,
             pages=len(reader.pages),
             encrypted=reader.is_encrypted,
-            file_size=pdf_path.stat().st_size
+            file_size=pdf_path.stat().st_size,
         )
 
     def _parse_pdf_date(self, date_str: str) -> Optional[datetime]:
         try:
-            match = re.match(r'D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})', date_str)
+            match = re.match(r"D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})", date_str)
             if not match:
                 return None
-                
+
             return datetime(
                 year=int(match[1]),
                 month=int(match[2]),
                 day=int(match[3]),
                 hour=int(match[4]),
                 minute=int(match[5]),
-                second=int(match[6])
+                second=int(match[6]),
             )
         except:
             return None
+
 
 # Usage example
 if __name__ == "__main__":
     import json
     from pathlib import Path
-    
+
     try:
         # Import pypdf only when running the file directly
         import pypdf
         from pypdf import PdfReader
     except ImportError:
-        print("pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'")
+        print(
+            "pypdf is required for PDF processing. Install with 'pip install crawl4ai[pdf]'"
+        )
         exit(1)
-        
+
     current_dir = Path(__file__).resolve().parent
-    pdf_path = f'{current_dir}/test.pdf'
-    
+    pdf_path = f"{current_dir}/test.pdf"
+
     strategy = NaivePDFProcessorStrategy()
     result = strategy.process(Path(pdf_path))
-    
+
     # Convert to JSON
     json_output = asdict(result)
     print(json.dumps(json_output, indent=2, default=str))
-    
-    with open(f'{current_dir}/test.html', 'w') as f:
+
+    with open(f"{current_dir}/test.html", "w") as f:
         for page in result.pages:
             f.write(f'<h1>Page {page["page_number"]}</h1>')
-            f.write(page['html'])
-    with open(f'{current_dir}/test.md', 'w') as f:
+            f.write(page["html"])
+    with open(f"{current_dir}/test.md", "w") as f:
         for page in result.pages:
             f.write(f'# Page {page["page_number"]}\n\n')
-            f.write(clean_pdf_text(page["page_number"], page['raw_text']))
-            f.write('\n\n')
+            f.write(clean_pdf_text(page["page_number"], page["raw_text"]))
+            f.write("\n\n")

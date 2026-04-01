@@ -5,8 +5,8 @@ never applied. Only target_elements worked.
 """
 
 import pytest
-from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
 
+from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
 
 SAMPLE_HTML = """
 <html>

@@ -10,14 +10,15 @@ Covers:
 - usage object receives correct cumulative totals
 """
 
-import asyncio
 import json
-import pytest
 from dataclasses import dataclass
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from crawl4ai.extraction_strategy import JsonElementExtractionStrategy, JsonCssExtractionStrategy
+import pytest
+
+from crawl4ai.extraction_strategy import (JsonCssExtractionStrategy,
+                                          JsonElementExtractionStrategy)
 from crawl4ai.models import TokenUsage
 
 # The functions are imported lazily inside method bodies via `from .utils import ...`
@@ -29,7 +30,10 @@ PATCH_TARGET = "crawl4ai.utils.aperform_completion_with_backoff"
 # Helpers: fake LLM response builder
 # ---------------------------------------------------------------------------
 
-def _make_llm_response(content: str, prompt_tokens: int = 100, completion_tokens: int = 50):
+
+def _make_llm_response(
+    content: str, prompt_tokens: int = 100, completion_tokens: int = 50
+):
     """Build a fake litellm-style response with .usage and .choices."""
     return SimpleNamespace(
         usage=SimpleNamespace(
@@ -39,11 +43,7 @@ def _make_llm_response(content: str, prompt_tokens: int = 100, completion_tokens
             completion_tokens_details=None,
             prompt_tokens_details=None,
         ),
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(content=content)
-            )
-        ],
+        choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
     )
 
 
@@ -80,6 +80,7 @@ BAD_SCHEMA = {
     ],
 }
 
+
 # Fake LLMConfig
 @dataclass
 class FakeLLMConfig:
@@ -94,6 +95,7 @@ class FakeLLMConfig:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestGenerateSchemaUsage:
     """Test suite for usage tracking in generate_schema / agenerate_schema."""
@@ -178,8 +180,12 @@ class TestGenerateSchemaUsage:
 
         # First call returns bad schema (fails validation), second returns good schema
         responses = [
-            _make_llm_response(json.dumps(BAD_SCHEMA), prompt_tokens=300, completion_tokens=100),
-            _make_llm_response(json.dumps(VALID_SCHEMA), prompt_tokens=350, completion_tokens=120),
+            _make_llm_response(
+                json.dumps(BAD_SCHEMA), prompt_tokens=300, completion_tokens=100
+            ),
+            _make_llm_response(
+                json.dumps(VALID_SCHEMA), prompt_tokens=350, completion_tokens=120
+            ),
         ]
         call_count = 0
 
@@ -263,15 +269,18 @@ class TestGenerateSchemaUsage:
 
         infer_resp = _make_llm_response(
             '{"title": "x", "price": "y"}',
-            prompt_tokens=50, completion_tokens=20,
+            prompt_tokens=50,
+            completion_tokens=20,
         )
         bad_resp = _make_llm_response(
             json.dumps(BAD_SCHEMA),
-            prompt_tokens=300, completion_tokens=100,
+            prompt_tokens=300,
+            completion_tokens=100,
         )
         good_resp = _make_llm_response(
             json.dumps(VALID_SCHEMA),
-            prompt_tokens=400, completion_tokens=150,
+            prompt_tokens=400,
+            completion_tokens=150,
         )
 
         call_count = 0
@@ -301,9 +310,9 @@ class TestGenerateSchemaUsage:
 
         # 3 calls total
         assert call_count == 3
-        assert usage.prompt_tokens == 750    # 50 + 300 + 400
+        assert usage.prompt_tokens == 750  # 50 + 300 + 400
         assert usage.completion_tokens == 270  # 20 + 100 + 150
-        assert usage.total_tokens == 1020    # 70 + 400 + 550
+        assert usage.total_tokens == 1020  # 70 + 400 + 550
 
     @pytest.mark.asyncio
     async def test_json_parse_failure_retry_accumulates(self):
@@ -313,11 +322,13 @@ class TestGenerateSchemaUsage:
         # First response is not valid JSON, second is valid
         bad_json_resp = _make_llm_response(
             "this is not json {{{",
-            prompt_tokens=200, completion_tokens=60,
+            prompt_tokens=200,
+            completion_tokens=60,
         )
         good_resp = _make_llm_response(
             json.dumps(VALID_SCHEMA),
-            prompt_tokens=250, completion_tokens=80,
+            prompt_tokens=250,
+            completion_tokens=80,
         )
 
         call_count = 0
@@ -344,7 +355,7 @@ class TestGenerateSchemaUsage:
 
         assert result["name"] == "products"
         # Both calls tracked: even the one that returned bad JSON
-        assert usage.prompt_tokens == 450   # 200 + 250
+        assert usage.prompt_tokens == 450  # 200 + 250
         assert usage.completion_tokens == 140  # 60 + 80
         assert usage.total_tokens == 590
 
@@ -388,9 +399,9 @@ class TestGenerateSchemaUsage:
                 usage=usage,
             )
 
-        assert usage.prompt_tokens == 1200    # 1000 + 200
+        assert usage.prompt_tokens == 1200  # 1000 + 200
         assert usage.completion_tokens == 580  # 500 + 80
-        assert usage.total_tokens == 1780     # 1500 + 280
+        assert usage.total_tokens == 1780  # 1500 + 280
 
     def test_sync_wrapper_passes_usage(self):
         """The sync generate_schema forwards usage to agenerate_schema."""
@@ -551,9 +562,9 @@ class TestGenerateSchemaUsage:
             )
 
         # Returns best-effort (last schema), but all 3 calls tracked
-        assert usage.prompt_tokens == 600    # 200 * 3
+        assert usage.prompt_tokens == 600  # 200 * 3
         assert usage.completion_tokens == 240  # 80 * 3
-        assert usage.total_tokens == 840     # 280 * 3
+        assert usage.total_tokens == 840  # 280 * 3
 
 
 class TestInferTargetJsonUsage:

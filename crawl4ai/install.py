@@ -1,13 +1,15 @@
-import subprocess
-import sys
 import asyncio
-from .async_logger import AsyncLogger, LogLevel
-from pathlib import Path
 import os
 import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from .async_logger import AsyncLogger, LogLevel
 
 # Initialize logger
 logger = AsyncLogger(log_level=LogLevel.DEBUG, verbose=True)
+
 
 def setup_home_directory():
     """Set up the .crawl4ai folder structure in the user's home directory."""
@@ -33,11 +35,12 @@ def setup_home_directory():
     cache_folder.mkdir(exist_ok=True)
     for folder in content_folders:
         (crawl4ai_folder / folder).mkdir(exist_ok=True)
-    
+
     # If config file does not exist, create it
     if not crawl4ai_config.exists():
         with open(crawl4ai_config, "w") as f:
             f.write("")
+
 
 def post_install():
     """
@@ -49,11 +52,11 @@ def post_install():
     setup_home_directory()
 
     # Check environment variable to conditionally skip Playwright install
-    run_mode = os.getenv('CRAWL4AI_MODE')
-    if run_mode == 'api':
+    run_mode = os.getenv("CRAWL4AI_MODE")
+    if run_mode == "api":
         logger.warning(
             "CRAWL4AI_MODE=api detected. Skipping Playwright browser installation.",
-            tag="SETUP"
+            tag="SETUP",
         )
     else:
         # Proceed with installation only if mode is not 'api'
@@ -63,7 +66,8 @@ def post_install():
     # TODO: Will be added in the future
     # setup_builtin_browser()
     logger.success("Post-installation setup completed!", tag="COMPLETE")
-    
+
+
 def setup_builtin_browser():
     """Set up a builtin browser for use with Crawl4AI"""
     try:
@@ -72,14 +76,18 @@ def setup_builtin_browser():
         logger.success("Builtin browser setup completed!", tag="COMPLETE")
     except Exception as e:
         logger.warning(f"Failed to set up builtin browser: {e}")
-        logger.warning("You can manually set up a builtin browser using 'crawl4ai-doctor builtin-browser-start'")
-    
+        logger.warning(
+            "You can manually set up a builtin browser using 'crawl4ai-doctor builtin-browser-start'"
+        )
+
+
 async def _setup_builtin_browser():
     try:
         # Import BrowserProfiler here to avoid circular imports
         from .browser_profiler import BrowserProfiler
+
         profiler = BrowserProfiler(logger=logger)
-        
+
         # Launch the builtin browser
         cdp_url = await profiler.launch_builtin_browser(headless=True)
         if cdp_url:
@@ -119,7 +127,7 @@ def install_playwright():
         logger.warning(
             f"Please run '{sys.executable} -m playwright install --with-deps' manually after the installation."
         )
-    
+
     # Install Patchright browsers for undetected browser support
     logger.info("Installing Patchright browsers for undetected mode...", tag="INIT")
     try:
@@ -168,12 +176,8 @@ async def run_doctor():
     """Test if Crawl4AI is working properly"""
     logger.info("Running Crawl4AI health check...", tag="INIT")
     try:
-        from .async_webcrawler import (
-            AsyncWebCrawler,
-            BrowserConfig,
-            CrawlerRunConfig,
-            CacheMode,
-        )
+        from .async_webcrawler import (AsyncWebCrawler, BrowserConfig,
+                                       CacheMode, CrawlerRunConfig)
 
         browser_config = BrowserConfig(
             headless=True,

@@ -8,11 +8,12 @@ RuntimeError messages when self.browser is None, distinguishing between:
 """
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
-from crawl4ai.browser_manager import BrowserManager
+import pytest
+
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+from crawl4ai.browser_manager import BrowserManager
 
 
 @pytest.fixture
@@ -30,6 +31,7 @@ def manager(browser_config):
 
 
 # ── Guard raises RuntimeError (not AttributeError) ─────────────────────
+
 
 class TestBrowserNoneGuard:
     """Verify that create_browser_context raises RuntimeError when browser is None."""
@@ -56,6 +58,7 @@ class TestBrowserNoneGuard:
 
 
 # ── Correct error message based on cause ────────────────────────────────
+
 
 class TestErrorMessageAccuracy:
     """Verify error messages correctly identify why browser is None."""
@@ -100,6 +103,7 @@ class TestErrorMessageAccuracy:
 
 # ── Browser available (no guard triggered) ──────────────────────────────
 
+
 class TestBrowserAvailable:
     """Verify create_browser_context works normally when browser is available."""
 
@@ -129,6 +133,7 @@ class TestBrowserAvailable:
 
 
 # ── Simulate Docker race condition scenario ─────────────────────────────
+
 
 class TestDockerRaceCondition:
     """Simulate the scenario from issue #1842: browser becomes None during use."""

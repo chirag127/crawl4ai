@@ -1,25 +1,30 @@
+import base64
+import logging
+import os
+import time
 from abc import ABC, abstractmethod
+from io import BytesIO
+from pathlib import Path
+from typing import Callable
+
+import requests
+from PIL import Image, ImageDraw, ImageFont
 from selenium import webdriver
+from selenium.common.exceptions import (InvalidArgumentException,
+                                        WebDriverException)
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import InvalidArgumentException, WebDriverException
+from selenium.webdriver.support.ui import WebDriverWait
+
+from .config import *
+from .utils import *
+
 # from selenium.webdriver.chrome.service import Service as ChromeService
 # from webdriver_manager.chrome import ChromeDriverManager
 # from urllib3.exceptions import MaxRetryError
 
-from .config import *
-import logging, time
-import base64
-from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
-from typing import Callable
-import requests
-import os
-from pathlib import Path
-from .utils import *
 
 logger = logging.getLogger("selenium.webdriver.remote.remote_connection")
 logger.setLevel(logging.WARNING)

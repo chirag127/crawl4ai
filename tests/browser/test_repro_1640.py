@@ -20,8 +20,8 @@ Exit code 0 = all tests pass. Exit code 1 = regression found.
 """
 
 import asyncio
-import sys
 import os
+import sys
 import time
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -48,13 +48,13 @@ async def test_bug1_multi_config_race():
     Bug 1 fix: idle sigs (refcount=0) must NOT be added to _pending_cleanup.
     They should be cleaned up immediately during the version bump.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: Bug 1 — idle sig must not get stuck in _pending_cleanup")
-    print("="*70)
+    print("=" * 70)
 
     config = BrowserConfig(
         headless=True,
-        extra_args=['--no-sandbox', '--disable-gpu'],
+        extra_args=["--no-sandbox", "--disable-gpu"],
         max_pages_before_recycle=3,
     )
     bm = BrowserManager(config)
@@ -82,16 +82,18 @@ async def test_bug1_multi_config_race():
         print(f"  _pending_cleanup sigs: {list(bm._pending_cleanup.keys())}")
 
         # sig_a (refcount=0) must NOT be in _pending_cleanup
-        check("sig_a NOT in _pending_cleanup",
-              sig_a not in bm._pending_cleanup)
+        check("sig_a NOT in _pending_cleanup", sig_a not in bm._pending_cleanup)
 
         # sig_a should have been cleaned up from _context_refcounts
-        check("sig_a cleaned from _context_refcounts",
-              sig_a not in bm._context_refcounts)
+        check(
+            "sig_a cleaned from _context_refcounts", sig_a not in bm._context_refcounts
+        )
 
         # sig_b (refcount>0) SHOULD be in _pending_cleanup (it will drain naturally)
-        check("sig_b IS in _pending_cleanup (active, will drain)",
-              sig_b in bm._pending_cleanup)
+        check(
+            "sig_b IS in _pending_cleanup (active, will drain)",
+            sig_b in bm._pending_cleanup,
+        )
 
         # Release B pages → sig_b drains → cleaned up
         await bm.release_page_with_context(page_b1)
@@ -99,11 +101,9 @@ async def test_bug1_multi_config_race():
         await bm.release_page_with_context(page_b2)
         await page_b2.close()
 
-        check("sig_b cleaned after release",
-              sig_b not in bm._pending_cleanup)
+        check("sig_b cleaned after release", sig_b not in bm._pending_cleanup)
 
-        check("_pending_cleanup is empty",
-              len(bm._pending_cleanup) == 0)
+        check("_pending_cleanup is empty", len(bm._pending_cleanup) == 0)
 
     finally:
         await bm.close()
@@ -120,13 +120,13 @@ async def test_bug2_release_always_called():
     after browser crash, and that the fixed finally block pattern
     always decrements the refcount.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: Bug 2 — release_page_with_context must work after browser crash")
-    print("="*70)
+    print("=" * 70)
 
     config = BrowserConfig(
         headless=True,
-        extra_args=['--no-sandbox', '--disable-gpu'],
+        extra_args=["--no-sandbox", "--disable-gpu"],
         max_pages_before_recycle=5,
     )
     bm = BrowserManager(config)
@@ -139,8 +139,7 @@ async def test_bug2_release_always_called():
         sig = bm._page_to_sig.get(page)
         print(f"  sig refcount before crash: {bm._context_refcounts.get(sig)}")
 
-        check("refcount is 1 before crash",
-              bm._context_refcounts.get(sig) == 1)
+        check("refcount is 1 before crash", bm._context_refcounts.get(sig) == 1)
 
         # Simulate browser crash
         if bm.browser:
@@ -157,11 +156,9 @@ async def test_bug2_release_always_called():
         refcount_after = bm._context_refcounts.get(sig, 0)
         print(f"  sig refcount after crash + release: {refcount_after}")
 
-        check("refcount decremented to 0 after crash + release",
-              refcount_after == 0)
+        check("refcount decremented to 0 after crash + release", refcount_after == 0)
 
-        check("page removed from _page_to_sig",
-              page not in bm._page_to_sig)
+        check("page removed from _page_to_sig", page not in bm._page_to_sig)
 
     finally:
         bm.browser = None
@@ -179,13 +176,13 @@ async def test_bug3_safety_cap_timeout():
     When stuck entries accumulate, the timeout fires and force-cleans
     entries with refcount 0, preventing permanent deadlock.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: Bug 3 — safety cap wait must not block forever")
-    print("="*70)
+    print("=" * 70)
 
     config = BrowserConfig(
         headless=True,
-        extra_args=['--no-sandbox', '--disable-gpu'],
+        extra_args=["--no-sandbox", "--disable-gpu"],
         max_pages_before_recycle=2,
     )
     bm = BrowserManager(config)
@@ -210,19 +207,18 @@ async def test_bug3_safety_cap_timeout():
         # The fix: get_page should NOT block forever.
         # The 30s timeout will fire, force-clean stuck entries, and proceed.
         # We use a 35s test timeout to allow the 30s internal timeout to fire.
-        print(f"  Calling get_page() — should unblock after ~30s timeout...")
+        print("  Calling get_page() — should unblock after ~30s timeout...")
         start = time.monotonic()
         try:
-            page, ctx = await asyncio.wait_for(
-                bm.get_page(crawl_config),
-                timeout=35.0
-            )
+            page, ctx = await asyncio.wait_for(bm.get_page(crawl_config), timeout=35.0)
             elapsed = time.monotonic() - start
             print(f"  get_page() returned after {elapsed:.1f}s")
 
             check("get_page() did NOT deadlock (returned within 35s)", True)
-            check("stuck entries were force-cleaned",
-                  len(bm._pending_cleanup) < bm._max_pending_browsers)
+            check(
+                "stuck entries were force-cleaned",
+                len(bm._pending_cleanup) < bm._max_pending_browsers,
+            )
 
             await bm.release_page_with_context(page)
             await page.close()
@@ -243,13 +239,13 @@ async def test_real_concurrent_crawl():
     Integration test: run many concurrent crawls with recycling
     and verify no stuck entries or deadlocks.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: Real concurrent crawls with recycling")
-    print("="*70)
+    print("=" * 70)
 
     config = BrowserConfig(
         headless=True,
-        extra_args=['--no-sandbox', '--disable-gpu'],
+        extra_args=["--no-sandbox", "--disable-gpu"],
         max_pages_before_recycle=10,
     )
     bm = BrowserManager(config)
@@ -268,8 +264,7 @@ async def test_real_concurrent_crawl():
             try:
                 crawl_config = CrawlerRunConfig(magic=True, cache_mode="bypass")
                 page, ctx = await asyncio.wait_for(
-                    bm.get_page(crawl_config),
-                    timeout=30.0
+                    bm.get_page(crawl_config), timeout=30.0
                 )
 
                 try:
@@ -289,9 +284,11 @@ async def test_real_concurrent_crawl():
 
                 completed += 1
                 if completed % 20 == 0:
-                    print(f"  [{completed}/{TOTAL}] version={bm._browser_version} "
-                          f"pending={len(bm._pending_cleanup)} "
-                          f"pages_served={bm._pages_served}")
+                    print(
+                        f"  [{completed}/{TOTAL}] version={bm._browser_version} "
+                        f"pending={len(bm._pending_cleanup)} "
+                        f"pages_served={bm._pages_served}"
+                    )
 
             except asyncio.TimeoutError:
                 errors += 1
@@ -306,7 +303,9 @@ async def test_real_concurrent_crawl():
     await asyncio.gather(*tasks)
     elapsed = time.monotonic() - start
 
-    print(f"\n  Results: {completed}/{TOTAL} completed, {errors} errors, {elapsed:.1f}s")
+    print(
+        f"\n  Results: {completed}/{TOTAL} completed, {errors} errors, {elapsed:.1f}s"
+    )
 
     stuck = [s for s in bm._pending_cleanup if bm._context_refcounts.get(s, 0) == 0]
 
@@ -323,13 +322,13 @@ async def test_multi_config_concurrent():
     Integration test: concurrent crawls with DIFFERENT configs to
     exercise the multi-sig path that triggered Bug 1.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: Multi-config concurrent crawls")
-    print("="*70)
+    print("=" * 70)
 
     config = BrowserConfig(
         headless=True,
-        extra_args=['--no-sandbox', '--disable-gpu'],
+        extra_args=["--no-sandbox", "--disable-gpu"],
         max_pages_before_recycle=5,
     )
     bm = BrowserManager(config)
@@ -353,8 +352,7 @@ async def test_multi_config_concurrent():
             try:
                 crawl_config = configs[i % len(configs)]
                 page, ctx = await asyncio.wait_for(
-                    bm.get_page(crawl_config),
-                    timeout=30.0
+                    bm.get_page(crawl_config), timeout=30.0
                 )
 
                 try:
@@ -390,7 +388,9 @@ async def test_multi_config_concurrent():
     stuck = [s for s in bm._pending_cleanup if bm._context_refcounts.get(s, 0) == 0]
 
     print(f"\n  Results: {completed}/{TOTAL}, {errors} errors, {elapsed:.1f}s")
-    print(f"  Final: version={bm._browser_version} pending={len(bm._pending_cleanup)} stuck={len(stuck)}")
+    print(
+        f"  Final: version={bm._browser_version} pending={len(bm._pending_cleanup)} stuck={len(stuck)}"
+    )
 
     check(f"all {TOTAL} multi-config crawls completed", completed == TOTAL)
     check("no stuck entries", len(stuck) == 0)
@@ -400,9 +400,9 @@ async def test_multi_config_concurrent():
 
 
 async def main():
-    print("="*70)
+    print("=" * 70)
     print("PR #1640 Regression Tests")
-    print("="*70)
+    print("=" * 70)
 
     await test_bug2_release_always_called()
     await test_bug1_multi_config_race()
@@ -410,12 +410,12 @@ async def main():
     await test_real_concurrent_crawl()
     await test_multi_config_concurrent()
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     if FAIL == 0:
         print(f"ALL {PASS} CHECKS PASSED")
     else:
         print(f"FAILED: {FAIL} checks failed, {PASS} passed")
-    print("="*70)
+    print("=" * 70)
 
     sys.exit(1 if FAIL > 0 else 0)
 

@@ -20,8 +20,10 @@ Or run directly:
 
 import asyncio
 import os
+
 import pytest
 import requests
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
 # Configuration
@@ -40,9 +42,7 @@ def is_cdp_service_available():
 def create_browser():
     """Create a browser via CDP service API."""
     resp = requests.post(
-        f"{CDP_SERVICE_URL}/v1/browsers",
-        json={"headless": True},
-        timeout=10
+        f"{CDP_SERVICE_URL}/v1/browsers", json={"headless": True}, timeout=10
     )
     resp.raise_for_status()
     return resp.json()
@@ -68,7 +68,7 @@ def delete_browser(browser_id):
 # Skip all tests if CDP service is not available
 pytestmark = pytest.mark.skipif(
     not is_cdp_service_available(),
-    reason=f"CDP service not available at {CDP_SERVICE_URL}"
+    reason=f"CDP service not available at {CDP_SERVICE_URL}",
 )
 
 
@@ -134,7 +134,9 @@ class TestCDPCleanupOnClose:
 
             # Browser should still exist with same PID
             info_after = get_browser_info(browser_id)
-            assert info_after is not None, "Browser was terminated but should only disconnect"
+            assert (
+                info_after is not None
+            ), "Browser was terminated but should only disconnect"
             assert info_after["pid"] == pid_before, "Browser PID changed unexpectedly"
         finally:
             delete_browser(browser_id)
@@ -250,11 +252,26 @@ if __name__ == "__main__":
         print("=" * 60)
 
         tests = [
-            ("WebSocket URL handling", TestCDPWebSocketURL().test_websocket_url_skips_http_verification),
-            ("Browser survives after cleanup", TestCDPCleanupOnClose().test_browser_survives_after_cleanup_close),
-            ("Sequential connections", TestCDPBrowserReuse().test_sequential_connections_same_browser),
-            ("No user wait needed", TestCDPBrowserReuse().test_no_user_wait_needed_between_connections),
-            ("HTTP URL with browser_id", TestCDPBackwardCompatibility().test_http_url_with_browser_id_works),
+            (
+                "WebSocket URL handling",
+                TestCDPWebSocketURL().test_websocket_url_skips_http_verification,
+            ),
+            (
+                "Browser survives after cleanup",
+                TestCDPCleanupOnClose().test_browser_survives_after_cleanup_close,
+            ),
+            (
+                "Sequential connections",
+                TestCDPBrowserReuse().test_sequential_connections_same_browser,
+            ),
+            (
+                "No user wait needed",
+                TestCDPBrowserReuse().test_no_user_wait_needed_between_connections,
+            ),
+            (
+                "HTTP URL with browser_id",
+                TestCDPBackwardCompatibility().test_http_url_with_browser_id_works,
+            ),
         ]
 
         results = []
@@ -262,7 +279,7 @@ if __name__ == "__main__":
             print(f"\n--- {name} ---")
             try:
                 await test_func()
-                print(f"PASS")
+                print("PASS")
                 results.append((name, True))
             except Exception as e:
                 print(f"FAIL: {e}")

@@ -1,5 +1,6 @@
 import asyncio
-from crawl4ai import AsyncWebCrawler, AsyncPlaywrightCrawlerStrategy
+
+from crawl4ai import AsyncPlaywrightCrawlerStrategy, AsyncWebCrawler
 
 
 async def main():
@@ -16,9 +17,9 @@ async def main():
 
     # Example 2: Setting language before crawling
     crawler2 = AsyncWebCrawler()
-    crawler2.crawler_strategy.headers[
-        "Accept-Language"
-    ] = "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7"
+    crawler2.crawler_strategy.headers["Accept-Language"] = (
+        "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7"
+    )
     result2 = await crawler2.arun("https://www.example.com")
     print("Example 2 result:", result2.extracted_content[:100])
 

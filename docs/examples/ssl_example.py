@@ -2,7 +2,8 @@
 
 import asyncio
 import os
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
+
+from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 
 # Create tmp directory if it doesn't exist
 parent_dir = os.path.dirname(

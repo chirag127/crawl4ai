@@ -1,5 +1,6 @@
 # File: async_webcrawler_multiple_urls_example.py
-import os, sys
+import os
+import sys
 
 # append 2 parent directories to sys.path to import crawl4ai
 parent_dir = os.path.dirname(
@@ -8,6 +9,7 @@ parent_dir = os.path.dirname(
 sys.path.append(parent_dir)
 
 import asyncio
+
 from crawl4ai import AsyncWebCrawler
 
 

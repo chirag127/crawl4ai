@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 demo_docker_polling.py
@@ -13,26 +12,39 @@ functions, coloured status lines).  Adjust BASE_URL as needed.
 Run:  python demo_docker_polling.py
 """
 
-import asyncio, json, os, time, urllib.parse
-from typing import Dict, List
+import asyncio
+import json
+import os
+import time
+from typing import Dict
 
 import httpx
 from rich.console import Console
-from rich.panel   import Panel
-from rich.syntax  import Syntax
+from rich.panel import Panel
+from rich.syntax import Syntax
 
-console   = Console()
-BASE_URL  = os.getenv("BASE_URL", "http://localhost:11234")
+console = Console()
+BASE_URL = os.getenv("BASE_URL", "http://localhost:11234")
 SIMPLE_URL = "https://example.org"
-LINKS_URL  = "https://httpbin.org/links/10/1"
+LINKS_URL = "https://httpbin.org/links/10/1"
 
 # --- helpers --------------------------------------------------------------
 
 
 def print_payload(payload: Dict):
-    console.print(Panel(Syntax(json.dumps(payload, indent=2),
-                               "json", theme="monokai", line_numbers=False),
-                        title="Payload", border_style="cyan", expand=False))
+    console.print(
+        Panel(
+            Syntax(
+                json.dumps(payload, indent=2),
+                "json",
+                theme="monokai",
+                line_numbers=False,
+            ),
+            title="Payload",
+            border_style="cyan",
+            expand=False,
+        )
+    )
 
 
 async def check_server_health(client: httpx.AsyncClient) -> bool:
@@ -47,8 +59,12 @@ async def check_server_health(client: httpx.AsyncClient) -> bool:
     return False
 
 
-async def poll_for_result(client: httpx.AsyncClient, task_id: str,
-                          poll_interval: float = 1.5, timeout: float = 90.0):
+async def poll_for_result(
+    client: httpx.AsyncClient,
+    task_id: str,
+    poll_interval: float = 1.5,
+    timeout: float = 90.0,
+):
     """Hit /crawl/job/{id} until COMPLETED/FAILED or timeout."""
     start = time.time()
     while True:
@@ -69,10 +85,11 @@ async def poll_for_result(client: httpx.AsyncClient, task_id: str,
 async def demo_poll_single_url(client: httpx.AsyncClient):
     payload = {
         "urls": [SIMPLE_URL],
-        "browser_config": {"type": "BrowserConfig",
-                           "params": {"headless": True}},
-        "crawler_config": {"type": "CrawlerRunConfig",
-                           "params": {"cache_mode": "BYPASS"}}
+        "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
+        "crawler_config": {
+            "type": "CrawlerRunConfig",
+            "params": {"cache_mode": "BYPASS"},
+        },
     }
 
     console.rule("[bold blue]Demo A: /crawl/job Single URL[/]", style="blue")
@@ -88,9 +105,13 @@ async def demo_poll_single_url(client: httpx.AsyncClient):
     # poll
     console.print("Polling…")
     result = await poll_for_result(client, task_id)
-    console.print(Panel(Syntax(json.dumps(result, indent=2),
-                               "json", theme="fruity"),
-                        title="Final result", border_style="green"))
+    console.print(
+        Panel(
+            Syntax(json.dumps(result, indent=2), "json", theme="fruity"),
+            title="Final result",
+            border_style="green",
+        )
+    )
     if result["status"] == "COMPLETED":
         console.print("[green]✅ Crawl succeeded[/]")
     else:
@@ -100,14 +121,14 @@ async def demo_poll_single_url(client: httpx.AsyncClient):
 async def demo_poll_multi_url(client: httpx.AsyncClient):
     payload = {
         "urls": [SIMPLE_URL, LINKS_URL],
-        "browser_config": {"type": "BrowserConfig",
-                           "params": {"headless": True}},
-        "crawler_config": {"type": "CrawlerRunConfig",
-                           "params": {"cache_mode": "BYPASS"}}
+        "browser_config": {"type": "BrowserConfig", "params": {"headless": True}},
+        "crawler_config": {
+            "type": "CrawlerRunConfig",
+            "params": {"cache_mode": "BYPASS"},
+        },
     }
 
-    console.rule("[bold magenta]Demo B: /crawl/job Multi-URL[/]",
-                 style="magenta")
+    console.rule("[bold magenta]Demo B: /crawl/job Multi-URL[/]", style="magenta")
     print_payload(payload)
 
     resp = await client.post("/crawl/job", json=payload)
@@ -118,12 +139,17 @@ async def demo_poll_multi_url(client: httpx.AsyncClient):
 
     console.print("Polling…")
     result = await poll_for_result(client, task_id)
-    console.print(Panel(Syntax(json.dumps(result, indent=2),
-                               "json", theme="fruity"),
-                        title="Final result", border_style="green"))
+    console.print(
+        Panel(
+            Syntax(json.dumps(result, indent=2), "json", theme="fruity"),
+            title="Final result",
+            border_style="green",
+        )
+    )
     if result["status"] == "COMPLETED":
         console.print(
-            f"[green]✅ {len(json.loads(result['result'])['results'])} URLs crawled[/]")
+            f"[green]✅ {len(json.loads(result['result'])['results'])} URLs crawled[/]"
+        )
     else:
         console.print("[red]❌ Crawl failed[/]")
 

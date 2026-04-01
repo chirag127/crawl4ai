@@ -3,6 +3,7 @@ Simple demonstration of the DFS deep crawler visiting multiple pages.
 
 Run with:  python docs/examples/dfs_crawl_demo.py
 """
+
 import asyncio
 
 from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig

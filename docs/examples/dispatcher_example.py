@@ -1,19 +1,13 @@
 import asyncio
 import time
+
 from rich import print
 from rich.table import Table
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    MemoryAdaptiveDispatcher,
-    SemaphoreDispatcher,
-    RateLimiter,
-    CrawlerMonitor,
-    DisplayMode,
-    CacheMode,
-    LXMLWebScrapingStrategy,
-)
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerMonitor, CrawlerRunConfig, DisplayMode,
+                      LXMLWebScrapingStrategy, MemoryAdaptiveDispatcher,
+                      RateLimiter, SemaphoreDispatcher)
 
 
 async def memory_adaptive(urls, browser_config, run_config):
@@ -114,7 +108,9 @@ def create_performance_table(results):
 async def main():
     urls = [f"https://example.com/page{i}" for i in range(1, 40)]
     browser_config = BrowserConfig(headless=True, verbose=False)
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, scraping_strategy=LXMLWebScrapingStrategy())
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS, scraping_strategy=LXMLWebScrapingStrategy()
+    )
 
     results = {
         "Memory Adaptive": await memory_adaptive(urls, browser_config, run_config),

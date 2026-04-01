@@ -1,12 +1,14 @@
-import os
 import asyncio
-from pathlib import Path
-import aiosqlite
-from typing import Optional
-import xxhash
-import aiofiles
+import os
 import shutil
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+import aiofiles
+import aiosqlite
+import xxhash
+
 from .async_logger import AsyncLogger, LogLevel
 
 # Initialize logger
@@ -64,10 +66,8 @@ class DatabaseMigration:
         try:
             async with aiosqlite.connect(self.db_path) as db:
                 # Get all rows
-                async with db.execute(
-                    """SELECT url, html, cleaned_html, markdown, 
-                       extracted_content, screenshot FROM crawled_data"""
-                ) as cursor:
+                async with db.execute("""SELECT url, html, cleaned_html, markdown, 
+                       extracted_content, screenshot FROM crawled_data""") as cursor:
                     rows = await cursor.fetchall()
 
                 migrated_count = 0

@@ -7,21 +7,18 @@ Each section includes detailed examples and explanations of the new capabilities
 """
 
 import asyncio
-import os
 import json
+import os
 import re
 from typing import List
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    CacheMode,
-    LLMExtractionStrategy,
-    JsonCssExtractionStrategy,
-)
+
+from bs4 import BeautifulSoup
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, JsonCssExtractionStrategy,
+                      LLMExtractionStrategy)
 from crawl4ai.content_filter_strategy import RelevantContentFilter
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
-from bs4 import BeautifulSoup
 
 # Sample HTML for demonstrations
 SAMPLE_HTML = """
@@ -371,8 +368,9 @@ async def demo_input_formats():
     # Use raw:// prefix to pass HTML content directly
     url = f"raw://{dummy_html}"
 
-    from pydantic import BaseModel, Field
     from typing import List, Optional
+
+    from pydantic import BaseModel, Field
 
     # Define our schema using Pydantic
     class JobRequirement(BaseModel):

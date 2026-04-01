@@ -5,4 +5,3 @@ __version__ = "0.8.6"
 
 # For nightly builds, this gets set during build process
 __nightly_version__ = None
-

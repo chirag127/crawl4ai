@@ -13,25 +13,28 @@ Validation Strategy:
 5. Otherwise → cache is STALE, need full recrawl
 """
 
-import httpx
 from dataclasses import dataclass
-from typing import Optional, Tuple
 from enum import Enum
+from typing import Optional, Tuple
+
+import httpx
 
 from .utils import compute_head_fingerprint
 
 
 class CacheValidationResult(Enum):
     """Result of cache validation check."""
-    FRESH = "fresh"       # Content unchanged, use cache
-    STALE = "stale"       # Content changed, need recrawl
-    UNKNOWN = "unknown"   # Couldn't determine, need recrawl
-    ERROR = "error"       # Request failed, use cache as fallback
+
+    FRESH = "fresh"  # Content unchanged, use cache
+    STALE = "stale"  # Content changed, need recrawl
+    UNKNOWN = "unknown"  # Couldn't determine, need recrawl
+    ERROR = "error"  # Request failed, use cache as fallback
 
 
 @dataclass
 class ValidationResult:
     """Detailed result of a cache validation attempt."""
+
     status: CacheValidationResult
     new_etag: Optional[str] = None
     new_last_modified: Optional[str] = None
@@ -76,7 +79,7 @@ class CacheValidator:
                 http2=True,
                 timeout=self.timeout,
                 follow_redirects=True,
-                headers={"User-Agent": self.user_agent}
+                headers={"User-Agent": self.user_agent},
             )
         return self._client
 
@@ -116,7 +119,7 @@ class CacheValidator:
                 if response.status_code == 304:
                     return ValidationResult(
                         status=CacheValidationResult.FRESH,
-                        reason="Server returned 304 Not Modified"
+                        reason="Server returned 304 Not Modified",
                     )
 
                 # Got 200, extract new headers for potential update
@@ -128,13 +131,16 @@ class CacheValidator:
                     head_html, _, _ = await self._fetch_head(url)
                     if head_html:
                         new_fingerprint = compute_head_fingerprint(head_html)
-                        if new_fingerprint and new_fingerprint == stored_head_fingerprint:
+                        if (
+                            new_fingerprint
+                            and new_fingerprint == stored_head_fingerprint
+                        ):
                             return ValidationResult(
                                 status=CacheValidationResult.FRESH,
                                 new_etag=new_etag,
                                 new_last_modified=new_last_modified,
                                 new_head_fingerprint=new_fingerprint,
-                                reason="Head fingerprint matches"
+                                reason="Head fingerprint matches",
                             )
                         elif new_fingerprint:
                             return ValidationResult(
@@ -142,7 +148,7 @@ class CacheValidator:
                                 new_etag=new_etag,
                                 new_last_modified=new_last_modified,
                                 new_head_fingerprint=new_fingerprint,
-                                reason="Head fingerprint changed"
+                                reason="Head fingerprint changed",
                             )
 
                 # Headers changed and no fingerprint match
@@ -150,7 +156,7 @@ class CacheValidator:
                     status=CacheValidationResult.STALE,
                     new_etag=new_etag,
                     new_last_modified=new_last_modified,
-                    reason="Server returned 200, content may have changed"
+                    reason="Server returned 200, content may have changed",
                 )
 
             # Step 2: No conditional headers available, try fingerprint only
@@ -166,7 +172,7 @@ class CacheValidator:
                             new_etag=new_etag,
                             new_last_modified=new_last_modified,
                             new_head_fingerprint=new_fingerprint,
-                            reason="Head fingerprint matches"
+                            reason="Head fingerprint matches",
                         )
                     elif new_fingerprint:
                         return ValidationResult(
@@ -174,33 +180,34 @@ class CacheValidator:
                             new_etag=new_etag,
                             new_last_modified=new_last_modified,
                             new_head_fingerprint=new_fingerprint,
-                            reason="Head fingerprint changed"
+                            reason="Head fingerprint changed",
                         )
 
             # Step 3: No validation data available
             return ValidationResult(
                 status=CacheValidationResult.UNKNOWN,
-                reason="No validation data available (no etag, last-modified, or fingerprint)"
+                reason="No validation data available (no etag, last-modified, or fingerprint)",
             )
 
         except httpx.TimeoutException:
             return ValidationResult(
                 status=CacheValidationResult.ERROR,
-                reason="Validation request timed out"
+                reason="Validation request timed out",
             )
         except httpx.RequestError as e:
             return ValidationResult(
                 status=CacheValidationResult.ERROR,
-                reason=f"Validation request failed: {type(e).__name__}"
+                reason=f"Validation request failed: {type(e).__name__}",
             )
         except Exception as e:
             # On unexpected error, prefer using cache over failing
             return ValidationResult(
-                status=CacheValidationResult.ERROR,
-                reason=f"Validation error: {str(e)}"
+                status=CacheValidationResult.ERROR, reason=f"Validation error: {str(e)}"
             )
 
-    async def _fetch_head(self, url: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    async def _fetch_head(
+        self, url: str
+    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """
         Fetch only the <head> section of a page.
 
@@ -219,7 +226,9 @@ class CacheValidator:
             async with client.stream(
                 "GET",
                 url,
-                headers={"Accept-Encoding": "identity"}  # Disable compression for easier parsing
+                headers={
+                    "Accept-Encoding": "identity"
+                },  # Disable compression for easier parsing
             ) as response:
                 etag = response.headers.get("etag")
                 last_modified = response.headers.get("last-modified")
@@ -236,19 +245,19 @@ class CacheValidator:
                     chunks.append(chunk)
                     total_bytes += len(chunk)
 
-                    content = b''.join(chunks)
+                    content = b"".join(chunks)
                     # Check for </head> (case insensitive)
-                    if b'</head>' in content.lower() or b'</HEAD>' in content:
+                    if b"</head>" in content.lower() or b"</HEAD>" in content:
                         break
                     if total_bytes >= max_bytes:
                         break
 
-                html = content.decode('utf-8', errors='replace')
+                html = content.decode("utf-8", errors="replace")
 
                 # Extract just the head section
-                head_end = html.lower().find('</head>')
+                head_end = html.lower().find("</head>")
                 if head_end != -1:
-                    html = html[:head_end + 7]
+                    html = html[: head_end + 7]
 
                 return html, etag, last_modified
 

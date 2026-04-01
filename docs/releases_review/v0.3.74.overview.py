@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 # append the parent directory to the sys.path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -8,9 +9,11 @@ sys.path.append(parent_parent_dir)
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 __data__ = os.path.join(__location__, "__data")
 import asyncio
-from pathlib import Path
-import aiohttp
 import json
+from pathlib import Path
+
+import aiohttp
+
 from crawl4ai import AsyncWebCrawler, CacheMode
 from crawl4ai.content_filter_strategy import BM25ContentFilter
 
@@ -59,14 +62,12 @@ async def local_and_raw_html_example():
     # Create a sample HTML file
     sample_file = os.path.join(__data__, "sample.html")
     with open(sample_file, "w") as f:
-        f.write(
-            """
+        f.write("""
         <html><body>
             <h1>Test Content</h1>
             <p>This is a test paragraph.</p>
         </body></html>
-        """
-        )
+        """)
 
     async with AsyncWebCrawler(verbose=True) as crawler:
         # Process local file

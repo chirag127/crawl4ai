@@ -1,10 +1,11 @@
-from tkinter import N
-from crawl4ai.async_crawler_strategy import AsyncHTTPCrawlerStrategy
-from crawl4ai.async_logger import AsyncLogger
-from crawl4ai import CrawlerRunConfig, HTTPCrawlerConfig
-from crawl4ai.async_crawler_strategy import ConnectionTimeoutError
 import asyncio
 import os
+
+from crawl4ai import CrawlerRunConfig, HTTPCrawlerConfig
+from crawl4ai.async_crawler_strategy import (AsyncHTTPCrawlerStrategy,
+                                             ConnectionTimeoutError)
+from crawl4ai.async_logger import AsyncLogger
+
 
 async def main():
     """Test the AsyncHTTPCrawlerStrategy with various scenarios"""
@@ -12,8 +13,7 @@ async def main():
 
     # Initialize the strategy with default HTTPCrawlerConfig
     crawler = AsyncHTTPCrawlerStrategy(
-        browser_config=HTTPCrawlerConfig(),
-        logger=logger
+        browser_config=HTTPCrawlerConfig(), logger=logger
     )
     # Test 1: Basic HTTP GET
     print("\n=== Test 1: Basic HTTP GET ===")
@@ -27,7 +27,7 @@ async def main():
     crawler.browser_config = crawler.browser_config.clone(
         method="POST",
         json={"test": "data"},
-        headers={"Content-Type": "application/json"}
+        headers={"Content-Type": "application/json"},
     )
     try:
         result = await crawler.crawl(
@@ -43,6 +43,7 @@ async def main():
     print("\n=== Test 3: Local file handling ===")
     # Create a tmp file with test content
     from tempfile import NamedTemporaryFile
+
     with NamedTemporaryFile(delete=False) as f:
         f.write(b"<html><body>Test content</body></html>")
         f.close()
@@ -57,15 +58,16 @@ async def main():
 
     # Test 5: Custom hooks
     print("\n=== Test 5: Custom hooks ===")
+
     async def before_request(url, kwargs):
         print(f"Before request to {url}")
-        kwargs['headers']['X-Custom'] = 'test'
+        kwargs["headers"]["X-Custom"] = "test"
 
     async def after_request(response):
         print(f"After request, status: {response.status_code}")
 
-    crawler.set_hook('before_request', before_request)
-    crawler.set_hook('after_request', after_request)
+    crawler.set_hook("before_request", before_request)
+    crawler.set_hook("after_request", after_request)
     result = await crawler.crawl("https://example.com")
 
     # Test 6: Error handling
@@ -85,8 +87,7 @@ async def main():
     print("\n=== Test 8: Custom timeout ===")
     try:
         await crawler.crawl(
-            "https://httpbin.org/delay/5",
-            config=CrawlerRunConfig(page_timeout=2)
+            "https://httpbin.org/delay/5", config=CrawlerRunConfig(page_timeout=2)
         )
     except ConnectionTimeoutError as e:
         print(f"Expected timeout: {e}")
@@ -103,6 +104,7 @@ async def main():
     # Test 10: Large file streaming
     print("\n=== Test 10: Large file streaming ===")
     from tempfile import NamedTemporaryFile
+
     with NamedTemporaryFile(delete=False) as f:
         f.write(b"<html><body>" + b"X" * 1024 * 1024 * 10 + b"</body></html>")
         f.close()
@@ -111,6 +113,7 @@ async def main():
         os.remove(f.name)
 
     crawler.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

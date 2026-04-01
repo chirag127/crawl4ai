@@ -1,9 +1,10 @@
+import asyncio
 import os
 import re
 import sys
+
 import pytest
 from bs4 import BeautifulSoup
-import asyncio
 
 # Add the parent directory to the Python path
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -98,9 +99,9 @@ async def test_typescript_commits_multi_page():
                 url=url,  # Only use URL for the first page
                 session_id=session_id,
                 css_selector="li.Box-sc-g0xbh4-0",
-                js=js_next_page
-                if page > 0
-                else None,  # Don't click 'next' on the first page
+                js=(
+                    js_next_page if page > 0 else None
+                ),  # Don't click 'next' on the first page
                 bypass_cache=True,
                 js_only=page > 0,  # Use js_only for subsequent pages
             )

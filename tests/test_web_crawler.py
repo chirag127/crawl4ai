@@ -1,17 +1,11 @@
-import unittest, os
-from crawl4ai import LLMConfig
+import os
+import unittest
+
+from crawl4ai import (CosineStrategy, LLMConfig, LLMExtractionStrategy,
+                      NoExtractionStrategy, TopicExtractionStrategy)
+from crawl4ai.chunking_strategy import (FixedLengthWordChunking, RegexChunking,
+                                        SlidingWindowChunking)
 from crawl4ai.web_crawler import WebCrawler
-from crawl4ai.chunking_strategy import (
-    RegexChunking,
-    FixedLengthWordChunking,
-    SlidingWindowChunking,
-)
-from crawl4ai import (
-    CosineStrategy,
-    LLMExtractionStrategy,
-    TopicExtractionStrategy,
-    NoExtractionStrategy,
-)
 
 
 class TestWebCrawler(unittest.TestCase):
@@ -43,7 +37,10 @@ class TestWebCrawler(unittest.TestCase):
             word_count_threshold=5,
             chunking_strategy=FixedLengthWordChunking(chunk_size=100),
             extraction_strategy=LLMExtractionStrategy(
-                llm_config=LLMConfig(provider="openai/gpt-3.5-turbo", api_token=os.getenv("OPENAI_API_KEY"))
+                llm_config=LLMConfig(
+                    provider="openai/gpt-3.5-turbo",
+                    api_token=os.getenv("OPENAI_API_KEY"),
+                )
             ),
             bypass_cache=True,
         )

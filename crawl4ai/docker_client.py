@@ -1,48 +1,54 @@
-from typing import List, Optional, Union, AsyncGenerator, Dict, Any, Callable
-import httpx
-import json
-from urllib.parse import urljoin
 import asyncio
+import json
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Union
+from urllib.parse import urljoin
+
+import httpx
 
 from .async_configs import BrowserConfig, CrawlerRunConfig
-from .models import CrawlResult
 from .async_logger import AsyncLogger, LogLevel
+from .models import CrawlResult
 from .utils import hooks_to_string
 
 
 class Crawl4aiClientError(Exception):
     """Base exception for Crawl4ai Docker client errors."""
+
     pass
 
 
 class ConnectionError(Crawl4aiClientError):
     """Raised when connection to the Docker server fails."""
+
     pass
 
 
 class RequestError(Crawl4aiClientError):
     """Raised when the server returns an error response."""
+
     pass
 
 
 class Crawl4aiDockerClient:
     """Client for interacting with Crawl4AI Docker server with token authentication."""
-    
+
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
         timeout: float = 30.0,
         verify_ssl: bool = True,
         verbose: bool = True,
-        log_file: Optional[str] = None
+        log_file: Optional[str] = None,
     ):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.logger = AsyncLogger(log_file=log_file, log_level=LogLevel.DEBUG, verbose=verbose)
+        self.logger = AsyncLogger(
+            log_file=log_file, log_level=LogLevel.DEBUG, verbose=verbose
+        )
         self._http_client = httpx.AsyncClient(
             timeout=timeout,
             verify=verify_ssl,
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
         self._token: Optional[str] = None
 
@@ -77,7 +83,7 @@ class Crawl4aiDockerClient:
         browser_config: Optional[BrowserConfig] = None,
         crawler_config: Optional[CrawlerRunConfig] = None,
         hooks: Optional[Union[Dict[str, Callable], Dict[str, str]]] = None,
-        hooks_timeout: int = 30
+        hooks_timeout: int = 30,
     ) -> Dict[str, Any]:
         """Prepare request data from configs."""
         if self._token:
@@ -86,7 +92,7 @@ class Crawl4aiDockerClient:
         request_data = {
             "urls": urls,
             "browser_config": browser_config.dump() if browser_config else {},
-            "crawler_config": crawler_config.dump() if crawler_config else {}
+            "crawler_config": crawler_config.dump() if crawler_config else {},
         }
 
         # Handle hooks if provided
@@ -99,10 +105,7 @@ class Crawl4aiDockerClient:
                 # Already in string format
                 hooks_code = hooks
 
-            request_data["hooks"] = {
-                "code": hooks_code,
-                "timeout": hooks_timeout
-            }
+            request_data["hooks"] = {"code": hooks_code, "timeout": hooks_timeout}
 
         return request_data
 
@@ -118,9 +121,11 @@ class Crawl4aiDockerClient:
         except httpx.RequestError as e:
             raise ConnectionError(f"Failed to connect: {str(e)}")
         except httpx.HTTPStatusError as e:
-            error_msg = (e.response.json().get("detail", str(e)) 
-                        if "application/json" in e.response.headers.get("content-type", "") 
-                        else str(e))
+            error_msg = (
+                e.response.json().get("detail", str(e))
+                if "application/json" in e.response.headers.get("content-type", "")
+                else str(e)
+            )
             raise RequestError(f"Server error {e.response.status_code}: {error_msg}")
 
     async def crawl(
@@ -129,7 +134,7 @@ class Crawl4aiDockerClient:
         browser_config: Optional[BrowserConfig] = None,
         crawler_config: Optional[CrawlerRunConfig] = None,
         hooks: Optional[Union[Dict[str, Callable], Dict[str, str]]] = None,
-        hooks_timeout: int = 30
+        hooks_timeout: int = 30,
     ) -> Union[CrawlResult, List[CrawlResult], AsyncGenerator[CrawlResult, None]]:
         """
         Execute a crawl operation.
@@ -158,32 +163,52 @@ class Crawl4aiDockerClient:
         """
         await self._check_server()
 
-        data = self._prepare_request(urls, browser_config, crawler_config, hooks, hooks_timeout)
+        data = self._prepare_request(
+            urls, browser_config, crawler_config, hooks, hooks_timeout
+        )
         is_streaming = crawler_config and crawler_config.stream
 
-        self.logger.info(f"Crawling {len(urls)} URLs {'(streaming)' if is_streaming else ''}", tag="CRAWL")
+        self.logger.info(
+            f"Crawling {len(urls)} URLs {'(streaming)' if is_streaming else ''}",
+            tag="CRAWL",
+        )
 
         if is_streaming:
+
             async def stream_results() -> AsyncGenerator[CrawlResult, None]:
-                async with self._http_client.stream("POST", f"{self.base_url}/crawl/stream", json=data) as response:
+                async with self._http_client.stream(
+                    "POST", f"{self.base_url}/crawl/stream", json=data
+                ) as response:
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if line.strip():
                             result = json.loads(line)
                             if "error" in result:
-                                self.logger.error_status(url=result.get("url", "unknown"), error=result["error"])
+                                self.logger.error_status(
+                                    url=result.get("url", "unknown"),
+                                    error=result["error"],
+                                )
                                 continue
-                            self.logger.url_status(url=result.get("url", "unknown"), success=True, timing=result.get("timing", 0.0))
+                            self.logger.url_status(
+                                url=result.get("url", "unknown"),
+                                success=True,
+                                timing=result.get("timing", 0.0),
+                            )
                             if result.get("status") == "completed":
                                 continue
                             else:
                                 yield CrawlResult(**result)
+
             return stream_results()
 
-        response = await self._request("POST", "/crawl", json=data, timeout=hooks_timeout)
+        response = await self._request(
+            "POST", "/crawl", json=data, timeout=hooks_timeout
+        )
         result_data = response.json()
         if not result_data.get("success", False):
-            raise RequestError(f"Crawl failed: {result_data.get('msg', 'Unknown error')}")
+            raise RequestError(
+                f"Crawl failed: {result_data.get('msg', 'Unknown error')}"
+            )
 
         results = [CrawlResult(**r) for r in result_data.get("results", [])]
         self.logger.success(f"Crawl completed with {len(results)} results", tag="CRAWL")
@@ -202,7 +227,12 @@ class Crawl4aiDockerClient:
     async def __aenter__(self) -> "Crawl4aiDockerClient":
         return self
 
-    async def __aexit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[Any],
+    ) -> None:
         await self.close()
 
 
@@ -214,6 +244,7 @@ async def main():
         print(result)
         schema = await client.get_schema()
         print(schema)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

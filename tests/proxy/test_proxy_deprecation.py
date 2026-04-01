@@ -1,6 +1,5 @@
 import warnings
 
-import pytest
 
 from crawl4ai.async_configs import BrowserConfig, ProxyConfig
 
@@ -13,10 +12,14 @@ def test_browser_config_proxy_string_emits_deprecation_and_autoconverts():
         cfg = BrowserConfig(proxy=proxy_str, headless=True)
 
     dep_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning)]
-    assert dep_warnings, "Expected DeprecationWarning when using BrowserConfig(proxy=...)"
+    assert (
+        dep_warnings
+    ), "Expected DeprecationWarning when using BrowserConfig(proxy=...)"
 
     assert cfg.proxy is None, "cfg.proxy should be None after auto-conversion"
-    assert isinstance(cfg.proxy_config, ProxyConfig), "cfg.proxy_config should be ProxyConfig instance"
+    assert isinstance(
+        cfg.proxy_config, ProxyConfig
+    ), "cfg.proxy_config should be ProxyConfig instance"
     assert cfg.proxy_config.username == "username"
     assert cfg.proxy_config.password == "password"
     assert cfg.proxy_config.server.startswith("http://")

@@ -1,8 +1,9 @@
 """Tests for PR #1463: configurable device_scale_factor in BrowserConfig."""
 
-import pytest
-import pytest_asyncio
 import base64
+
+import pytest
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
 
@@ -44,12 +45,16 @@ async def test_device_scale_factor_produces_larger_screenshot():
     run_config = CrawlerRunConfig(screenshot=True)
 
     # Take screenshot at scale 1.0
-    browser_1x = BrowserConfig(headless=True, device_scale_factor=1.0, viewport_width=800, viewport_height=600)
+    browser_1x = BrowserConfig(
+        headless=True, device_scale_factor=1.0, viewport_width=800, viewport_height=600
+    )
     async with AsyncWebCrawler(config=browser_1x) as crawler:
         result_1x = await crawler.arun(raw_url, config=run_config)
 
     # Take screenshot at scale 2.0
-    browser_2x = BrowserConfig(headless=True, device_scale_factor=2.0, viewport_width=800, viewport_height=600)
+    browser_2x = BrowserConfig(
+        headless=True, device_scale_factor=2.0, viewport_width=800, viewport_height=600
+    )
     async with AsyncWebCrawler(config=browser_2x) as crawler:
         result_2x = await crawler.arun(raw_url, config=run_config)
 
@@ -59,4 +64,6 @@ async def test_device_scale_factor_produces_larger_screenshot():
     # 2x scale should produce more pixel data (larger base64 string)
     size_1x = len(base64.b64decode(result_1x.screenshot))
     size_2x = len(base64.b64decode(result_2x.screenshot))
-    assert size_2x > size_1x, f"2x screenshot ({size_2x} bytes) should be larger than 1x ({size_1x} bytes)"
+    assert (
+        size_2x > size_1x
+    ), f"2x screenshot ({size_2x} bytes) should be larger than 1x ({size_1x} bytes)"

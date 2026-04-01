@@ -1,10 +1,11 @@
+import csv
 import os
 import sys
 import time
-import csv
-from tabulate import tabulate
 from dataclasses import dataclass
 from typing import List
+
+from tabulate import tabulate
 
 parent_dir = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,6 +14,7 @@ sys.path.append(parent_dir)
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+
 # This test compares the same strategy with itself now since WebScrapingStrategy is deprecated
 
 

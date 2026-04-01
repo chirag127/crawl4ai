@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 import pytest
 from bs4 import BeautifulSoup
 

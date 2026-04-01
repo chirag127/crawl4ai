@@ -17,6 +17,7 @@ inside Shadow DOM by Stencil.js web components.
 """
 
 import asyncio
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
 URL = "https://store.boschrexroth.com/en/us/p/hydraulic-cylinder-r900999011"
@@ -70,7 +71,7 @@ async def main():
     idx = md.find("Product Description")
     if idx >= 0:
         print("── Extracted product content ──")
-        print(md[idx:idx + 1200])
+        print(md[idx : idx + 1200])
 
 
 if __name__ == "__main__":

@@ -1,18 +1,19 @@
+import asyncio
+import json
 import os
 import time
-from pathlib import Path
-import aiosqlite
-import asyncio
-from typing import Optional, Dict
 from contextlib import asynccontextmanager
-import json
-from .models import CrawlResult, MarkdownGenerationResult, StringCompatibleMarkdown
-import aiofiles
-from .async_logger import AsyncLogger
+from pathlib import Path
+from typing import Dict, Optional
 
-from .utils import ensure_content_dirs, generate_content_hash
-from .utils import VersionManager
-from .utils import get_error_context, create_box_message
+import aiofiles
+import aiosqlite
+
+from .async_logger import AsyncLogger
+from .models import (CrawlResult, MarkdownGenerationResult,
+                     StringCompatibleMarkdown)
+from .utils import (VersionManager, ensure_content_dirs,
+                    generate_content_hash, get_error_context)
 
 base_directory = DB_PATH = os.path.join(
     os.getenv("CRAWL4_AI_BASE_DIRECTORY", Path.home()), ".crawl4ai"
@@ -65,9 +66,8 @@ class AsyncDatabaseManager:
             if needs_update:
                 self.logger.info("New version detected, running updates", tag="INIT")
                 await self.update_db_schema()
-                from .migrations import (
-                    run_migration,
-                )  # Import here to avoid circular imports
+                from .migrations import \
+                    run_migration  # Import here to avoid circular imports
 
                 await run_migration()
                 self.version_manager.update_version()  # Update stored version after successful migration
@@ -228,8 +228,7 @@ class AsyncDatabaseManager:
     async def ainit_db(self):
         """Initialize database schema"""
         async with aiosqlite.connect(self.db_path, timeout=30.0) as db:
-            await db.execute(
-                """
+            await db.execute("""
                 CREATE TABLE IF NOT EXISTS crawled_data (
                     url TEXT PRIMARY KEY,
                     html TEXT,
@@ -244,8 +243,7 @@ class AsyncDatabaseManager:
                     response_headers TEXT DEFAULT "{}",
                     downloaded_files TEXT DEFAULT "{}"  -- New column added
                 )
-            """
-            )
+            """)
             await db.commit()
 
     async def update_db_schema(self):
@@ -396,11 +394,12 @@ class AsyncDatabaseManager:
         Returns dict with: url, etag, last_modified, head_fingerprint, cached_at, response_headers
         This is used for cache validation without loading full content.
         """
+
         async def _get_metadata(db):
             async with db.execute(
                 """SELECT url, etag, last_modified, head_fingerprint, cached_at, response_headers
                    FROM crawled_data WHERE url = ?""",
-                (url,)
+                (url,),
             ) as cursor:
                 row = await cursor.fetchone()
                 if not row:
@@ -413,7 +412,8 @@ class AsyncDatabaseManager:
                 try:
                     row_dict["response_headers"] = (
                         json.loads(row_dict["response_headers"])
-                        if row_dict["response_headers"] else {}
+                        if row_dict["response_headers"]
+                        else {}
                     )
                 except json.JSONDecodeError:
                     row_dict["response_headers"] = {}
@@ -442,6 +442,7 @@ class AsyncDatabaseManager:
         Update only the cache validation metadata for a URL.
         Used to update etag/last_modified after a successful validation.
         """
+
         async def _update(db):
             updates = []
             values = []
@@ -462,7 +463,7 @@ class AsyncDatabaseManager:
             values.append(url)
             await db.execute(
                 f"UPDATE crawled_data SET {', '.join(updates)} WHERE url = ?",
-                tuple(values)
+                tuple(values),
             )
 
         try:
@@ -525,7 +526,11 @@ class AsyncDatabaseManager:
         # Extract cache validation headers from response
         response_headers = result.response_headers or {}
         etag = response_headers.get("etag") or response_headers.get("ETag") or ""
-        last_modified = response_headers.get("last-modified") or response_headers.get("Last-Modified") or ""
+        last_modified = (
+            response_headers.get("last-modified")
+            or response_headers.get("Last-Modified")
+            or ""
+        )
         # head_fingerprint is set by caller via result attribute (if available)
         head_fingerprint = getattr(result, "head_fingerprint", None) or ""
         cached_at = time.time()

@@ -9,18 +9,20 @@ If the server isn’t running, start it first:
     uvicorn deploy.docker.server:app --port 8020
 """
 
-import sys, json, textwrap, requests
+import json
+import sys
+
+import requests
 
 # BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8020"
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:11235"
-URL  = f"{BASE.rstrip('/')}/config/dump"
+URL = f"{BASE.rstrip('/')}/config/dump"
 
 CASES = [
     # --- CrawlRunConfig variants ---
     "CrawlerRunConfig()",
     "CrawlerRunConfig(stream=True, cache_mode=CacheMode.BYPASS)",
     "CrawlerRunConfig(js_only=True, wait_until='networkidle')",
-
     # --- BrowserConfig variants ---
     "BrowserConfig()",
     "BrowserConfig(headless=False, extra_args=['--disable-gpu'])",

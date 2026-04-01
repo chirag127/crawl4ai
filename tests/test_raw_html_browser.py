@@ -6,8 +6,10 @@ to work with raw: and file:// URLs by routing them through _crawl_web() with
 set_content() instead of goto().
 """
 
-import pytest
 import asyncio
+
+import pytest
+
 from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
 
@@ -93,7 +95,7 @@ async def test_raw_prefix_variations():
 
     async with AsyncWebCrawler() as crawler:
         config = CrawlerRunConfig(
-            js_code='document.body.innerHTML += "<div id=\'added\'>Added</div>"'
+            js_code="document.body.innerHTML += \"<div id='added'>Added</div>\""
         )
 
         # Test raw: prefix
@@ -114,13 +116,13 @@ async def test_wait_for_on_raw_html():
 
     async with AsyncWebCrawler() as crawler:
         config = CrawlerRunConfig(
-            js_code='''
+            js_code="""
                 setTimeout(() => {
                     document.getElementById('container').innerHTML = '<div id="delayed">Delayed Content</div>';
                 }, 100);
-            ''',
+            """,
             wait_for="#delayed",
-            wait_for_timeout=5000
+            wait_for_timeout=5000,
         )
         result = await crawler.arun(f"raw:{html}", config=config)
 

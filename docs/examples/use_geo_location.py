@@ -11,13 +11,10 @@ import asyncio
 import base64
 from pathlib import Path
 from typing import List
-from crawl4ai import (
-    AsyncWebCrawler,
-    CrawlerRunConfig,
-    BrowserConfig,
-    GeolocationConfig,
-    CrawlResult,
-)
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CrawlerRunConfig,
+                      CrawlResult, GeolocationConfig)
+
 
 async def demo_geo_override():
     """Demo: Crawl a geolocation-test page with overrides and screenshot."""
@@ -33,24 +30,24 @@ async def demo_geo_override():
 
     # 2) Run config: include locale, timezone_id, geolocation, and screenshot
     run_cfg = CrawlerRunConfig(
-        url="https://browserleaks.com/geo",          # test page that shows your location
-        locale="en-US",                              # Accept-Language & UI locale
-        timezone_id="America/Los_Angeles",           # JS Date()/Intl timezone
-        geolocation=GeolocationConfig(                 # override GPS coords
+        url="https://browserleaks.com/geo",  # test page that shows your location
+        locale="en-US",  # Accept-Language & UI locale
+        timezone_id="America/Los_Angeles",  # JS Date()/Intl timezone
+        geolocation=GeolocationConfig(  # override GPS coords
             latitude=34.0522,
             longitude=-118.2437,
             accuracy=10.0,
         ),
-        screenshot=True,                               # capture screenshot after load
-        session_id="geo_test",                       # reuse context if rerunning
-        delay_before_return_html=5
+        screenshot=True,  # capture screenshot after load
+        session_id="geo_test",  # reuse context if rerunning
+        delay_before_return_html=5,
     )
 
     async with AsyncWebCrawler(config=browser_cfg) as crawler:
         # 3) Run crawl (returns list even for single URL)
         results: List[CrawlResult] = await crawler.arun(
             url=run_cfg.url,
-            config=run_cfg,            
+            config=run_cfg,
         )
         result = results[0]
 
@@ -65,6 +62,7 @@ async def demo_geo_override():
             print(f"Saved screenshot to {shot_path}")
         else:
             print("No screenshot captured, check configuration.")
+
 
 if __name__ == "__main__":
     asyncio.run(demo_geo_override())

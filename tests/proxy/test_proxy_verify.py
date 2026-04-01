@@ -2,7 +2,9 @@
 Verify proxies are working and check what IPs they resolve to.
 Then test Chanel through NST proxy (different provider).
 """
+
 import requests
+
 
 # Check our real IP
 def check_ip(label, proxy=None):
@@ -15,6 +17,7 @@ def check_ip(label, proxy=None):
         print(f"  IP: {resp.json()}")
     except Exception as e:
         print(f"  ERROR: {e}")
+
 
 # Get NST proxy credentials
 def get_nst_proxy(channel_id):
@@ -39,6 +42,7 @@ def get_nst_proxy(channel_id):
         print(f"  ERROR: {e}")
     return None
 
+
 # Test Chanel
 def test_chanel(label, proxy=None, use_cffi=False):
     url = "https://www.chanel.com/us/fashion/handbags/c/1x1x1/"
@@ -52,12 +56,24 @@ def test_chanel(label, proxy=None, use_cffi=False):
     try:
         if use_cffi:
             from curl_cffi import requests as cffi_requests
-            kwargs = {"url": url, "headers": headers, "impersonate": "chrome", "timeout": 30, "allow_redirects": True}
+
+            kwargs = {
+                "url": url,
+                "headers": headers,
+                "impersonate": "chrome",
+                "timeout": 30,
+                "allow_redirects": True,
+            }
             if proxy:
                 kwargs["proxies"] = {"https": proxy, "http": proxy}
             resp = cffi_requests.get(**kwargs)
         else:
-            kwargs = {"url": url, "headers": headers, "timeout": 30, "allow_redirects": True}
+            kwargs = {
+                "url": url,
+                "headers": headers,
+                "timeout": 30,
+                "allow_redirects": True,
+            }
             if proxy:
                 kwargs["proxies"] = {"https": proxy, "http": proxy}
             resp = requests.get(**kwargs)
@@ -65,7 +81,9 @@ def test_chanel(label, proxy=None, use_cffi=False):
         blocked = "Access Denied" in resp.text
         print(f"  Status: {resp.status_code}")
         print(f"  Size: {len(resp.text):,} bytes")
-        print(f"  Result: {'BLOCKED' if blocked else 'SUCCESS' if resp.status_code == 200 and len(resp.text) > 10000 else 'UNCLEAR'}")
+        print(
+            f"  Result: {'BLOCKED' if blocked else 'SUCCESS' if resp.status_code == 200 and len(resp.text) > 10000 else 'UNCLEAR'}"
+        )
         if not blocked and resp.status_code == 200:
             print(f"  First 300 chars: {resp.text[:300]}")
     except Exception as e:
@@ -74,20 +92,22 @@ def test_chanel(label, proxy=None, use_cffi=False):
 
 if __name__ == "__main__":
     MASSIVE_RES = "https://mpuQHs4sWZ-country-US:D0yWxVQo8wQ05RWqz1Bn@network.joinmassive.com:65535"
-    MASSIVE_DC = "http://mpuQHs4sWZ-country-US:D0yWxVQo8wQ05RWqz1Bn@isp.joinmassive.com:8000"
+    MASSIVE_DC = (
+        "http://mpuQHs4sWZ-country-US:D0yWxVQo8wQ05RWqz1Bn@isp.joinmassive.com:8000"
+    )
 
     # Step 1: Verify IPs
-    print("="*60)
+    print("=" * 60)
     print("STEP 1: Verify proxy IPs")
     check_ip("Direct (Hetzner)")
     check_ip("Massive Residential", MASSIVE_RES)
     check_ip("Massive Datacenter/ISP", MASSIVE_DC)
 
     # Step 2: Get NST proxies
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("STEP 2: Get NST proxy credentials")
     nst_res = get_nst_proxy("7864DDA266D5899C")  # residential
-    nst_dc = get_nst_proxy("AE0C3B5547F8A021")   # datacenter
+    nst_dc = get_nst_proxy("AE0C3B5547F8A021")  # datacenter
 
     if nst_res:
         check_ip("NST Residential", nst_res)
@@ -95,7 +115,7 @@ if __name__ == "__main__":
         check_ip("NST Datacenter", nst_dc)
 
     # Step 3: Test Chanel with all available proxies
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("STEP 3: Test Chanel.com")
 
     if nst_res:

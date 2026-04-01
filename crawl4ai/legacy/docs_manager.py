@@ -1,6 +1,8 @@
-import requests
 import shutil
 from pathlib import Path
+
+import requests
+
 from crawl4ai.async_logger import AsyncLogger
 from crawl4ai.llmtxt import AsyncLLMTextManager
 

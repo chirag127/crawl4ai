@@ -4,10 +4,11 @@ Tests for PR #1290 and #1668
 - #1290: Type-list pipeline in JsonCssExtractionStrategy._extract_single_field
 - #1668: --json-ensure-ascii CLI flag and JSON_ENSURE_ASCII config
 """
+
 import json
+
 import pytest
 from bs4 import BeautifulSoup
-
 
 # ── PR #1290: Type-list pipeline in _extract_single_field ─────────────────
 
@@ -18,12 +19,15 @@ class TestTypePipeline:
     @pytest.fixture
     def strategy(self):
         from crawl4ai.extraction_strategy import JsonCssExtractionStrategy
+
         schema = {"name": "test", "baseSelector": "div", "fields": []}
         return JsonCssExtractionStrategy(schema)
 
     @pytest.fixture
     def element(self):
-        html = '<div><a class="link" href="/product/12345?ref=home">Product Name</a></div>'
+        html = (
+            '<div><a class="link" href="/product/12345?ref=home">Product Name</a></div>'
+        )
         soup = BeautifulSoup(html, "html.parser")
         return soup.find("div")
 
@@ -114,8 +118,9 @@ class TestTypePipeline:
         """A list with one element should behave identically to a string."""
         field_str = {"selector": "a", "type": "text"}
         field_list = {"selector": "a", "type": ["text"]}
-        assert strategy._extract_single_field(element, field_str) == \
-               strategy._extract_single_field(element, field_list)
+        assert strategy._extract_single_field(
+            element, field_str
+        ) == strategy._extract_single_field(element, field_list)
 
 
 # ── PR #1668: JSON_ENSURE_ASCII config setting ────────────────────────────
@@ -127,6 +132,7 @@ class TestJsonEnsureAsciiConfig:
     def test_user_settings_has_json_ensure_ascii(self):
         """USER_SETTINGS should include JSON_ENSURE_ASCII."""
         from crawl4ai.config import USER_SETTINGS
+
         assert "JSON_ENSURE_ASCII" in USER_SETTINGS
         assert USER_SETTINGS["JSON_ENSURE_ASCII"]["default"] is True
         assert USER_SETTINGS["JSON_ENSURE_ASCII"]["type"] == "boolean"
@@ -147,8 +153,9 @@ class TestJsonEnsureAsciiConfig:
 
     def test_cli_has_json_ensure_ascii_option(self):
         """The crawl_cmd should accept --json-ensure-ascii flag."""
-        import click
+
         from crawl4ai.cli import crawl_cmd
+
         # Get the click command's params
         param_names = [p.name for p in crawl_cmd.params]
         assert "json_ensure_ascii" in param_names
@@ -156,12 +163,15 @@ class TestJsonEnsureAsciiConfig:
     def test_default_cmd_has_json_ensure_ascii_option(self):
         """The default command should accept --json-ensure-ascii flag."""
         from crawl4ai.cli import default
+
         param_names = [p.name for p in default.params]
         assert "json_ensure_ascii" in param_names
 
     def test_cli_source_uses_ensure_ascii_in_dumps(self):
         """cli.py should pass ensure_ascii to json.dumps calls."""
         import inspect
+
         from crawl4ai import cli
+
         source = inspect.getsource(cli)
         assert "ensure_ascii=ensure_ascii" in source

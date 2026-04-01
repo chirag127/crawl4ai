@@ -1,14 +1,15 @@
 """
-This example demonstrates how to use JSON CSS extraction to scrape product information 
+This example demonstrates how to use JSON CSS extraction to scrape product information
 from Amazon search results. It shows how to extract structured data like product titles,
 prices, ratings, and other details using CSS selectors.
 """
 
-from crawl4ai import AsyncWebCrawler, CacheMode
-from crawl4ai import JsonCssExtractionStrategy
-from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 import json
-from playwright.async_api import Page, BrowserContext
+
+from playwright.async_api import BrowserContext, Page
+
+from crawl4ai import AsyncWebCrawler, CacheMode, JsonCssExtractionStrategy
+from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
 
 
 async def extract_amazon_products():

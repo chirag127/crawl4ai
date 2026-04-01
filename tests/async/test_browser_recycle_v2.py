@@ -17,8 +17,8 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 import pytest
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig)
 
 # ---------------------------------------------------------------------------
 # Local test server
@@ -70,11 +70,13 @@ def _bm(c):
 # SECTION A — Version bump mechanics
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_version_bump_on_threshold(srv):
     """Browser version should bump when threshold is reached."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=3,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -108,7 +110,8 @@ async def test_version_bump_on_threshold(srv):
 async def test_signature_changes_after_version_bump(srv):
     """Same CrawlerRunConfig should produce different signatures after version bump."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=2,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -135,7 +138,8 @@ async def test_signature_changes_after_version_bump(srv):
 async def test_no_version_bump_when_disabled(srv):
     """Version should stay at 1 when max_pages_before_recycle=0."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=0,  # Disabled
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -155,11 +159,13 @@ async def test_no_version_bump_when_disabled(srv):
 # SECTION B — Pending cleanup mechanics
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_old_signature_goes_to_pending_cleanup(srv):
     """Version bump works and old contexts get cleaned up."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=2,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -184,7 +190,8 @@ async def test_old_signature_goes_to_pending_cleanup(srv):
 async def test_cleanup_happens_when_refcount_hits_zero(srv):
     """Old context should be closed when its refcount drops to 0."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=3,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -207,11 +214,13 @@ async def test_cleanup_happens_when_refcount_hits_zero(srv):
 # SECTION C — Concurrent crawls with recycling
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_concurrent_crawls_dont_block_on_recycle(srv):
     """Concurrent crawls should not block — old browser drains while new one serves."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=5,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -238,7 +247,8 @@ async def test_concurrent_crawls_dont_block_on_recycle(srv):
 async def test_high_concurrency_with_small_threshold(srv):
     """Stress test: 50 concurrent crawls with threshold=3."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=3,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -261,11 +271,13 @@ async def test_high_concurrency_with_small_threshold(srv):
 # SECTION D — Safety cap (max pending browsers)
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_safety_cap_limits_pending_browsers(srv):
     """Should not exceed _max_pending_browsers old browsers draining."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=2,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -289,11 +301,13 @@ async def test_safety_cap_limits_pending_browsers(srv):
 # SECTION E — Managed browser mode
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_managed_browser_recycle(srv):
     """Recycling should work with managed browser mode."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         max_pages_before_recycle=3,
     )
@@ -314,7 +328,8 @@ async def test_managed_browser_recycle(srv):
 async def test_managed_browser_isolated_context_recycle(srv):
     """Recycling with managed browser + isolated contexts."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         use_managed_browser=True,
         create_isolated_context=True,
         max_pages_before_recycle=3,
@@ -335,11 +350,13 @@ async def test_managed_browser_isolated_context_recycle(srv):
 # SECTION F — Edge cases
 # ===================================================================
 
+
 @pytest.mark.asyncio
 async def test_threshold_of_one(srv):
     """Edge case: threshold=1 means version bump after every page."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=1,
     )
     run = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
@@ -363,7 +380,8 @@ async def test_threshold_of_one(srv):
 async def test_different_configs_get_separate_cleanup_tracking(srv):
     """Different CrawlerRunConfigs should track separately in pending cleanup."""
     cfg = BrowserConfig(
-        headless=True, verbose=False,
+        headless=True,
+        verbose=False,
         max_pages_before_recycle=2,
     )
 
@@ -372,7 +390,8 @@ async def test_different_configs_get_separate_cleanup_tracking(srv):
 
         run_a = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=False)
         run_b = CrawlerRunConfig(
-            cache_mode=CacheMode.BYPASS, verbose=False,
+            cache_mode=CacheMode.BYPASS,
+            verbose=False,
             override_navigator=True,  # Different config
         )
 

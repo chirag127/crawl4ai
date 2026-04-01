@@ -1,9 +1,10 @@
 import asyncio
-import aiohttp
 import json
-import time
 import os
-from typing import Dict, Any
+import time
+from typing import Any, Dict
+
+import aiohttp
 
 
 class NBCNewsAPITest:

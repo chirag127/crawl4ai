@@ -1,10 +1,12 @@
 import asyncio
 import time
-from crawl4ai.async_webcrawler import AsyncWebCrawler, CacheMode
+
 from crawl4ai.async_configs import CrawlerRunConfig
 from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher, RateLimiter
+from crawl4ai.async_webcrawler import AsyncWebCrawler, CacheMode
 
 VERBOSE = False
+
 
 async def crawl_sequential(urls):
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=VERBOSE)
@@ -17,6 +19,7 @@ async def crawl_sequential(urls):
     total_time = time.perf_counter() - start_time
     return total_time, results
 
+
 async def crawl_parallel_dispatcher(urls):
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=VERBOSE)
     # Dispatcher with rate limiter enabled (default behavior)
@@ -26,7 +29,9 @@ async def crawl_parallel_dispatcher(urls):
     )
     start_time = time.perf_counter()
     async with AsyncWebCrawler() as crawler:
-        result_container = await crawler.arun_many(urls=urls, config=config, dispatcher=dispatcher)
+        result_container = await crawler.arun_many(
+            urls=urls, config=config, dispatcher=dispatcher
+        )
         results = []
         if isinstance(result_container, list):
             results = result_container
@@ -36,16 +41,18 @@ async def crawl_parallel_dispatcher(urls):
     total_time = time.perf_counter() - start_time
     return total_time, results
 
+
 async def crawl_parallel_no_rate_limit(urls):
     config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, verbose=VERBOSE)
     # Dispatcher with no rate limiter and a high session permit to avoid queuing
     dispatcher = MemoryAdaptiveDispatcher(
-        rate_limiter=None,
-        max_session_permit=len(urls)  # allow all URLs concurrently
+        rate_limiter=None, max_session_permit=len(urls)  # allow all URLs concurrently
     )
     start_time = time.perf_counter()
     async with AsyncWebCrawler() as crawler:
-        result_container = await crawler.arun_many(urls=urls, config=config, dispatcher=dispatcher)
+        result_container = await crawler.arun_many(
+            urls=urls, config=config, dispatcher=dispatcher
+        )
         results = []
         if isinstance(result_container, list):
             results = result_container
@@ -54,26 +61,34 @@ async def crawl_parallel_no_rate_limit(urls):
                 results.append(res)
     total_time = time.perf_counter() - start_time
     return total_time, results
+
 
 async def main():
     urls = ["https://example.com"] * 100
     print(f"Crawling {len(urls)} URLs sequentially...")
     seq_time, seq_results = await crawl_sequential(urls)
     print(f"Sequential crawling took: {seq_time:.2f} seconds\n")
-    
-    print(f"Crawling {len(urls)} URLs in parallel using arun_many with dispatcher (with rate limit)...")
+
+    print(
+        f"Crawling {len(urls)} URLs in parallel using arun_many with dispatcher (with rate limit)..."
+    )
     disp_time, disp_results = await crawl_parallel_dispatcher(urls)
     print(f"Parallel (dispatcher with rate limiter) took: {disp_time:.2f} seconds\n")
-       
-    print(f"Crawling {len(urls)} URLs in parallel using dispatcher with no rate limiter...")
+
+    print(
+        f"Crawling {len(urls)} URLs in parallel using dispatcher with no rate limiter..."
+    )
     no_rl_time, no_rl_results = await crawl_parallel_no_rate_limit(urls)
-    print(f"Parallel (dispatcher without rate limiter) took: {no_rl_time:.2f} seconds\n")
-    
+    print(
+        f"Parallel (dispatcher without rate limiter) took: {no_rl_time:.2f} seconds\n"
+    )
+
     print("Crawl4ai - Crawling Comparison")
     print("--------------------------------------------------------")
     print(f"Sequential crawling took: {seq_time:.2f} seconds")
     print(f"Parallel (dispatcher with rate limiter) took: {disp_time:.2f} seconds")
     print(f"Parallel (dispatcher without rate limiter) took: {no_rl_time:.2f} seconds")
-    
+
+
 if __name__ == "__main__":
     asyncio.run(main())

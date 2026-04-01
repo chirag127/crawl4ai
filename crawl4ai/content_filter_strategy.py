@@ -1,33 +1,27 @@
+import hashlib
 import inspect
+import json
+import math
 import re
 import time
-from bs4 import BeautifulSoup, Tag
-from typing import List, Tuple, Dict, Optional
-from rank_bm25 import BM25Okapi
-from collections import deque
-from bs4 import NavigableString, Comment
-
-from .utils import (
-    clean_tokens,
-    perform_completion_with_backoff,
-    escape_json_string,
-    sanitize_html,
-    get_home_folder,
-    extract_xml_data,
-    merge_chunks,
-)
-from .types import LLMConfig
-from .config import DEFAULT_PROVIDER, OVERLAP_RATE, WORD_TOKEN_RATE
 from abc import ABC, abstractmethod
-import math
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
+from rank_bm25 import BM25Okapi
 from snowballstemmer import stemmer
+
+from .async_logger import AsyncLogger, LogColor, LogLevel
+from .config import DEFAULT_PROVIDER, OVERLAP_RATE, WORD_TOKEN_RATE
 from .models import TokenUsage
 from .prompts import PROMPT_FILTER_CONTENT
-import json
-import hashlib
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
-from .async_logger import AsyncLogger, LogLevel, LogColor
+from .types import LLMConfig
+from .utils import (clean_tokens, escape_json_string, extract_xml_data,
+                    get_home_folder, merge_chunks,
+                    perform_completion_with_backoff, sanitize_html)
 
 
 class RelevantContentFilter(ABC):
@@ -491,9 +485,7 @@ class BM25ContentFilter(RelevantContentFilter):
                 self.stemmer.stemWord(word) for word in query.lower().split()
             ]
         else:
-            tokenized_corpus = [
-                chunk.lower().split() for _, chunk, _, _ in candidates
-            ]
+            tokenized_corpus = [chunk.lower().split() for _, chunk, _, _ in candidates]
             tokenized_query = query.lower().split()
 
         # tokenized_corpus = [[self.stemmer.stemWord(word) for word in tokenize_text(chunk.lower())]
@@ -805,11 +797,12 @@ class LLMContentFilter(RelevantContentFilter):
         verbose (bool): Enable verbose logging (default: False).
         logger (AsyncLogger): Custom logger for LLM operations (optional).
     """
+
     _UNWANTED_PROPS = {
-        'provider' : 'Instead, use llm_config=LLMConfig(provider="...")',
-        'api_token' : 'Instead, use llm_config=LlMConfig(api_token="...")',
-        'base_url' : 'Instead, use llm_config=LLMConfig(base_url="...")',
-        'api_base' : 'Instead, use llm_config=LLMConfig(base_url="...")',
+        "provider": 'Instead, use llm_config=LLMConfig(provider="...")',
+        "api_token": 'Instead, use llm_config=LlMConfig(api_token="...")',
+        "base_url": 'Instead, use llm_config=LLMConfig(base_url="...")',
+        "api_base": 'Instead, use llm_config=LLMConfig(base_url="...")',
     }
 
     def __init__(
@@ -862,7 +855,7 @@ class LLMContentFilter(RelevantContentFilter):
                 },
                 colors={
                     **AsyncLogger.DEFAULT_COLORS,
-                    LogLevel.INFO: LogColor.DIM_MAGENTA  # Dimmed purple for LLM ops
+                    LogLevel.INFO: LogColor.DIM_MAGENTA,  # Dimmed purple for LLM ops
                 },
             )
         else:
@@ -870,7 +863,7 @@ class LLMContentFilter(RelevantContentFilter):
 
         self.usages = []
         self.total_usage = TokenUsage()
-    
+
     def __setattr__(self, name, value):
         """Handle attribute setting."""
         # TODO: Planning to set properties dynamically based on the __init__ signature
@@ -878,10 +871,12 @@ class LLMContentFilter(RelevantContentFilter):
         all_params = sig.parameters  # Dictionary of parameter names and their details
 
         if name in self._UNWANTED_PROPS and value is not all_params[name].default:
-            raise AttributeError(f"Setting '{name}' is deprecated. {self._UNWANTED_PROPS[name]}")
-        
-        super().__setattr__(name, value)  
-        
+            raise AttributeError(
+                f"Setting '{name}' is deprecated. {self._UNWANTED_PROPS[name]}"
+            )
+
+        super().__setattr__(name, value)
+
     def _get_cache_key(self, html: str, instruction: str) -> str:
         """Generate a unique cache key based on HTML and instruction"""
         content = f"{html}{instruction}"

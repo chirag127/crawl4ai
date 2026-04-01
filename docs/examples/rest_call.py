@@ -1,4 +1,7 @@
-import requests, base64, os
+import base64
+import os
+
+import requests
 
 data = {
     "urls": ["https://www.nbcnews.com/business"],

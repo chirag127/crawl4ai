@@ -11,21 +11,11 @@ from typing import Dict, List, Optional, Tuple, Union
 from . import config
 from ._typing import OutCallback
 from .elements import AnchorElement, ListElement
-from .utils import (
-    dumb_css_parser,
-    element_style,
-    escape_md,
-    escape_md_section,
-    google_fixed_width_font,
-    google_has_height,
-    google_list_style,
-    google_text_emphasis,
-    hn,
-    list_numbering_start,
-    pad_tables_in_text,
-    skipwrap,
-    unifiable_n,
-)
+from .utils import (dumb_css_parser, element_style, escape_md,
+                    escape_md_section, google_fixed_width_font,
+                    google_has_height, google_list_style, google_text_emphasis,
+                    hn, list_numbering_start, pad_tables_in_text, skipwrap,
+                    unifiable_n)
 
 __version__ = (2024, 2, 26)
 
@@ -620,18 +610,18 @@ class HTML2Text(html.parser.HTMLParser):
         if tag == "dl" and start:
             self.p()  # Add paragraph break before list starts
             self.p_p = 0  # Reset paragraph state
-        
+
         elif tag == "dt" and start:
             if self.p_p == 0:  # If not first term
                 self.o("\n\n")  # Add spacing before new term-definition pair
             self.p_p = 0  # Reset paragraph state
-        
+
         elif tag == "dt" and not start:
             self.o("\n")  # Single newline between term and definition
-        
+
         elif tag == "dd" and start:
             self.o("    ")  # Indent definition
-        
+
         elif tag == "dd" and not start:
             self.p_p = 0
 
@@ -1166,7 +1156,7 @@ class CustomHTML2Text(HTML2Text):
 
             # If inside a link, let the parent class handle the content
             if self.inside_link:
-                super().handle_tag(tag, attrs, start) 
+                super().handle_tag(tag, attrs, start)
         else:
             super().handle_tag(tag, attrs, start)
 

@@ -7,7 +7,9 @@ NSTProxy is a premium residential proxy provider.
 💰 Use coupon code "crawl4ai" for 10% off your plan.
 
 """
+
 import asyncio
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig
 
 
@@ -26,7 +28,7 @@ async def main():
         country="ANY",  # e.g. "US", "JP", or "ANY"
         state="",  # optional, leave empty if not needed
         city="",  # optional, leave empty if not needed
-        session_duration=0  # Session duration in minutes,0 = rotate on every request
+        session_duration=0,  # Session duration in minutes,0 = rotate on every request
     )
 
     # === Run crawler ===

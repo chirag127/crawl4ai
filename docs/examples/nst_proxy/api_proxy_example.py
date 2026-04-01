@@ -7,7 +7,11 @@ NSTProxy is a premium residential proxy provider.
 💰 Use coupon code "crawl4ai" for 10% off your plan.
 
 """
-import asyncio, requests
+
+import asyncio
+
+import requests
+
 from crawl4ai import AsyncWebCrawler, BrowserConfig
 
 
@@ -33,11 +37,13 @@ async def main():
     username = proxy.get("username", "")
     password = proxy.get("password", "")
 
-    browser_config = BrowserConfig(proxy_config={
-        "server": f"http://{ip}:{port}",
-        "username": username,
-        "password": password,
-    })
+    browser_config = BrowserConfig(
+        proxy_config={
+            "server": f"http://{ip}:{port}",
+            "username": username,
+            "password": password,
+        }
+    )
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         result = await crawler.arun(url="https://example.com")

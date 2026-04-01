@@ -1,12 +1,8 @@
 import asyncio
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    DefaultMarkdownGenerator,
-    PruningContentFilter,
-    CrawlResult
-)
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CrawlerRunConfig,
+                      CrawlResult, DefaultMarkdownGenerator,
+                      PruningContentFilter)
 
 
 async def main():
@@ -24,6 +20,7 @@ async def main():
             url="https://www.helloworld.org", config=crawler_config
         )
         print(result.markdown.raw_markdown[:500])
+
 
 if __name__ == "__main__":
     asyncio.run(main())

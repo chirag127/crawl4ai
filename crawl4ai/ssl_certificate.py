@@ -1,13 +1,15 @@
 """SSL Certificate class for handling certificate operations."""
 
-import ssl
-import socket
 import base64
 import json
-from typing import Dict, Any, Optional
-from urllib.parse import urlparse
-import OpenSSL.crypto
+import socket
+import ssl
 from pathlib import Path
+from typing import Any, Dict, Optional
+from urllib.parse import urlparse
+
+import OpenSSL.crypto
+
 
 # === Inherit from dict ===
 class SSLCertificate(dict):
@@ -46,7 +48,9 @@ class SSLCertificate(dict):
                 # Try UTF-8 first, fallback to latin-1 for arbitrary bytes
                 return data.decode("utf-8")
             except UnicodeDecodeError:
-                return data.decode("latin-1") # Or handle as needed, maybe hex representation
+                return data.decode(
+                    "latin-1"
+                )  # Or handle as needed, maybe hex representation
         elif isinstance(data, dict):
             return {
                 (
@@ -64,7 +68,7 @@ class SSLCertificate(dict):
         Create SSLCertificate instance from a URL. Fetches cert info and initializes.
         (Fetching logic remains the same)
         """
-        cert_info_raw = None # Variable to hold the fetched dict
+        cert_info_raw = None  # Variable to hold the fetched dict
         try:
             hostname = urlparse(url).netloc
             if ":" in hostname:
@@ -80,8 +84,8 @@ class SSLCertificate(dict):
                 with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                     cert_binary = ssock.getpeercert(binary_form=True)
                     if not cert_binary:
-                         print(f"Warning: No certificate returned for {hostname}")
-                         return None
+                        print(f"Warning: No certificate returned for {hostname}")
+                        return None
 
                     x509 = OpenSSL.crypto.load_certificate(
                         OpenSSL.crypto.FILETYPE_ASN1, cert_binary
@@ -93,11 +97,15 @@ class SSLCertificate(dict):
                         "issuer": dict(x509.get_issuer().get_components()),
                         "version": x509.get_version(),
                         "serial_number": hex(x509.get_serial_number()),
-                        "not_before": x509.get_notBefore(), # Keep as bytes initially, _decode handles it
-                        "not_after": x509.get_notAfter(),   # Keep as bytes initially
-                        "fingerprint": x509.digest("sha256").hex(), # hex() is already string
-                        "signature_algorithm": x509.get_signature_algorithm(), # Keep as bytes
-                        "raw_cert": base64.b64encode(cert_binary), # Base64 is bytes, _decode handles it
+                        "not_before": x509.get_notBefore(),  # Keep as bytes initially, _decode handles it
+                        "not_after": x509.get_notAfter(),  # Keep as bytes initially
+                        "fingerprint": x509.digest(
+                            "sha256"
+                        ).hex(),  # hex() is already string
+                        "signature_algorithm": x509.get_signature_algorithm(),  # Keep as bytes
+                        "raw_cert": base64.b64encode(
+                            cert_binary
+                        ),  # Base64 is bytes, _decode handles it
                     }
 
                     # Add extensions
@@ -111,10 +119,10 @@ class SSLCertificate(dict):
                     cert_info_raw["extensions"] = extensions
 
         except ssl.SSLCertVerificationError as e:
-             print(f"SSL Verification Error for {url}: {e}")
-             # Decide if you want to proceed or return None based on your needs
-             # You might try fetching without verification here if needed, but be cautious.
-             return None
+            print(f"SSL Verification Error for {url}: {e}")
+            # Decide if you want to proceed or return None based on your needs
+            # You might try fetching without verification here if needed, but be cautious.
+            return None
         except socket.gaierror:
             print(f"Could not resolve hostname: {hostname}")
             return None
@@ -128,15 +136,14 @@ class SSLCertificate(dict):
 
         # If successful, create the SSLCertificate instance from the dictionary
         if cert_info_raw:
-             return SSLCertificate(cert_info_raw)
+            return SSLCertificate(cert_info_raw)
         else:
-             return None
-
+            return None
 
     # --- Properties now access the dictionary items directly via self[] ---
     @property
     def issuer(self) -> Dict[str, str]:
-        return self.get("issuer", {}) # Use self.get for safety
+        return self.get("issuer", {})  # Use self.get for safety
 
     @property
     def subject(self) -> Dict[str, str]:
@@ -181,8 +188,8 @@ class SSLCertificate(dict):
                 return None
             return pem_data
         except Exception as e:
-             print(f"Error converting to PEM: {e}")
-             return None
+            print(f"Error converting to PEM: {e}")
+            return None
 
     def to_der(self, filepath: Optional[str] = None) -> Optional[bytes]:
         """Export certificate as DER."""
@@ -194,11 +201,11 @@ class SSLCertificate(dict):
                 return None
             return der_data
         except Exception as e:
-             print(f"Error converting to DER: {e}")
-             return None
+            print(f"Error converting to DER: {e}")
+            return None
 
     # Optional: Add __repr__ for better debugging
     def __repr__(self) -> str:
-        subject_cn = self.subject.get('CN', 'N/A')
-        issuer_cn = self.issuer.get('CN', 'N/A')
+        subject_cn = self.subject.get("CN", "N/A")
+        issuer_cn = self.issuer.get("CN", "N/A")
         return f"<SSLCertificate Subject='{subject_cn}' Issuer='{issuer_cn}'>"

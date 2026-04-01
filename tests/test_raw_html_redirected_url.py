@@ -10,9 +10,11 @@ which fell back to the raw HTML string when base_url wasn't provided.
 
 try:
     import pytest
+
     HAS_PYTEST = True
 except ImportError:
     HAS_PYTEST = False
+
     # Create a dummy decorator
     class pytest:
         class mark:
@@ -20,13 +22,15 @@ except ImportError:
             def asyncio(fn):
                 return fn
 
-import asyncio
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
+import asyncio
+
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
 
 # ============================================================================
 # Core fix tests: redirected_url should NOT be the raw HTML string
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_raw_html_redirected_url_is_none_without_base_url():
@@ -49,7 +53,9 @@ async def test_raw_html_redirected_url_is_none_without_base_url():
 async def test_raw_html_redirected_url_not_huge():
     """Test that redirected_url is not a huge string (the raw HTML content)."""
     # Create a large HTML (100KB+)
-    items = "".join([f'<div class="item">Item {i} with some content</div>\n' for i in range(2000)])
+    items = "".join(
+        [f'<div class="item">Item {i} with some content</div>\n' for i in range(2000)]
+    )
     large_html = f"<html><body>{items}</body></html>"
     assert len(large_html) > 100000, "Test HTML should be >100KB"
 
@@ -78,9 +84,9 @@ async def test_raw_html_with_base_url_sets_redirected_url():
 
     assert result.success
     # Key assertion: redirected_url should be the base_url
-    assert result.redirected_url == base_url, (
-        f"redirected_url should be '{base_url}', got: {result.redirected_url}"
-    )
+    assert (
+        result.redirected_url == base_url
+    ), f"redirected_url should be '{base_url}', got: {result.redirected_url}"
 
 
 @pytest.mark.asyncio
@@ -101,6 +107,7 @@ async def test_raw_double_slash_prefix_redirected_url():
 # Browser path tests (with js_code, screenshot, etc.)
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_raw_html_browser_path_redirected_url_none():
     """Test redirected_url is None for raw: URLs in browser path (with js_code)."""
@@ -115,9 +122,9 @@ async def test_raw_html_browser_path_redirected_url_none():
     assert result.success
     assert "Modified" in result.html
     # Key assertion: even with browser path, redirected_url should be None
-    assert result.redirected_url is None, (
-        f"redirected_url should be None, got: {result.redirected_url}"
-    )
+    assert (
+        result.redirected_url is None
+    ), f"redirected_url should be None, got: {result.redirected_url}"
 
 
 @pytest.mark.asyncio
@@ -129,7 +136,7 @@ async def test_raw_html_browser_path_with_base_url():
     async with AsyncWebCrawler() as crawler:
         config = CrawlerRunConfig(
             base_url=base_url,
-            js_code="document.getElementById('test').innerText = 'Modified'"
+            js_code="document.getElementById('test').innerText = 'Modified'",
         )
         result = await crawler.arun(f"raw:{html}", config=config)
 
@@ -157,6 +164,7 @@ async def test_raw_html_screenshot_redirected_url():
 # Compatibility tests: HTTP URLs should still work correctly
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_http_url_redirected_url_still_works():
     """Ensure HTTP URLs still set redirected_url correctly."""
@@ -175,7 +183,9 @@ async def test_http_url_with_redirect_preserves_redirected_url():
     # httpbin.org/redirect-to redirects to the specified URL
     async with AsyncWebCrawler() as crawler:
         # Use a URL that redirects
-        result = await crawler.arun("https://httpbin.org/redirect-to?url=https://example.com")
+        result = await crawler.arun(
+            "https://httpbin.org/redirect-to?url=https://example.com"
+        )
 
     assert result.success
     # Should capture the final redirected URL
@@ -186,6 +196,7 @@ async def test_http_url_with_redirect_preserves_redirected_url():
 # ============================================================================
 # Edge cases
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_raw_html_with_url_like_content():
@@ -237,6 +248,7 @@ async def test_raw_html_process_in_browser_redirected_url():
 # Regression test: specific issue scenario
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_regression_321kb_html_redirected_url():
     """
@@ -263,11 +275,18 @@ async def test_regression_321kb_html_redirected_url():
 
 
 if __name__ == "__main__":
+
     async def run_tests():
         tests = [
-            ("redirected_url None without base_url", test_raw_html_redirected_url_is_none_without_base_url),
+            (
+                "redirected_url None without base_url",
+                test_raw_html_redirected_url_is_none_without_base_url,
+            ),
             ("redirected_url not huge", test_raw_html_redirected_url_not_huge),
-            ("redirected_url with base_url", test_raw_html_with_base_url_sets_redirected_url),
+            (
+                "redirected_url with base_url",
+                test_raw_html_with_base_url_sets_redirected_url,
+            ),
             ("raw:// prefix", test_raw_double_slash_prefix_redirected_url),
             ("browser path None", test_raw_html_browser_path_redirected_url_none),
             ("browser path with base_url", test_raw_html_browser_path_with_base_url),
@@ -282,11 +301,12 @@ if __name__ == "__main__":
             print(f"\n=== {name} ===")
             try:
                 await test_fn()
-                print(f"PASSED")
+                print("PASSED")
                 passed += 1
             except Exception as e:
                 print(f"FAILED: {e}")
                 import traceback
+
                 traceback.print_exc()
                 failed += 1
 
@@ -295,5 +315,6 @@ if __name__ == "__main__":
         return failed == 0
 
     import sys
+
     success = asyncio.run(run_tests())
     sys.exit(0 if success else 1)

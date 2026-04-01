@@ -5,11 +5,12 @@ Tests for PR #1795, #1798, #1734
 - #1798: Deep-crawl streaming branches to arun() for single URL
 - #1734: GitHub Actions versions bumped to latest
 """
+
+import ast
+from pathlib import Path
+
 import pytest
 import yaml
-import ast
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -105,7 +106,7 @@ class TestDeepCrawlStreamBranching:
     @pytest.mark.asyncio
     async def test_deep_crawl_single_url_uses_arun(self):
         """With deep_crawl_strategy + 1 URL, should call crawler.arun()."""
-        from crawl4ai import CrawlerRunConfig, BrowserConfig
+        from crawl4ai import CrawlerRunConfig
         from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 
         cfg = CrawlerRunConfig(
@@ -191,32 +192,34 @@ class TestGitHubActionsVersions:
         )
         for name, expected in self.EXPECTED_VERSIONS.items():
             if name in actions:
-                assert actions[name] == expected, (
-                    f"{name} should be @{expected}, got @{actions[name]}"
-                )
+                assert (
+                    actions[name] == expected
+                ), f"{name} should be @{expected}, got @{actions[name]}"
 
     def test_release_workflow(self):
         """release.yml should use latest action versions."""
-        actions = self._extract_actions(
-            ROOT / ".github" / "workflows" / "release.yml"
-        )
+        actions = self._extract_actions(ROOT / ".github" / "workflows" / "release.yml")
         for name, expected in self.EXPECTED_VERSIONS.items():
             if name in actions:
-                assert actions[name] == expected, (
-                    f"{name} should be @{expected}, got @{actions[name]}"
-                )
+                assert (
+                    actions[name] == expected
+                ), f"{name} should be @{expected}, got @{actions[name]}"
 
     def test_no_v4_or_v5_checkout_remaining(self):
         """No workflow should still reference checkout@v4 or v5."""
         for wf in (ROOT / ".github" / "workflows").glob("*.yml"):
             content = wf.read_text()
-            assert "actions/checkout@v4" not in content, f"{wf.name} still uses checkout@v4"
-            assert "actions/checkout@v5" not in content, f"{wf.name} still uses checkout@v5"
+            assert (
+                "actions/checkout@v4" not in content
+            ), f"{wf.name} still uses checkout@v4"
+            assert (
+                "actions/checkout@v5" not in content
+            ), f"{wf.name} still uses checkout@v5"
 
     def test_no_old_build_push_action(self):
         """No workflow should still reference build-push-action@v5."""
         for wf in (ROOT / ".github" / "workflows").glob("*.yml"):
             content = wf.read_text()
-            assert "build-push-action@v5" not in content, (
-                f"{wf.name} still uses build-push-action@v5"
-            )
+            assert (
+                "build-push-action@v5" not in content
+            ), f"{wf.name} still uses build-push-action@v5"

@@ -1,10 +1,10 @@
 # crawl4ai/hub.py
-from abc import ABC, abstractmethod
-from typing import Dict, Type, Union
-import logging
 import importlib
-from pathlib import Path
 import inspect
+import logging
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Dict, Type, Union
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class BaseCrawler(ABC):
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
     @abstractmethod
     async def run(self, url: str = "", **kwargs) -> str:
         """
@@ -24,15 +24,18 @@ class BaseCrawler(ABC):
     def __init_subclass__(cls, **kwargs):
         """Enforce interface validation on subclassing"""
         super().__init_subclass__(**kwargs)
-        
+
         # Verify run method signature
         run_method = cls.run
         if not run_method.__code__.co_argcount >= 2:  # self + url
-            raise TypeError(f"{cls.__name__} must implement 'run(self, url: str, **kwargs)'")
-            
+            raise TypeError(
+                f"{cls.__name__} must implement 'run(self, url: str, **kwargs)'"
+            )
+
         # Verify async nature
         if not inspect.iscoroutinefunction(run_method):
             raise TypeError(f"{cls.__name__}.run must be async")
+
 
 class CrawlerHub:
     _crawlers: Dict[str, Type[BaseCrawler]] = {}
@@ -57,7 +60,11 @@ class CrawlerHub:
     @classmethod
     def _maybe_register_crawler(cls, obj, name: str):
         """Brilliant one-liner registration"""
-        if isinstance(obj, type) and issubclass(obj, BaseCrawler) and obj != BaseCrawler:
+        if (
+            isinstance(obj, type)
+            and issubclass(obj, BaseCrawler)
+            and obj != BaseCrawler
+        ):
             module = importlib.import_module(obj.__module__)
             obj.meta = getattr(module, "__meta__", {})
             cls._crawlers[name] = obj

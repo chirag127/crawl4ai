@@ -1,21 +1,20 @@
-import os
 import asyncio
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
-from crawl4ai import LLMConfig
+import os
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, LLMConfig)
 from crawl4ai.content_filter_strategy import LLMContentFilter
+
 
 async def test_llm_filter():
     # Create an HTML source that needs intelligent filtering
     url = "https://docs.python.org/3/tutorial/classes.html"
-    
-    browser_config = BrowserConfig(
-        headless=True,
-        verbose=True
-    )
-    
+
+    browser_config = BrowserConfig(headless=True, verbose=True)
+
     # run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
     run_config = CrawlerRunConfig(cache_mode=CacheMode.ENABLED)
-    
+
     async with AsyncWebCrawler(config=browser_config) as crawler:
         # First get the raw HTML
         result = await crawler.arun(url, config=run_config)
@@ -23,7 +22,9 @@ async def test_llm_filter():
 
         # Initialize LLM filter with focused instruction
         filter = LLMContentFilter(
-            llm_config=LLMConfig(provider="openai/gpt-4o", api_token=os.getenv('OPENAI_API_KEY')),
+            llm_config=LLMConfig(
+                provider="openai/gpt-4o", api_token=os.getenv("OPENAI_API_KEY")
+            ),
             instruction="""
             Focus on extracting the core educational content about Python classes.
             Include:
@@ -39,13 +40,15 @@ async def test_llm_filter():
             
             Format the output as clean markdown with proper code blocks and headers.
             """,
-            verbose=True
+            verbose=True,
         )
-        
+
         filter = LLMContentFilter(
-            llm_config=LLMConfig(provider="openai/gpt-4o",api_token=os.getenv('OPENAI_API_KEY')),
-            chunk_token_threshold=2 ** 12 * 2, # 2048 * 2
-            ignore_cache = True,
+            llm_config=LLMConfig(
+                provider="openai/gpt-4o", api_token=os.getenv("OPENAI_API_KEY")
+            ),
+            chunk_token_threshold=2**12 * 2,  # 2048 * 2
+            ignore_cache=True,
             instruction="""
             Extract the main educational content while preserving its original wording and substance completely. Your task is to:
 
@@ -64,24 +67,25 @@ async def test_llm_filter():
             keeping all valuable content but free from distracting elements. Imagine you're creating 
             a perfect reading experience where nothing valuable is lost, but all noise is removed.
             """,
-            verbose=True
-        )        
+            verbose=True,
+        )
 
         # Apply filtering
         filtered_content = filter.filter_content(html)
-        
+
         # Show results
         print("\nFiltered Content Length:", len(filtered_content))
         print("\nFirst 500 chars of filtered content:")
         if filtered_content:
             print(filtered_content[0][:500])
-        
+
         # Save on disc the markdown version
         with open("filtered_content.md", "w", encoding="utf-8") as f:
             f.write("\n".join(filtered_content))
-        
+
         # Show token usage
         filter.show_usage()
+
 
 if __name__ == "__main__":
     asyncio.run(test_llm_filter())

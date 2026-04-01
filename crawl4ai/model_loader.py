@@ -1,10 +1,13 @@
+import argparse
+import os
+import shutil
+import subprocess
 from functools import lru_cache
 from pathlib import Path
-import subprocess, os
-import shutil
-from .model_loader import *
-import argparse
+
 from crawl4ai.config import MODEL_REPO_BRANCH
+
+from .model_loader import *
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
@@ -73,7 +76,7 @@ def get_home_folder():
 
 @lru_cache()
 def load_bert_base_uncased():
-    from transformers import BertTokenizer, BertModel
+    from transformers import BertModel, BertTokenizer
 
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", resume_download=None)
     model = BertModel.from_pretrained("bert-base-uncased", resume_download=None)
@@ -92,7 +95,7 @@ def load_HF_embedding_model(model_name="BAAI/bge-small-en-v1.5") -> tuple:
     Returns:
         tuple: The tokenizer and model.
     """
-    from transformers import AutoTokenizer, AutoModel
+    from transformers import AutoModel, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=None)
     model = AutoModel.from_pretrained(model_name, resume_download=None)
@@ -103,8 +106,8 @@ def load_HF_embedding_model(model_name="BAAI/bge-small-en-v1.5") -> tuple:
 
 @lru_cache()
 def load_text_classifier():
-    from transformers import AutoTokenizer, AutoModelForSequenceClassification
-    from transformers import pipeline
+    from transformers import (AutoModelForSequenceClassification,
+                              AutoTokenizer, pipeline)
 
     tokenizer = AutoTokenizer.from_pretrained(
         "dstefa/roberta-base_topic_classification_nyt_news"
@@ -120,9 +123,9 @@ def load_text_classifier():
 
 @lru_cache()
 def load_text_multilabel_classifier():
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer
-    from scipy.special import expit
     import torch
+    from scipy.special import expit
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
     # # Check for available device: CUDA, MPS (for Apple Silicon), or CPU
     # if torch.cuda.is_available():

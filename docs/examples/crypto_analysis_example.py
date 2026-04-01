@@ -17,21 +17,18 @@ Key Features:
 """
 
 import asyncio
-import pandas as pd
-import numpy as np
 import re
-import plotly.express as px
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    CacheMode,
-    LXMLWebScrapingStrategy,
-)
-from crawl4ai import CrawlResult
 from typing import List
 
+import numpy as np
+import pandas as pd
+import plotly.express as px
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, CrawlResult, LXMLWebScrapingStrategy)
+
 __current_dir__ = __file__.rsplit("/", 1)[0]
+
 
 class CryptoAlphaGenerator:
     """
@@ -54,39 +51,42 @@ class CryptoAlphaGenerator:
         """
         # Make a copy to avoid SettingWithCopyWarning
         df = df.copy()
-        
+
         # Clean Price column (handle currency symbols)
-        df["Price"] = df["Price"].astype(str).str.replace("[^\d.]", "", regex=True).astype(float)
-        
+        df["Price"] = (
+            df["Price"].astype(str).str.replace("[^\d.]", "", regex=True).astype(float)
+        )
+
         # Handle Market Cap and Volume, considering both Billions and Trillions
         def convert_large_numbers(value):
             if pd.isna(value):
-                return float('nan')
+                return float("nan")
             value = str(value)
             multiplier = 1
-            if 'B' in value:
+            if "B" in value:
                 multiplier = 1e9
-            elif 'T' in value:
+            elif "T" in value:
                 multiplier = 1e12
             # Handle cases where the value might already be numeric
             cleaned_value = re.sub(r"[^\d.]", "", value)
-            return float(cleaned_value) * multiplier if cleaned_value else float('nan')
-        
+            return float(cleaned_value) * multiplier if cleaned_value else float("nan")
+
         df["Market Cap"] = df["Market Cap"].apply(convert_large_numbers)
         df["Volume(24h)"] = df["Volume(24h)"].apply(convert_large_numbers)
-        
+
         # Convert percentages to decimal values
         for col in ["1h %", "24h %", "7d %"]:
             if col in df.columns:
                 # First ensure it's string, then clean
                 df[col] = (
-                    df[col].astype(str)
+                    df[col]
+                    .astype(str)
                     .str.replace("%", "")
                     .str.replace(",", ".")
                     .replace("nan", np.nan)
                 )
-                df[col] = pd.to_numeric(df[col], errors='coerce') / 100
-        
+                df[col] = pd.to_numeric(df[col], errors="coerce") / 100
+
         return df
 
     def calculate_metrics(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -143,78 +143,106 @@ class CryptoAlphaGenerator:
         report = [
             "🚀 **CRYPTO TRADING CHEAT SHEET** 🚀",
             "*Based on quantitative signals + hedge fund tactics*",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         ]
 
         # 1. HIGH-RISK: Undervalued Small-Caps (Momentum Plays)
-        high_risk = df[df["Undervalued Flag"]].sort_values("Momentum Score", ascending=False)
+        high_risk = df[df["Undervalued Flag"]].sort_values(
+            "Momentum Score", ascending=False
+        )
         if not high_risk.empty:
             example_coin = high_risk.iloc[0]
-            report.extend([
-                "\n🔥 **HIGH-RISK: Rocket Fuel Small-Caps**",
-                f"*Example Trade:* {example_coin['Name']} (Price: ${example_coin['Price']:.6f})",
-                "📊 *Why?* Tiny market cap (<$1B) but STRONG momentum (+{:.0f}% last week)".format(example_coin['7d %']*100),
-                "🎯 *Strategy:*",
-                "1. Wait for 5-10% dip from recent high (${:.6f} → Buy under ${:.6f})".format(
-                    example_coin['Price'] / (1 - example_coin['24h %']),  # Approx recent high
-                    example_coin['Price'] * 0.95
-                ),
-                "2. Set stop-loss at -10% (${:.6f})".format(example_coin['Price'] * 0.90),
-                "3. Take profit at +20% (${:.6f})".format(example_coin['Price'] * 1.20),
-                "⚠️ *Risk Warning:* These can drop 30% fast! Never bet more than 5% of your portfolio.",
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            ])
+            report.extend(
+                [
+                    "\n🔥 **HIGH-RISK: Rocket Fuel Small-Caps**",
+                    f"*Example Trade:* {example_coin['Name']} (Price: ${example_coin['Price']:.6f})",
+                    "📊 *Why?* Tiny market cap (<$1B) but STRONG momentum (+{:.0f}% last week)".format(
+                        example_coin["7d %"] * 100
+                    ),
+                    "🎯 *Strategy:*",
+                    "1. Wait for 5-10% dip from recent high (${:.6f} → Buy under ${:.6f})".format(
+                        example_coin["Price"]
+                        / (1 - example_coin["24h %"]),  # Approx recent high
+                        example_coin["Price"] * 0.95,
+                    ),
+                    "2. Set stop-loss at -10% (${:.6f})".format(
+                        example_coin["Price"] * 0.90
+                    ),
+                    "3. Take profit at +20% (${:.6f})".format(
+                        example_coin["Price"] * 1.20
+                    ),
+                    "⚠️ *Risk Warning:* These can drop 30% fast! Never bet more than 5% of your portfolio.",
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                ]
+            )
 
         # 2. MEDIUM-RISK: Liquid Giants (Swing Trades)
-        medium_risk = df[df["Liquid Giant"]].sort_values("Volume/Market Cap Ratio", ascending=False)
+        medium_risk = df[df["Liquid Giant"]].sort_values(
+            "Volume/Market Cap Ratio", ascending=False
+        )
         if not medium_risk.empty:
             example_coin = medium_risk.iloc[0]
-            report.extend([
-                "\n💎 **MEDIUM-RISK: Liquid Giants (Safe Swing Trades)**",
-                f"*Example Trade:* {example_coin['Name']} (Market Cap: ${example_coin['Market Cap']/1e9:.1f}B)",
-                "📊 *Why?* Huge volume (${:.1f}M/day) makes it easy to enter/exit".format(example_coin['Volume(24h)']/1e6),
-                "🎯 *Strategy:*",
-                "1. Buy when 24h volume > 15% of market cap (Current: {:.0f}%)".format(example_coin['Volume/Market Cap Ratio']*100),
-                "2. Hold 1-4 weeks (Big coins trend longer)",
-                "3. Exit when momentum drops below 5% (Current: {:.0f}%)".format(example_coin['Momentum Score']*100),
-                "📉 *Pro Tip:* Watch Bitcoin's trend - if BTC drops 5%, these usually follow.",
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            ])
+            report.extend(
+                [
+                    "\n💎 **MEDIUM-RISK: Liquid Giants (Safe Swing Trades)**",
+                    f"*Example Trade:* {example_coin['Name']} (Market Cap: ${example_coin['Market Cap']/1e9:.1f}B)",
+                    "📊 *Why?* Huge volume (${:.1f}M/day) makes it easy to enter/exit".format(
+                        example_coin["Volume(24h)"] / 1e6
+                    ),
+                    "🎯 *Strategy:*",
+                    "1. Buy when 24h volume > 15% of market cap (Current: {:.0f}%)".format(
+                        example_coin["Volume/Market Cap Ratio"] * 100
+                    ),
+                    "2. Hold 1-4 weeks (Big coins trend longer)",
+                    "3. Exit when momentum drops below 5% (Current: {:.0f}%)".format(
+                        example_coin["Momentum Score"] * 100
+                    ),
+                    "📉 *Pro Tip:* Watch Bitcoin's trend - if BTC drops 5%, these usually follow.",
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                ]
+            )
 
         # 3. LOW-RISK: Stable Momentum (DCA Targets)
         low_risk = df[
-            (df["Momentum Score"] > 0.05) & 
-            (df["Volatility Score"] < 0.03)
+            (df["Momentum Score"] > 0.05) & (df["Volatility Score"] < 0.03)
         ].sort_values("Market Cap", ascending=False)
         if not low_risk.empty:
             example_coin = low_risk.iloc[0]
-            report.extend([
-                "\n🛡️ **LOW-RISK: Steady Climbers (DCA & Forget)**",
-                f"*Example Trade:* {example_coin['Name']} (Volatility: {example_coin['Volatility Score']:.2f}/5)",
-                "📊 *Why?* Rises steadily (+{:.0f}%/week) with LOW drama".format(example_coin['7d %']*100),
-                "🎯 *Strategy:*",
-                "1. Buy small amounts every Tuesday/Friday (DCA)",
-                "2. Hold for 3+ months (Compound gains work best here)",
-                "3. Sell 10% at every +25% milestone",
-                "💰 *Best For:* Long-term investors who hate sleepless nights",
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            ])
+            report.extend(
+                [
+                    "\n🛡️ **LOW-RISK: Steady Climbers (DCA & Forget)**",
+                    f"*Example Trade:* {example_coin['Name']} (Volatility: {example_coin['Volatility Score']:.2f}/5)",
+                    "📊 *Why?* Rises steadily (+{:.0f}%/week) with LOW drama".format(
+                        example_coin["7d %"] * 100
+                    ),
+                    "🎯 *Strategy:*",
+                    "1. Buy small amounts every Tuesday/Friday (DCA)",
+                    "2. Hold for 3+ months (Compound gains work best here)",
+                    "3. Sell 10% at every +25% milestone",
+                    "💰 *Best For:* Long-term investors who hate sleepless nights",
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                ]
+            )
 
         # Volume Spike Alerts
         anomalies = df[df["Volume Anomaly"]].sort_values("Volume(24h)", ascending=False)
         if not anomalies.empty:
             example_coin = anomalies.iloc[0]
-            report.extend([
-                "\n🚨 **Volume Spike Alert (Possible News/Whale Action)**",
-                f"*Coin:* {example_coin['Name']} (Volume: ${example_coin['Volume(24h)']/1e6:.1f}M, usual: ${example_coin['Volume(24h)']/3/1e6:.1f}M)",
-                "🔍 *Check:* Twitter/CoinGecko for news before trading",
-                "⚡ *If no news:* Could be insider buying - watch price action:",
-                "- Break above today's high → Buy with tight stop-loss",
-                "- Fade back down → Avoid (may be a fakeout)"
-            ])
+            report.extend(
+                [
+                    "\n🚨 **Volume Spike Alert (Possible News/Whale Action)**",
+                    f"*Coin:* {example_coin['Name']} (Volume: ${example_coin['Volume(24h)']/1e6:.1f}M, usual: ${example_coin['Volume(24h)']/3/1e6:.1f}M)",
+                    "🔍 *Check:* Twitter/CoinGecko for news before trading",
+                    "⚡ *If no news:* Could be insider buying - watch price action:",
+                    "- Break above today's high → Buy with tight stop-loss",
+                    "- Fade back down → Avoid (may be a fakeout)",
+                ]
+            )
 
         # Pro Tip Footer
-        report.append("\n✨ *Pro Tip:* Bookmark this report & check back in 24h to see if signals held up.")
+        report.append(
+            "\n✨ *Pro Tip:* Bookmark this report & check back in 24h to see if signals held up."
+        )
 
         return "\n".join(report)
 
@@ -243,7 +271,7 @@ class CryptoAlphaGenerator:
         )
 
         report = ["# 🎯 Crypto Trading Tactical Report (Top 3 Per Risk Tier)"]
-        
+
         # 1. High-Risk Trades (Small-Cap Momentum)
         if not high_risk.empty:
             report.append("\n## 🔥 HIGH RISK: Small-Cap Rockets (5-50% Potential)")
@@ -252,7 +280,7 @@ class CryptoAlphaGenerator:
                 entry = current_price * 0.95  # -5% dip
                 stop_loss = current_price * 0.90  # -10%
                 take_profit = current_price * 1.20  # +20%
-                
+
                 report.append(
                     f"\n### {coin['Name']} (Momentum: {coin['Momentum Score']:.1%})"
                     f"\n- **Current Price:** ${current_price:.4f}"
@@ -271,7 +299,7 @@ class CryptoAlphaGenerator:
                 entry = current_price * 0.98  # -2% dip
                 stop_loss = current_price * 0.94  # -6%
                 take_profit = current_price * 1.15  # +15%
-                
+
                 report.append(
                     f"\n### {coin['Name']} (Liquidity Score: {coin['Volume/Market Cap Ratio']:.1%})"
                     f"\n- **Current Price:** ${current_price:.2f}"
@@ -290,7 +318,7 @@ class CryptoAlphaGenerator:
                 entry = current_price * 0.99  # -1% dip
                 stop_loss = current_price * 0.97  # -3%
                 take_profit = current_price * 1.10  # +10%
-                
+
                 report.append(
                     f"\n### {coin['Name']} (Stability Score: {1/coin['Volatility Score']:.1f}x)"
                     f"\n- **Current Price:** ${current_price:.2f}"
@@ -301,7 +329,9 @@ class CryptoAlphaGenerator:
                 )
 
         # Volume Anomaly Alert
-        anomalies = df[df["Volume Anomaly"]].sort_values("Volume(24h)", ascending=False).head(2)
+        anomalies = (
+            df[df["Volume Anomaly"]].sort_values("Volume(24h)", ascending=False).head(2)
+        )
         if not anomalies.empty:
             report.append("\n⚠️ **Volume Spike Alerts**")
             for i, coin in anomalies.iterrows():
@@ -334,25 +364,29 @@ class CryptoAlphaGenerator:
             color="Name",  # Color by name to allow toggling
             hover_name="Name",
             title="Market Map (Toggle BTC in legend to focus on alts)",
-            log_x=True
+            log_x=True,
         )
         fig1.update_traces(
-            marker=dict(size=df["Volatility Score"]*100 + 5)  # Dynamic sizing
+            marker=dict(size=df["Volatility Score"] * 100 + 5)  # Dynamic sizing
         )
-        
+
         # Liquidity Tree (exclude BTC if too dominant)
-        if df[df["Name"] == "BitcoinBTC"]["Market Cap"].values[0] > df["Market Cap"].median() * 10:
+        if (
+            df[df["Name"] == "BitcoinBTC"]["Market Cap"].values[0]
+            > df["Market Cap"].median() * 10
+        ):
             df = df[df["Name"] != "BitcoinBTC"]
-        
+
         fig2 = px.treemap(
             df,
             path=["Name"],
             values="Market Cap",
             color="Volume/Market Cap Ratio",
-            title="Liquidity Tree (BTC auto-removed if dominant)"
+            title="Liquidity Tree (BTC auto-removed if dominant)",
         )
-        
+
         return {"market_map": fig1, "liquidity_tree": fig2}
+
 
 async def main():
     """
@@ -392,7 +426,11 @@ async def main():
         raw_df = pd.DataFrame()
         for result in results:
             # Use the new tables field, falling back to media["tables"] for backward compatibility
-            tables = result.tables if hasattr(result, "tables") and result.tables else result.media.get("tables", [])
+            tables = (
+                result.tables
+                if hasattr(result, "tables") and result.tables
+                else result.media.get("tables", [])
+            )
             if result.success and tables:
                 # Extract primary market table
                 # DataFrame
@@ -401,7 +439,6 @@ async def main():
                     columns=tables[0]["headers"],
                 )
                 break
-
 
         # This is for debugging only
         # ////// Remove this in production from here..
@@ -429,7 +466,9 @@ async def main():
 
         # Save visualizations
         visuals["market_map"].write_html(f"{__current_dir__}/tmp/market_map.html")
-        visuals["liquidity_tree"].write_html(f"{__current_dir__}/tmp/liquidity_tree.html")
+        visuals["liquidity_tree"].write_html(
+            f"{__current_dir__}/tmp/liquidity_tree.html"
+        )
 
         # Display results
         print("🔑 Key Trading Insights:")

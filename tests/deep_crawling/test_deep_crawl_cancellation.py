@@ -11,21 +11,18 @@ Tests that verify:
 7. State notifications include cancelled flag
 """
 
-import pytest
-import asyncio
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
-from crawl4ai.deep_crawling import (
-    BFSDeepCrawlStrategy,
-    DFSDeepCrawlStrategy,
-    BestFirstCrawlingStrategy,
-)
+import pytest
 
+from crawl4ai.deep_crawling import (BestFirstCrawlingStrategy,
+                                    BFSDeepCrawlStrategy, DFSDeepCrawlStrategy)
 
 # ============================================================================
 # Helper Functions for Mock Crawler
 # ============================================================================
+
 
 def create_mock_config(stream=False):
     """Create a mock CrawlerRunConfig."""
@@ -35,7 +32,7 @@ def create_mock_config(stream=False):
     def clone_config(**kwargs):
         """Clone returns a new config with overridden values."""
         new_config = MagicMock()
-        new_config.stream = kwargs.get('stream', stream)
+        new_config.stream = kwargs.get("stream", stream)
         new_config.clone = MagicMock(side_effect=clone_config)
         return new_config
 
@@ -68,9 +65,11 @@ def create_mock_crawler_with_links(num_links: int = 3):
 
         # For streaming mode, return async generator
         if config.stream:
+
             async def gen():
                 for r in results:
                     yield r
+
             return gen()
         return results
 
@@ -90,14 +89,20 @@ def create_mock_crawler_tracking(crawl_order: List[str], return_no_links: bool =
             result.url = url
             result.success = True
             result.metadata = {}
-            result.links = {"internal": [], "external": []} if return_no_links else {"internal": [{"href": f"{url}/child"}], "external": []}
+            result.links = (
+                {"internal": [], "external": []}
+                if return_no_links
+                else {"internal": [{"href": f"{url}/child"}], "external": []}
+            )
             results.append(result)
 
         # For streaming mode, return async generator
         if config.stream:
+
             async def gen():
                 for r in results:
                     yield r
+
             return gen()
         return results
 
@@ -109,6 +114,7 @@ def create_mock_crawler_tracking(crawl_order: List[str], return_no_links: bool =
 # ============================================================================
 # TEST SUITE: Cancellation via should_cancel Callback
 # ============================================================================
+
 
 class TestBFSCancellation:
     """BFS strategy cancellation tests."""
@@ -136,7 +142,9 @@ class TestBFSCancellation:
         mock_crawler = create_mock_crawler_with_links(num_links=5)
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # Should have stopped after cancel_after pages
         assert strategy.cancelled == True
@@ -225,12 +233,16 @@ class TestBFSCancellation:
 
         # First crawl - should be cancelled
         call_count = 1
-        results1 = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results1 = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
         assert strategy.cancelled == True
 
         # Second crawl - should work normally (cancel_first_time returns False)
         call_count = 2
-        results2 = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results2 = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
         assert strategy.cancelled == False
         assert len(results2) > len(results1)
 
@@ -254,7 +266,9 @@ class TestBFSCancellation:
         mock_config = create_mock_config()
 
         # Should not raise, should complete crawl
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         assert exception_count > 0  # Callback was called
         assert len(results) > 0  # Crawl completed
@@ -291,6 +305,7 @@ class TestBFSCancellation:
     @pytest.mark.asyncio
     async def test_cancel_before_first_url(self):
         """Verify cancel before first URL returns empty results."""
+
         async def always_cancel():
             return True
 
@@ -303,7 +318,9 @@ class TestBFSCancellation:
         mock_crawler = create_mock_crawler_with_links(num_links=5)
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         assert strategy.cancelled == True
         assert len(results) == 0
@@ -346,9 +363,9 @@ class TestDFSCancellation:
         """Verify DFS inherits cancel() from BFS."""
         strategy = DFSDeepCrawlStrategy(max_depth=2, max_pages=10)
 
-        assert hasattr(strategy, 'cancel')
-        assert hasattr(strategy, 'cancelled')
-        assert hasattr(strategy, '_check_cancellation')
+        assert hasattr(strategy, "cancel")
+        assert hasattr(strategy, "cancelled")
+        assert hasattr(strategy, "_check_cancellation")
 
         strategy.cancel()
         assert strategy.cancelled == True
@@ -371,7 +388,9 @@ class TestDFSCancellation:
         mock_crawler = create_mock_crawler_with_links(num_links=3)
         mock_config = create_mock_config(stream=True)
 
-        async for result in strategy._arun_stream("https://example.com", mock_crawler, mock_config):
+        async for result in strategy._arun_stream(
+            "https://example.com", mock_crawler, mock_config
+        ):
             results_count += 1
 
         assert strategy.cancelled == True
@@ -405,7 +424,9 @@ class TestBestFirstCancellation:
         mock_crawler = create_mock_crawler_with_links(num_links=3)
         mock_config = create_mock_config(stream=True)
 
-        async for _ in strategy._arun_stream("https://example.com", mock_crawler, mock_config):
+        async for _ in strategy._arun_stream(
+            "https://example.com", mock_crawler, mock_config
+        ):
             pass
 
         assert strategy.cancelled == True
@@ -444,7 +465,9 @@ class TestBestFirstCancellation:
         mock_crawler = create_mock_crawler_with_links(num_links=3)
         mock_config = create_mock_config(stream=False)
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         assert strategy.cancelled == True
         assert len(results) >= cancel_after
@@ -455,11 +478,14 @@ class TestCrossStrategyCancellation:
     """Tests that apply to all strategies."""
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("strategy_class", [
-        BFSDeepCrawlStrategy,
-        DFSDeepCrawlStrategy,
-        BestFirstCrawlingStrategy,
-    ])
+    @pytest.mark.parametrize(
+        "strategy_class",
+        [
+            BFSDeepCrawlStrategy,
+            DFSDeepCrawlStrategy,
+            BestFirstCrawlingStrategy,
+        ],
+    )
     async def test_no_cancel_callback_means_no_cancellation(self, strategy_class):
         """Verify crawl completes normally without should_cancel."""
         strategy = strategy_class(max_depth=1, max_pages=5)
@@ -469,21 +495,28 @@ class TestCrossStrategyCancellation:
         if strategy_class == BestFirstCrawlingStrategy:
             mock_config = create_mock_config(stream=True)
             results = []
-            async for r in strategy._arun_stream("https://example.com", mock_crawler, mock_config):
+            async for r in strategy._arun_stream(
+                "https://example.com", mock_crawler, mock_config
+            ):
                 results.append(r)
         else:
             mock_config = create_mock_config()
-            results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+            results = await strategy._arun_batch(
+                "https://example.com", mock_crawler, mock_config
+            )
 
         assert strategy.cancelled == False
         assert len(results) > 0
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("strategy_class", [
-        BFSDeepCrawlStrategy,
-        DFSDeepCrawlStrategy,
-        BestFirstCrawlingStrategy,
-    ])
+    @pytest.mark.parametrize(
+        "strategy_class",
+        [
+            BFSDeepCrawlStrategy,
+            DFSDeepCrawlStrategy,
+            BestFirstCrawlingStrategy,
+        ],
+    )
     async def test_cancel_thread_safety(self, strategy_class):
         """Verify cancel() is thread-safe (doesn't raise)."""
         strategy = strategy_class(max_depth=2, max_pages=10)
@@ -496,13 +529,17 @@ class TestCrossStrategyCancellation:
         assert strategy.cancelled == True
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("strategy_class", [
-        BFSDeepCrawlStrategy,
-        DFSDeepCrawlStrategy,
-        BestFirstCrawlingStrategy,
-    ])
+    @pytest.mark.parametrize(
+        "strategy_class",
+        [
+            BFSDeepCrawlStrategy,
+            DFSDeepCrawlStrategy,
+            BestFirstCrawlingStrategy,
+        ],
+    )
     async def test_should_cancel_param_accepted(self, strategy_class):
         """Verify should_cancel parameter is accepted by constructor."""
+
         async def dummy_cancel():
             return False
 
@@ -543,7 +580,9 @@ class TestCancellationEdgeCases:
         mock_crawler = create_mock_crawler_with_links(num_links=5)
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # Should have at least the first batch of results
         assert len(results) >= 1
@@ -566,7 +605,9 @@ class TestCancellationEdgeCases:
         mock_crawler = create_mock_crawler_with_links(num_links=10)
         mock_config = create_mock_config()
 
-        results = await strategy._arun_batch("https://example.com", mock_crawler, mock_config)
+        results = await strategy._arun_batch(
+            "https://example.com", mock_crawler, mock_config
+        )
 
         # Should have results up to cancellation point
         assert len(results) >= cancel_after

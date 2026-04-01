@@ -1,10 +1,11 @@
-import requests
-import json
-import time
-import sys
 import base64
+import json
 import os
-from typing import Dict, Any
+import sys
+import time
+from typing import Any, Dict
+
+import requests
 
 
 class Crawl4AiTester:

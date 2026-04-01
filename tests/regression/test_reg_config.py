@@ -5,22 +5,17 @@ Covers BrowserConfig, CrawlerRunConfig, ProxyConfig, GeolocationConfig,
 deep_merge logic, and serialization roundtrips.
 """
 
-import copy
+
 import pytest
 
-from crawl4ai import (
-    BrowserConfig,
-    CrawlerRunConfig,
-    ProxyConfig,
-    GeolocationConfig,
-    CacheMode,
-)
-from crawl4ai.async_configs import to_serializable_dict, from_serializable_dict
-
+from crawl4ai import (BrowserConfig, CacheMode, CrawlerRunConfig,
+                      GeolocationConfig, ProxyConfig)
+from crawl4ai.async_configs import from_serializable_dict, to_serializable_dict
 
 # ---------------------------------------------------------------------------
 # Helper: deep_merge (copied from deploy/docker/utils.py to avoid dns dep)
 # ---------------------------------------------------------------------------
+
 
 def _deep_merge(base, override):
     """Recursively merge override into base dict."""
@@ -36,6 +31,7 @@ def _deep_merge(base, override):
 # ===================================================================
 # BrowserConfig
 # ===================================================================
+
 
 class TestBrowserConfigDefaults:
     """Verify BrowserConfig default values are sensible."""
@@ -255,6 +251,7 @@ class TestBrowserConfigDumpLoad:
 # CrawlerRunConfig
 # ===================================================================
 
+
 class TestCrawlerRunConfigDefaults:
     """Verify CrawlerRunConfig default values."""
 
@@ -266,6 +263,7 @@ class TestCrawlerRunConfigDefaults:
     def test_word_count_threshold_default(self):
         """Default word_count_threshold should match MIN_WORD_THRESHOLD (1)."""
         from crawl4ai.config import MIN_WORD_THRESHOLD
+
         cfg = CrawlerRunConfig()
         assert cfg.word_count_threshold == MIN_WORD_THRESHOLD
 
@@ -407,6 +405,7 @@ class TestCrawlerRunConfigSerialization:
         """CrawlerRunConfig with extraction_strategy should serialize."""
         try:
             from crawl4ai import JsonCssExtractionStrategy
+
             schema = {
                 "name": "test",
                 "baseSelector": "div.item",
@@ -426,6 +425,7 @@ class TestCrawlerRunConfigSerialization:
         """CrawlerRunConfig with deep_crawl_strategy should serialize."""
         try:
             from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+
             strategy = BFSDeepCrawlStrategy(max_depth=2, max_pages=10)
             cfg = CrawlerRunConfig(deep_crawl_strategy=strategy)
             dumped = cfg.dump()
@@ -438,6 +438,7 @@ class TestCrawlerRunConfigSerialization:
 # ===================================================================
 # ProxyConfig
 # ===================================================================
+
 
 class TestProxyConfigFromString:
     """Verify ProxyConfig.from_string() parsing."""
@@ -532,7 +533,9 @@ class TestProxyConfigClone:
 
     def test_clone_with_credentials_override(self):
         """Clone should be able to override credentials."""
-        original = ProxyConfig(server="http://proxy:8080", username="old", password="old")
+        original = ProxyConfig(
+            server="http://proxy:8080", username="old", password="old"
+        )
         cloned = original.clone(username="new", password="new")
         assert cloned.username == "new"
         assert cloned.password == "new"
@@ -554,6 +557,7 @@ class TestProxyConfigSentinel:
 # ===================================================================
 # GeolocationConfig
 # ===================================================================
+
 
 class TestGeolocationConfig:
     """Verify GeolocationConfig construction and roundtrip."""
@@ -606,6 +610,7 @@ class TestGeolocationConfig:
 # ===================================================================
 # Deep merge tests
 # ===================================================================
+
 
 class TestDeepMerge:
     """Verify _deep_merge helper for server config merging."""
@@ -669,6 +674,7 @@ class TestDeepMerge:
 # Serialization: to_serializable_dict / from_serializable_dict
 # ===================================================================
 
+
 class TestSerializableDict:
     """Verify to_serializable_dict / from_serializable_dict roundtrips."""
 
@@ -703,6 +709,7 @@ class TestSerializableDict:
         """CrawlerRunConfig with extraction strategy should roundtrip."""
         try:
             from crawl4ai import JsonCssExtractionStrategy
+
             schema = {
                 "name": "products",
                 "baseSelector": "div.product",
@@ -758,7 +765,9 @@ class TestSerializableDict:
 
     def test_geolocation_config_roundtrip(self):
         """GeolocationConfig should survive serialization roundtrip."""
-        original = GeolocationConfig(latitude=37.7749, longitude=-122.4194, accuracy=10.0)
+        original = GeolocationConfig(
+            latitude=37.7749, longitude=-122.4194, accuracy=10.0
+        )
         serialized = to_serializable_dict(original)
         assert serialized["type"] == "GeolocationConfig"
         restored = from_serializable_dict(serialized)
@@ -767,7 +776,9 @@ class TestSerializableDict:
 
     def test_proxy_config_roundtrip(self):
         """ProxyConfig should survive serialization roundtrip."""
-        original = ProxyConfig(server="http://proxy:8080", username="user", password="pass")
+        original = ProxyConfig(
+            server="http://proxy:8080", username="user", password="pass"
+        )
         serialized = to_serializable_dict(original)
         assert serialized["type"] == "ProxyConfig"
         restored = from_serializable_dict(serialized)

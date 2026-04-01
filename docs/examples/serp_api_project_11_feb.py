@@ -1,23 +1,15 @@
 import asyncio
 import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from regex import P
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CrawlerRunConfig,
-    CacheMode,
-    LLMConfig,
-    LLMExtractionStrategy,
-    JsonCssExtractionStrategy,
-    CrawlerHub,
-    CrawlResult,
-    DefaultMarkdownGenerator,
-    PruningContentFilter,
-)
-from pathlib import Path
 from pydantic import BaseModel
+from regex import P
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerHub,
+                      CrawlerRunConfig, CrawlResult, DefaultMarkdownGenerator,
+                      JsonCssExtractionStrategy, LLMConfig,
+                      LLMExtractionStrategy, PruningContentFilter)
 
 __current_dir = Path(__file__).parent
 

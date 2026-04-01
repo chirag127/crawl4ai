@@ -8,11 +8,16 @@ python test_stress_docker_api.py --urls 1000 --concurrency 32 --stream
 python test_stress_docker_api.py --base-url http://10.0.0.42:11235 --http2
 """
 
-import argparse, asyncio, json, secrets, statistics, time
+import argparse
+import asyncio
+import secrets
+import time
 from typing import List, Tuple
+
 import httpx
 from rich.console import Console
-from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn
+from rich.progress import (BarColumn, Progress, TimeElapsedColumn,
+                           TimeRemainingColumn)
 from rich.table import Table
 
 console = Console()
@@ -37,7 +42,7 @@ async def fire(
                     async for _ in r.aiter_lines():
                         pass
             else:
-                r = await client.post(endpoint, json=payload)                
+                r = await client.post(endpoint, json=payload)
                 r.raise_for_status()
             return True, time.perf_counter() - t0
         except Exception:
@@ -77,11 +82,15 @@ async def main() -> None:
     args = parse_args()
 
     urls = make_fake_urls(args.urls)
-    batches = [urls[i : i + args.chunk_size] for i in range(0, len(urls), args.chunk_size)]
+    batches = [
+        urls[i : i + args.chunk_size] for i in range(0, len(urls), args.chunk_size)
+    ]
     endpoint = "/crawl/stream" if args.stream else "/crawl"
     sem = asyncio.Semaphore(args.concurrency)
 
-    async with httpx.AsyncClient(base_url=args.base_url, http2=args.http2, timeout=None) as client:
+    async with httpx.AsyncClient(
+        base_url=args.base_url, http2=args.http2, timeout=None
+    ) as client:
         with Progress(
             "[progress.description]{task.description}",
             BarColumn(),
@@ -94,8 +103,14 @@ async def main() -> None:
             for chunk in batches:
                 payload = {
                     "urls": chunk,
-                    "browser_config": {"type": "BrowserConfig", "params": {"headless": args.headless}},
-                    "crawler_config": {"type": "CrawlerRunConfig", "params": {"cache_mode": "BYPASS", "stream": args.stream}},
+                    "browser_config": {
+                        "type": "BrowserConfig",
+                        "params": {"headless": args.headless},
+                    },
+                    "crawler_config": {
+                        "type": "CrawlerRunConfig",
+                        "params": {"cache_mode": "BYPASS", "stream": args.stream},
+                    },
                 }
                 tasks.append(asyncio.create_task(fire(client, endpoint, payload, sem)))
                 progress.advance(task_id)

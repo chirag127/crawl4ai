@@ -13,10 +13,12 @@ Verifies all layers:
 - Performance improvements
 """
 
-import pytest
 import time
-import asyncio
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+
+import pytest
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig)
 from crawl4ai.async_database import async_db_manager
 
 
@@ -48,14 +50,20 @@ class TestEndToEndCacheValidation:
 
         assert result1.success, f"First crawl failed: {result1.error_message}"
         # WRITE_ONLY means we did a fresh crawl and wrote to cache
-        assert result1.cache_status == "miss", f"Expected 'miss', got '{result1.cache_status}'"
+        assert (
+            result1.cache_status == "miss"
+        ), f"Expected 'miss', got '{result1.cache_status}'"
 
-        print(f"\n[CRAWL 1] Fresh crawl: {time1:.2f}s (cache_status: {result1.cache_status})")
+        print(
+            f"\n[CRAWL 1] Fresh crawl: {time1:.2f}s (cache_status: {result1.cache_status})"
+        )
 
         # Verify data is stored in database
         metadata = await async_db_manager.aget_cache_metadata(url)
         assert metadata is not None, "Metadata should be stored in database"
-        assert metadata.get("etag") or metadata.get("last_modified"), "Should have ETag or Last-Modified"
+        assert metadata.get("etag") or metadata.get(
+            "last_modified"
+        ), "Should have ETag or Last-Modified"
         print(f"  - Stored ETag: {metadata.get('etag', 'N/A')[:30]}...")
         print(f"  - Stored Last-Modified: {metadata.get('last_modified', 'N/A')}")
         print(f"  - Stored head_fingerprint: {metadata.get('head_fingerprint', 'N/A')}")
@@ -73,13 +81,19 @@ class TestEndToEndCacheValidation:
             time2 = time.perf_counter() - start2
 
         assert result2.success, f"Second crawl failed: {result2.error_message}"
-        assert result2.cache_status == "hit", f"Expected 'hit', got '{result2.cache_status}'"
+        assert (
+            result2.cache_status == "hit"
+        ), f"Expected 'hit', got '{result2.cache_status}'"
 
-        print(f"\n[CRAWL 2] Cache hit (no validation): {time2:.2f}s (cache_status: {result2.cache_status})")
+        print(
+            f"\n[CRAWL 2] Cache hit (no validation): {time2:.2f}s (cache_status: {result2.cache_status})"
+        )
         print(f"  - Speedup: {time1/time2:.1f}x faster than fresh crawl")
 
         # Should be MUCH faster - no browser, no HTTP request
-        assert time2 < time1 / 2, f"Cache hit should be at least 2x faster (was {time1/time2:.1f}x)"
+        assert (
+            time2 < time1 / 2
+        ), f"Cache hit should be at least 2x faster (was {time1/time2:.1f}x)"
 
         # ========== CRAWL 3: Cache hit WITH validation (304) ==========
         config3 = CrawlerRunConfig(
@@ -94,22 +108,32 @@ class TestEndToEndCacheValidation:
 
         assert result3.success, f"Third crawl failed: {result3.error_message}"
         # Should be "hit_validated" (304) or "hit_fallback" (error during validation)
-        assert result3.cache_status in ["hit_validated", "hit_fallback"], \
-            f"Expected validated cache hit, got '{result3.cache_status}'"
+        assert result3.cache_status in [
+            "hit_validated",
+            "hit_fallback",
+        ], f"Expected validated cache hit, got '{result3.cache_status}'"
 
-        print(f"\n[CRAWL 3] Cache hit (with validation): {time3:.2f}s (cache_status: {result3.cache_status})")
+        print(
+            f"\n[CRAWL 3] Cache hit (with validation): {time3:.2f}s (cache_status: {result3.cache_status})"
+        )
         print(f"  - Speedup: {time1/time3:.1f}x faster than fresh crawl")
 
         # Should still be fast - just a HEAD request, no browser
-        assert time3 < time1 / 2, f"Validated cache hit should be faster than fresh crawl"
+        assert (
+            time3 < time1 / 2
+        ), "Validated cache hit should be faster than fresh crawl"
 
         # ========== SUMMARY ==========
         print(f"\n{'='*60}")
         print(f"PERFORMANCE SUMMARY for {url}")
         print(f"{'='*60}")
         print(f"  Fresh crawl (browser):        {time1:.2f}s")
-        print(f"  Cache hit (no validation):    {time2:.2f}s ({time1/time2:.1f}x faster)")
-        print(f"  Cache hit (with validation):  {time3:.2f}s ({time1/time3:.1f}x faster)")
+        print(
+            f"  Cache hit (no validation):    {time2:.2f}s ({time1/time2:.1f}x faster)"
+        )
+        print(
+            f"  Cache hit (with validation):  {time3:.2f}s ({time1/time3:.1f}x faster)"
+        )
         print(f"{'='*60}")
 
     @pytest.mark.asyncio
@@ -120,7 +144,9 @@ class TestEndToEndCacheValidation:
         browser_config = BrowserConfig(headless=True, verbose=False)
 
         # Fresh crawl - use WRITE_ONLY to ensure we get fresh data
-        config1 = CrawlerRunConfig(cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False)
+        config1 = CrawlerRunConfig(
+            cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             start1 = time.perf_counter()
             result1 = await crawler.arun(url, config=config1)
@@ -131,7 +157,9 @@ class TestEndToEndCacheValidation:
         print(f"\n[docs.crawl4ai.com] Fresh: {time1:.2f}s")
 
         # Cache hit with validation
-        config2 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=True)
+        config2 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=True
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             start2 = time.perf_counter()
             result2 = await crawler.arun(url, config=config2)
@@ -139,7 +167,9 @@ class TestEndToEndCacheValidation:
 
         assert result2.success
         assert result2.cache_status in ["hit_validated", "hit_fallback"]
-        print(f"[docs.crawl4ai.com] Validated: {time2:.2f}s ({time1/time2:.1f}x faster)")
+        print(
+            f"[docs.crawl4ai.com] Validated: {time2:.2f}s ({time1/time2:.1f}x faster)"
+        )
 
     @pytest.mark.asyncio
     async def test_verify_database_storage(self):
@@ -147,7 +177,9 @@ class TestEndToEndCacheValidation:
         url = "https://docs.python.org/3/library/asyncio.html"
 
         browser_config = BrowserConfig(headless=True, verbose=False)
-        config = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result = await crawler.arun(url, config=config)
@@ -170,13 +202,15 @@ class TestEndToEndCacheValidation:
         print(f"  - last_modified: {metadata['last_modified']}")
         print(f"  - head_fingerprint: {metadata['head_fingerprint']}")
         print(f"  - cached_at: {metadata['cached_at']}")
-        print(f"  - response_headers keys: {list(metadata['response_headers'].keys())[:5]}...")
+        print(
+            f"  - response_headers keys: {list(metadata['response_headers'].keys())[:5]}..."
+        )
 
         # At least one validation field should be populated
         has_validation_data = (
-            metadata["etag"] or
-            metadata["last_modified"] or
-            metadata["head_fingerprint"]
+            metadata["etag"]
+            or metadata["last_modified"]
+            or metadata["head_fingerprint"]
         )
         assert has_validation_data, "Should have at least one validation field"
 
@@ -188,7 +222,9 @@ class TestEndToEndCacheValidation:
         browser_config = BrowserConfig(headless=True, verbose=False)
 
         # Fresh crawl
-        config1 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config1 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result1 = await crawler.arun(url, config=config1)
 
@@ -197,7 +233,9 @@ class TestEndToEndCacheValidation:
 
         # Verify in database
         metadata = await async_db_manager.aget_cache_metadata(url)
-        assert metadata["head_fingerprint"], "head_fingerprint should be stored in database"
+        assert metadata[
+            "head_fingerprint"
+        ], "head_fingerprint should be stored in database"
         assert metadata["head_fingerprint"] == result1.head_fingerprint
 
         print(f"\nHead fingerprint for {url}:")
@@ -205,7 +243,9 @@ class TestEndToEndCacheValidation:
         print(f"  - Database head_fingerprint: {metadata['head_fingerprint']}")
 
         # Validate using fingerprint
-        config2 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=True)
+        config2 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=True
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result2 = await crawler.arun(url, config=config2)
 
@@ -236,7 +276,9 @@ class TestCacheValidationPerformance:
 
         # Fresh crawls - use WRITE_ONLY to force fresh crawl
         for url in urls:
-            config = CrawlerRunConfig(cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False)
+            config = CrawlerRunConfig(
+                cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False
+            )
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 start = time.perf_counter()
                 result = await crawler.arun(url, config=config)
@@ -246,7 +288,9 @@ class TestCacheValidationPerformance:
 
         # Cached crawls with validation
         for url in urls:
-            config = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=True)
+            config = CrawlerRunConfig(
+                cache_mode=CacheMode.ENABLED, check_cache_freshness=True
+            )
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 start = time.perf_counter()
                 result = await crawler.arun(url, config=config)
@@ -260,7 +304,7 @@ class TestCacheValidationPerformance:
         total_cached = sum(cached_times)
 
         print(f"\n{'='*70}")
-        print(f"RESULTS:")
+        print("RESULTS:")
         print(f"  Total fresh crawl time:  {total_fresh:.2f}s")
         print(f"  Total cached time:       {total_cached:.2f}s")
         print(f"  Average speedup:         {avg_fresh/avg_cached:.1f}x")
@@ -283,7 +327,9 @@ class TestCacheValidationPerformance:
         print(f"{'='*60}")
 
         # First access - fresh crawl
-        config = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             start = time.perf_counter()
             result = await crawler.arun(url, config=config)
@@ -293,7 +339,9 @@ class TestCacheValidationPerformance:
         # Repeated accesses - should all be cache hits
         cached_times = []
         for i in range(2, num_accesses + 1):
-            config = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=True)
+            config = CrawlerRunConfig(
+                cache_mode=CacheMode.ENABLED, check_cache_freshness=True
+            )
             async with AsyncWebCrawler(config=browser_config) as crawler:
                 start = time.perf_counter()
                 result = await crawler.arun(url, config=config)
@@ -319,13 +367,17 @@ class TestCacheValidationModes:
         browser_config = BrowserConfig(headless=True, verbose=False)
 
         # First crawl with WRITE_ONLY to populate cache (always fresh)
-        config1 = CrawlerRunConfig(cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False)
+        config1 = CrawlerRunConfig(
+            cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result1 = await crawler.arun(url, config=config1)
         assert result1.cache_status == "miss"
 
         # Second crawl with BYPASS - should NOT use cache
-        config2 = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, check_cache_freshness=False)
+        config2 = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result2 = await crawler.arun(url, config=config2)
 
@@ -341,20 +393,28 @@ class TestCacheValidationModes:
         browser_config = BrowserConfig(headless=True, verbose=False)
 
         # Fresh crawl - use WRITE_ONLY to force fresh
-        config1 = CrawlerRunConfig(cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False)
+        config1 = CrawlerRunConfig(
+            cache_mode=CacheMode.WRITE_ONLY, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result1 = await crawler.arun(url, config=config1)
         assert result1.cache_status == "miss"
 
         # Cached with validation DISABLED - should be "hit" (not "hit_validated")
-        config2 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config2 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             start = time.perf_counter()
             result2 = await crawler.arun(url, config=config2)
             elapsed = time.perf_counter() - start
 
-        assert result2.cache_status == "hit", f"Expected 'hit', got '{result2.cache_status}'"
-        print(f"\nValidation disabled: {elapsed:.3f}s (cache_status: {result2.cache_status})")
+        assert (
+            result2.cache_status == "hit"
+        ), f"Expected 'hit', got '{result2.cache_status}'"
+        print(
+            f"\nValidation disabled: {elapsed:.3f}s (cache_status: {result2.cache_status})"
+        )
 
         # Should be very fast - no HTTP request at all
         assert elapsed < 1.0, "Cache hit without validation should be < 1 second"
@@ -367,19 +427,25 @@ class TestCacheValidationModes:
         browser_config = BrowserConfig(headless=True, verbose=False)
 
         # Fresh crawl
-        config1 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config1 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result1 = await crawler.arun(url, config=config1)
 
         # Cached with validation ENABLED - should be "hit_validated"
-        config2 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=True)
+        config2 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=True
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             start = time.perf_counter()
             result2 = await crawler.arun(url, config=config2)
             elapsed = time.perf_counter() - start
 
         assert result2.cache_status in ["hit_validated", "hit_fallback"]
-        print(f"\nValidation enabled: {elapsed:.3f}s (cache_status: {result2.cache_status})")
+        print(
+            f"\nValidation enabled: {elapsed:.3f}s (cache_status: {result2.cache_status})"
+        )
 
 
 class TestCacheValidationResponseHeaders:
@@ -391,7 +457,9 @@ class TestCacheValidationResponseHeaders:
         url = "https://docs.python.org/3/"
 
         browser_config = BrowserConfig(headless=True, verbose=False)
-        config = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result = await crawler.arun(url, config=config)
@@ -426,7 +494,9 @@ class TestCacheValidationResponseHeaders:
         browser_config = BrowserConfig(headless=True, verbose=False)
 
         # Fresh crawl to store headers
-        config1 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=False)
+        config1 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=False
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result1 = await crawler.arun(url, config=config1)
 
@@ -440,7 +510,9 @@ class TestCacheValidationResponseHeaders:
         print(f"  - last_modified: {stored_last_modified}")
 
         # Validate - should use stored headers
-        config2 = CrawlerRunConfig(cache_mode=CacheMode.ENABLED, check_cache_freshness=True)
+        config2 = CrawlerRunConfig(
+            cache_mode=CacheMode.ENABLED, check_cache_freshness=True
+        )
         async with AsyncWebCrawler(config=browser_config) as crawler:
             result2 = await crawler.arun(url, config=config2)
 

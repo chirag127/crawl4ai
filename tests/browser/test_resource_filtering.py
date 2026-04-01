@@ -11,8 +11,8 @@ Domains used:
 """
 
 import pytest
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 
 # ---------------------------------------------------------------------------
 # Basic success tests — flags should not break crawling
@@ -101,9 +101,7 @@ async def test_without_flags_css_loads_normally():
             for r in result.network_requests
             if r.get("event_type") == "response" and ".css" in r.get("url", "")
         ]
-        assert (
-            len(css_responses) > 0
-        ), "CSS should load normally without avoid_css flag"
+        assert len(css_responses) > 0, "CSS should load normally without avoid_css flag"
 
 
 @pytest.mark.asyncio
@@ -135,8 +133,7 @@ async def test_avoid_css_blocks_css_requests():
         css_failures = [
             r
             for r in result.network_requests
-            if r.get("event_type") == "request_failed"
-            and ".css" in r.get("url", "")
+            if r.get("event_type") == "request_failed" and ".css" in r.get("url", "")
         ]
         assert (
             len(css_failures) > 0
@@ -146,9 +143,7 @@ async def test_avoid_css_blocks_css_requests():
 @pytest.mark.asyncio
 async def test_avoid_css_with_text_mode_combines():
     """Both avoid_css and text_mode should combine their blocking rules."""
-    browser_config = BrowserConfig(
-        headless=True, avoid_css=True, text_mode=True
-    )
+    browser_config = BrowserConfig(headless=True, avoid_css=True, text_mode=True)
     async with AsyncWebCrawler(config=browser_config) as crawler:
         result = await crawler.arun(
             url="https://books.toscrape.com",

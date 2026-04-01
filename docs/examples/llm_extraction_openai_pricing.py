@@ -1,18 +1,25 @@
 import asyncio
-from pydantic import BaseModel, Field
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, LLMConfig, BrowserConfig, CacheMode
-from crawl4ai.extraction_strategy import LLMExtractionStrategy
-from typing import Dict
 import os
+from typing import Dict
+
+from pydantic import BaseModel, Field
+
+from crawl4ai import (AsyncWebCrawler, BrowserConfig, CacheMode,
+                      CrawlerRunConfig, LLMConfig)
+from crawl4ai.extraction_strategy import LLMExtractionStrategy
 
 
 class OpenAIModelFee(BaseModel):
     model_name: str = Field(..., description="Name of the OpenAI model.")
     input_fee: str = Field(..., description="Fee for input token for the OpenAI model.")
-    output_fee: str = Field(..., description="Fee for output token for the OpenAI model.")
+    output_fee: str = Field(
+        ..., description="Fee for output token for the OpenAI model."
+    )
 
 
-async def extract_structured_data_using_llm(provider: str, api_token: str = None, extra_headers: Dict[str, str] = None):
+async def extract_structured_data_using_llm(
+    provider: str, api_token: str = None, extra_headers: Dict[str, str] = None
+):
     print(f"\n--- Extracting Structured Data with {provider} ---")
 
     if api_token is None and provider != "ollama":
@@ -41,8 +48,7 @@ async def extract_structured_data_using_llm(provider: str, api_token: str = None
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         result = await crawler.arun(
-            url="https://openai.com/api/pricing/", 
-            config=crawler_config
+            url="https://openai.com/api/pricing/", config=crawler_config
         )
         print(result.extracted_content)
 
