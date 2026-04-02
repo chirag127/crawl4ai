@@ -15,3 +15,4 @@ PyJWT==2.10.1
 mcp>=1.18.0
 websockets>=15.0.1
 httpx[http2]>=0.27.2
+cryptography>=46.0.5 # not directly required, pinned by Snyk to avoid a vulnerability
